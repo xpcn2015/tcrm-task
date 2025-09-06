@@ -1,0 +1,28 @@
+[package]
+name = "tcrm"
+version = "0.1.0"
+edition = "2024"
+description = "Task Control & Resource Monitor"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1.47", features = [
+    "rt-multi-thread",
+    "time",
+    "macros",
+    "io-util",
+    "process",
+    "sync",
+    "signal",
+], optional = true }
+tracing = "0.1"
+thiserror = "2.0"
+flatbuffers = { version = "25.2", optional = true }
+
+[features]
+default = ["tokio"]
+tokio = ["dep:tokio"]
+flatbuffers = ["dep:flatbuffers"]
+
+[dev-dependencies]
+tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }

@@ -1,0 +1,115 @@
+namespace TCRM.Task;
+
+// Config
+
+enum StreamSource: byte {
+  Stdout = 0,
+  Stderr = 1
+}
+
+enum TaskShell: byte {
+  None = 0,
+  Auto = 1,
+  Cmd = 2,        // only valid on Windows
+  Powershell = 3, // only valid on Windows
+  Bash = 4        // only valid on Unix
+}
+
+table TaskConfig {
+  command: string (required);
+  args: [string];
+  working_dir: string;
+  env: [EnvEntry];
+  shell: TaskShell = None;
+  pty: bool = false;
+  timeout_ms: ulong;
+  enable_stdin: bool = false;
+}
+
+table EnvEntry {
+  key: string (required);
+  value: string (required);
+}
+
+// State
+
+enum TaskState: byte {
+  Pending = 0,
+  Initiating = 1,
+  Running = 2,
+  Ready = 3,
+  Finished = 4
+}
+
+union TaskTerminateReason {
+  Timeout: TimeoutReason,
+  Error: ErrorReason,
+  Cleanup: CleanupReason,
+  DependenciesFinished: DependenciesFinishedReason,
+  Custom: CustomReason
+}
+
+table TimeoutReason {}
+table ErrorReason {}
+table CleanupReason {}
+table DependenciesFinishedReason {}
+table CustomReason {
+  message: string (required);
+}
+
+// Event
+
+union TaskEvent {
+  Started: StartedEvent,
+  Output: OutputEvent,
+  Ready: ReadyEvent,
+  Stopped: StoppedEvent,
+  Error: ErrorEvent
+}
+
+union TaskEventStopReason {
+  Finished: FinishedReason,
+  TerminatedTimeout: TimeoutReason,
+  TerminatedError: ErrorReason,
+  TerminatedCleanup: CleanupReason,
+  TerminatedDependenciesFinished: DependenciesFinishedReason,
+  TerminatedCustom: CustomReason,
+  Error: ErrorStopReason
+}
+
+table StartedEvent {
+  task_name: string (required);
+}
+
+table OutputEvent {
+  task_name: string (required);
+  line: string (required);
+  src: StreamSource = Stdout;
+}
+
+table ReadyEvent {
+  task_name: string (required);
+}
+
+table StoppedEvent {
+  task_name: string (required);
+  exit_code: int;
+  reason: TaskEventStopReason (required);
+}
+
+table ErrorEvent {
+  task_name: string (required);
+  error: string (required);
+}
+
+table FinishedReason {}
+
+table ErrorStopReason {
+  message: string (required);
+}
+
+table TaskEventWrapper {
+  event: TaskEvent;
+}
+
+root_type TaskEventWrapper;
