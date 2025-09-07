@@ -33,7 +33,6 @@ use tokio::sync::mpsc;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Cross-platform shell example
     let config = if cfg!(windows) {
         TaskConfig::new("powershell")
             .args(["-Command", "echo Hello from Windows!"])
