@@ -1,7 +1,8 @@
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot, watch};
 use tracing::{error, instrument, warn};
 
 use crate::tasks::async_tokio::direct::command::{setup_command, shell_command};
+use crate::tasks::async_tokio::direct::watchers::input::spawn_stdin_watcher;
 use crate::tasks::async_tokio::direct::watchers::output::spawn_output_watchers;
 use crate::tasks::async_tokio::direct::watchers::result::spawn_result_watcher;
 use crate::tasks::async_tokio::direct::watchers::timeout::spawn_timeout_watcher;
@@ -45,25 +46,36 @@ impl TaskSpawner {
             warn!("Event channel closed while sending TaskEvent::Started");
         }
 
-        // Handle stdout and stderr
+        let (result_tx, result_rx) = mpsc::channel::<(Option<i32>, TaskEventStopReason)>(1);
+        let (terminate_tx, terminate_rx) = oneshot::channel::<TaskTerminateReason>();
+        let (handle_terminate_tx, handle_terminate_rx) = watch::channel(false);
+
+        // Spawn stdout and stderr watchers
         let handles = spawn_output_watchers(self.task_name.clone(), event_tx.clone(), &mut child);
         task_handles.extend(handles);
 
-        let (result_tx, result_rx) = mpsc::channel::<(Option<i32>, TaskEventStopReason)>(1);
-        let (terminate_tx, terminate_rx) = mpsc::unbounded_channel::<TaskTerminateReason>();
-        self.terminate_tx = Some(terminate_tx.clone());
+        // Spawn stdin watcher if configured
+        if let Some((stdin, stdin_rx)) = child.stdin.take().zip(self.stdin_rx.take()) {
+            let handle = spawn_stdin_watcher(stdin, stdin_rx, handle_terminate_rx.clone());
+            task_handles.push(handle);
+        }
+
+        // Spawn child wait watcher
+        *self.terminate_tx.lock().await = Some(terminate_tx);
+
         let handle = spawn_wait_watcher(
             self.task_name.clone(),
             self.state.clone(),
             child,
             terminate_rx,
+            handle_terminate_tx,
             result_tx,
         );
         task_handles.push(handle);
 
         // Spawn timeout watcher if configured
         if let Some(timeout_ms) = self.config.timeout_ms {
-            let handle = spawn_timeout_watcher(terminate_tx.clone(), timeout_ms);
+            let handle = spawn_timeout_watcher(self.terminate_tx.clone(), timeout_ms);
             task_handles.push(handle);
         }
 

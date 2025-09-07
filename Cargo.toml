@@ -1,8 +1,9 @@
 [package]
-name = "tcrm"
+name = "tcrm-task"
 version = "0.1.0"
 edition = "2024"
-description = "Task Control & Resource Monitor"
+description = "Tasks Control and Resource Monitoring, task execution unit"
+
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }

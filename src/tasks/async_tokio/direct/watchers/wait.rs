@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use tokio::{
     process::Child,
-    sync::{RwLock, mpsc},
+    sync::{RwLock, mpsc, oneshot, watch},
     task::JoinHandle,
 };
 use tracing::{Instrument, debug, error, instrument, warn};
@@ -17,7 +17,8 @@ pub fn spawn_wait_watcher(
     task_name: String,
     state: Arc<RwLock<TaskState>>,
     mut child: Child,
-    mut terminate_rx: mpsc::UnboundedReceiver<TaskTerminateReason>,
+    terminate_rx: oneshot::Receiver<TaskTerminateReason>,
+    handle_terminate_tx: watch::Sender<bool>,
     result_tx: mpsc::Sender<(Option<i32>, TaskEventStopReason)>,
 ) -> JoinHandle<()> {
     let handle = tokio::spawn(
@@ -47,7 +48,7 @@ pub fn spawn_wait_watcher(
                         }
                     }
                 }
-                reason = terminate_rx.recv() => {
+                reason = terminate_rx => {
                     if let Err(e) = child.kill().await {
                         // Expected OS level error
                         if let Err(_) = result_tx.send((
@@ -76,6 +77,11 @@ pub fn spawn_wait_watcher(
                     debug!(reason = ?reason, "Child process terminated via watcher");
                 }
             }
+            // Task finished, send handle terminate signal
+            if let Err(_) = handle_terminate_tx.send(true){
+                warn!("Handle terminate channels closed while sending signal");
+            };
+            debug!("Watcher finished");
         }
         .instrument(tracing::debug_span!("tokio::spawn(wait_watcher)")),
     );
