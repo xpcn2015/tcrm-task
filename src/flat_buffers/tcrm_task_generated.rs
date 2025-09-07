@@ -231,16 +231,15 @@ pub mod tcrm {
             since = "2.0.0",
             note = "Use associated constants instead. This will no longer be generated in 2021."
         )]
-        pub const ENUM_MAX_TASK_TERMINATE_REASON: u8 = 5;
+        pub const ENUM_MAX_TASK_TERMINATE_REASON: u8 = 4;
         #[deprecated(
             since = "2.0.0",
             note = "Use associated constants instead. This will no longer be generated in 2021."
         )]
         #[allow(non_camel_case_types)]
-        pub const ENUM_VALUES_TASK_TERMINATE_REASON: [TaskTerminateReason; 6] = [
+        pub const ENUM_VALUES_TASK_TERMINATE_REASON: [TaskTerminateReason; 5] = [
             TaskTerminateReason::NONE,
             TaskTerminateReason::Timeout,
-            TaskTerminateReason::Error,
             TaskTerminateReason::Cleanup,
             TaskTerminateReason::DependenciesFinished,
             TaskTerminateReason::Custom,
@@ -253,17 +252,15 @@ pub mod tcrm {
         impl TaskTerminateReason {
             pub const NONE: Self = Self(0);
             pub const Timeout: Self = Self(1);
-            pub const Error: Self = Self(2);
-            pub const Cleanup: Self = Self(3);
-            pub const DependenciesFinished: Self = Self(4);
-            pub const Custom: Self = Self(5);
+            pub const Cleanup: Self = Self(2);
+            pub const DependenciesFinished: Self = Self(3);
+            pub const Custom: Self = Self(4);
 
             pub const ENUM_MIN: u8 = 0;
-            pub const ENUM_MAX: u8 = 5;
+            pub const ENUM_MAX: u8 = 4;
             pub const ENUM_VALUES: &'static [Self] = &[
                 Self::NONE,
                 Self::Timeout,
-                Self::Error,
                 Self::Cleanup,
                 Self::DependenciesFinished,
                 Self::Custom,
@@ -273,7 +270,6 @@ pub mod tcrm {
                 match self {
                     Self::NONE => Some("NONE"),
                     Self::Timeout => Some("Timeout"),
-                    Self::Error => Some("Error"),
                     Self::Cleanup => Some("Cleanup"),
                     Self::DependenciesFinished => Some("DependenciesFinished"),
                     Self::Custom => Some("Custom"),
@@ -457,17 +453,16 @@ pub mod tcrm {
             since = "2.0.0",
             note = "Use associated constants instead. This will no longer be generated in 2021."
         )]
-        pub const ENUM_MAX_TASK_EVENT_STOP_REASON: u8 = 7;
+        pub const ENUM_MAX_TASK_EVENT_STOP_REASON: u8 = 6;
         #[deprecated(
             since = "2.0.0",
             note = "Use associated constants instead. This will no longer be generated in 2021."
         )]
         #[allow(non_camel_case_types)]
-        pub const ENUM_VALUES_TASK_EVENT_STOP_REASON: [TaskEventStopReason; 8] = [
+        pub const ENUM_VALUES_TASK_EVENT_STOP_REASON: [TaskEventStopReason; 7] = [
             TaskEventStopReason::NONE,
             TaskEventStopReason::Finished,
             TaskEventStopReason::TerminatedTimeout,
-            TaskEventStopReason::TerminatedError,
             TaskEventStopReason::TerminatedCleanup,
             TaskEventStopReason::TerminatedDependenciesFinished,
             TaskEventStopReason::TerminatedCustom,
@@ -482,19 +477,17 @@ pub mod tcrm {
             pub const NONE: Self = Self(0);
             pub const Finished: Self = Self(1);
             pub const TerminatedTimeout: Self = Self(2);
-            pub const TerminatedError: Self = Self(3);
-            pub const TerminatedCleanup: Self = Self(4);
-            pub const TerminatedDependenciesFinished: Self = Self(5);
-            pub const TerminatedCustom: Self = Self(6);
-            pub const Error: Self = Self(7);
+            pub const TerminatedCleanup: Self = Self(3);
+            pub const TerminatedDependenciesFinished: Self = Self(4);
+            pub const TerminatedCustom: Self = Self(5);
+            pub const Error: Self = Self(6);
 
             pub const ENUM_MIN: u8 = 0;
-            pub const ENUM_MAX: u8 = 7;
+            pub const ENUM_MAX: u8 = 6;
             pub const ENUM_VALUES: &'static [Self] = &[
                 Self::NONE,
                 Self::Finished,
                 Self::TerminatedTimeout,
-                Self::TerminatedError,
                 Self::TerminatedCleanup,
                 Self::TerminatedDependenciesFinished,
                 Self::TerminatedCustom,
@@ -506,7 +499,6 @@ pub mod tcrm {
                     Self::NONE => Some("NONE"),
                     Self::Finished => Some("Finished"),
                     Self::TerminatedTimeout => Some("TerminatedTimeout"),
-                    Self::TerminatedError => Some("TerminatedError"),
                     Self::TerminatedCleanup => Some("TerminatedCleanup"),
                     Self::TerminatedDependenciesFinished => Some("TerminatedDependenciesFinished"),
                     Self::TerminatedCustom => Some("TerminatedCustom"),
@@ -1060,90 +1052,6 @@ pub mod tcrm {
         impl core::fmt::Debug for TimeoutReason<'_> {
             fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 let mut ds = f.debug_struct("TimeoutReason");
-                ds.finish()
-            }
-        }
-        pub enum ErrorReasonOffset {}
-        #[derive(Copy, Clone, PartialEq)]
-
-        pub struct ErrorReason<'a> {
-            pub _tab: flatbuffers::Table<'a>,
-        }
-
-        impl<'a> flatbuffers::Follow<'a> for ErrorReason<'a> {
-            type Inner = ErrorReason<'a>;
-            #[inline]
-            unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                Self {
-                    _tab: unsafe { flatbuffers::Table::new(buf, loc) },
-                }
-            }
-        }
-
-        impl<'a> ErrorReason<'a> {
-            #[inline]
-            pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-                ErrorReason { _tab: table }
-            }
-            #[allow(unused_mut)]
-            pub fn create<
-                'bldr: 'args,
-                'args: 'mut_bldr,
-                'mut_bldr,
-                A: flatbuffers::Allocator + 'bldr,
-            >(
-                _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
-                _args: &'args ErrorReasonArgs,
-            ) -> flatbuffers::WIPOffset<ErrorReason<'bldr>> {
-                let mut builder = ErrorReasonBuilder::new(_fbb);
-                builder.finish()
-            }
-        }
-
-        impl flatbuffers::Verifiable for ErrorReason<'_> {
-            #[inline]
-            fn run_verifier(
-                v: &mut flatbuffers::Verifier,
-                pos: usize,
-            ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
-                use self::flatbuffers::Verifiable;
-                v.visit_table(pos)?.finish();
-                Ok(())
-            }
-        }
-        pub struct ErrorReasonArgs {}
-        impl<'a> Default for ErrorReasonArgs {
-            #[inline]
-            fn default() -> Self {
-                ErrorReasonArgs {}
-            }
-        }
-
-        pub struct ErrorReasonBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
-            fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
-            start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
-        }
-        impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> ErrorReasonBuilder<'a, 'b, A> {
-            #[inline]
-            pub fn new(
-                _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
-            ) -> ErrorReasonBuilder<'a, 'b, A> {
-                let start = _fbb.start_table();
-                ErrorReasonBuilder {
-                    fbb_: _fbb,
-                    start_: start,
-                }
-            }
-            #[inline]
-            pub fn finish(self) -> flatbuffers::WIPOffset<ErrorReason<'a>> {
-                let o = self.fbb_.end_table(self.start_);
-                flatbuffers::WIPOffset::new(o.value())
-            }
-        }
-
-        impl core::fmt::Debug for ErrorReason<'_> {
-            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                let mut ds = f.debug_struct("ErrorReason");
                 ds.finish()
             }
         }
@@ -1973,20 +1881,6 @@ pub mod tcrm {
 
             #[inline]
             #[allow(non_snake_case)]
-            pub fn reason_as_terminated_error(&self) -> Option<ErrorReason<'a>> {
-                if self.reason_type() == TaskEventStopReason::TerminatedError {
-                    let u = self.reason();
-                    // Safety:
-                    // Created from a valid Table for this object
-                    // Which contains a valid union in this slot
-                    Some(unsafe { ErrorReason::init_from_table(u) })
-                } else {
-                    None
-                }
-            }
-
-            #[inline]
-            #[allow(non_snake_case)]
             pub fn reason_as_terminated_cleanup(&self) -> Option<CleanupReason<'a>> {
                 if self.reason_type() == TaskEventStopReason::TerminatedCleanup {
                     let u = self.reason();
@@ -2058,7 +1952,6 @@ pub mod tcrm {
         match key {
           TaskEventStopReason::Finished => v.verify_union_variant::<flatbuffers::ForwardsUOffset<FinishedReason>>("TaskEventStopReason::Finished", pos),
           TaskEventStopReason::TerminatedTimeout => v.verify_union_variant::<flatbuffers::ForwardsUOffset<TimeoutReason>>("TaskEventStopReason::TerminatedTimeout", pos),
-          TaskEventStopReason::TerminatedError => v.verify_union_variant::<flatbuffers::ForwardsUOffset<ErrorReason>>("TaskEventStopReason::TerminatedError", pos),
           TaskEventStopReason::TerminatedCleanup => v.verify_union_variant::<flatbuffers::ForwardsUOffset<CleanupReason>>("TaskEventStopReason::TerminatedCleanup", pos),
           TaskEventStopReason::TerminatedDependenciesFinished => v.verify_union_variant::<flatbuffers::ForwardsUOffset<DependenciesFinishedReason>>("TaskEventStopReason::TerminatedDependenciesFinished", pos),
           TaskEventStopReason::TerminatedCustom => v.verify_union_variant::<flatbuffers::ForwardsUOffset<CustomReason>>("TaskEventStopReason::TerminatedCustom", pos),
@@ -2160,16 +2053,6 @@ pub mod tcrm {
                     }
                     TaskEventStopReason::TerminatedTimeout => {
                         if let Some(x) = self.reason_as_terminated_timeout() {
-                            ds.field("reason", &x)
-                        } else {
-                            ds.field(
-                                "reason",
-                                &"InvalidFlatbuffer: Union discriminant does not match value.",
-                            )
-                        }
-                    }
-                    TaskEventStopReason::TerminatedError => {
-                        if let Some(x) = self.reason_as_terminated_error() {
                             ds.field("reason", &x)
                         } else {
                             ds.field(

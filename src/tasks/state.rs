@@ -10,7 +10,6 @@ pub enum TaskState {
 #[derive(Debug, Clone, PartialEq)]
 pub enum TaskTerminateReason {
     Timeout,
-    Error,
     Cleanup,
     DependenciesFinished,
     Custom(String),

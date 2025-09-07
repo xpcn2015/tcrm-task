@@ -49,16 +49,7 @@ impl TaskTerminateReason {
                     r.as_union_value(),
                 )
             }
-            TaskTerminateReason::Error => {
-                let r = tcrm_task_generated::tcrm::task::ErrorReason::create(
-                    builder,
-                    &tcrm_task_generated::tcrm::task::ErrorReasonArgs {},
-                );
-                (
-                    tcrm_task_generated::tcrm::task::TaskTerminateReason::Error,
-                    r.as_union_value(),
-                )
-            }
+
             TaskTerminateReason::Cleanup => {
                 let r = tcrm_task_generated::tcrm::task::CleanupReason::create(
                     builder,
@@ -112,16 +103,7 @@ impl TaskTerminateReason {
                     r.as_union_value(),
                 )
             }
-            TaskTerminateReason::Error => {
-                let r = tcrm_task_generated::tcrm::task::ErrorReason::create(
-                    builder,
-                    &tcrm_task_generated::tcrm::task::ErrorReasonArgs {},
-                );
-                (
-                    tcrm_task_generated::tcrm::task::TaskEventStopReason::TerminatedError,
-                    r.as_union_value(),
-                )
-            }
+
             TaskTerminateReason::Cleanup => {
                 let r = tcrm_task_generated::tcrm::task::CleanupReason::create(
                     builder,

@@ -33,14 +33,12 @@ enum TaskState: byte {
 
 union TaskTerminateReason {
   Timeout: TimeoutReason,
-  Error: ErrorReason,
   Cleanup: CleanupReason,
   DependenciesFinished: DependenciesFinishedReason,
   Custom: CustomReason
 }
 
 table TimeoutReason {}
-table ErrorReason {}
 table CleanupReason {}
 table DependenciesFinishedReason {}
 table CustomReason {
@@ -60,7 +58,6 @@ union TaskEvent {
 union TaskEventStopReason {
   Finished: FinishedReason,
   TerminatedTimeout: TimeoutReason,
-  TerminatedError: ErrorReason,
   TerminatedCleanup: CleanupReason,
   TerminatedDependenciesFinished: DependenciesFinishedReason,
   TerminatedCustom: CustomReason,
