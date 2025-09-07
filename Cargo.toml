@@ -2,7 +2,7 @@
 name = "tcrm-task"
 version = "0.1.0"
 edition = "2024"
-description = "Tasks Control and Resource Monitoring, task execution unit"
+description = "Task execution unit for TCRM project"
 
 
 [dependencies]
