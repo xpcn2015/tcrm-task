@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use tokio::{
-    sync::{RwLock, mpsc},
+    sync::{RwLock, mpsc, oneshot},
     task::JoinHandle,
     time::Instant,
 };
@@ -18,20 +18,19 @@ pub fn spawn_result_watcher(
     state: Arc<RwLock<TaskState>>,
     finished_arc: Arc<RwLock<Option<Instant>>>,
     event_tx: mpsc::Sender<TaskEvent>,
-    mut result_rx: mpsc::Receiver<(Option<i32>, TaskEventStopReason)>,
+    result_rx: oneshot::Receiver<(Option<i32>, TaskEventStopReason)>,
     mut task_handles: Vec<JoinHandle<()>>,
 ) -> JoinHandle<()> {
     let handle = tokio::spawn(
         async move {
-            let (exit_code, stop_reason) = match result_rx.recv().await {
-                Some(result) => result,
-                None => (
+            let (exit_code, stop_reason) = match result_rx.await {
+                Ok(result) => result,
+                Err(_) => {
                     // Somehow, all tx has been dropped, this is unexpected
-                    None,
-                    TaskEventStopReason::Error(
-                        "All result senders dropped unexpectedly".to_string(),
-                    ),
-                ),
+                    let msg = "All result senders dropped unexpectedly";
+                    warn!(msg);
+                    (None, TaskEventStopReason::Error(msg.to_string()))
+                }
             };
             info!(
                 exit_code = ?exit_code,

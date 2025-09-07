@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use tokio::{
     process::Child,
-    sync::{RwLock, mpsc, oneshot, watch},
+    sync::{RwLock, oneshot, watch},
     task::JoinHandle,
 };
 use tracing::{Instrument, debug, error, instrument, warn};
@@ -18,8 +18,8 @@ pub fn spawn_wait_watcher(
     state: Arc<RwLock<TaskState>>,
     mut child: Child,
     terminate_rx: oneshot::Receiver<TaskTerminateReason>,
-    handle_terminate_tx: watch::Sender<bool>,
-    result_tx: mpsc::Sender<(Option<i32>, TaskEventStopReason)>,
+    handle_terminator_tx: watch::Sender<bool>,
+    result_tx: oneshot::Sender<(Option<i32>, TaskEventStopReason)>,
 ) -> JoinHandle<()> {
     let handle = tokio::spawn(
         async move {
@@ -31,7 +31,7 @@ pub fn spawn_wait_watcher(
                             if let Err(_) = result_tx.send((
                                 exit_code,
                                 TaskEventStopReason::Finished,
-                            )).await {
+                            )) {
                                 warn!(exit_code, "Result channel closed while sending TaskEventStopReason::Finished");
                             };
                             debug!(exit_code = ?exit_code, "Child process finished normally");
@@ -41,7 +41,7 @@ pub fn spawn_wait_watcher(
                             if let Err(_) = result_tx.send((
                                 None,
                                 TaskEventStopReason::Error(e.to_string()),
-                            )).await {
+                            )) {
                                 warn!(error = %e, "Result channel closed while sending TaskEventStopReason::Error");
                             };
                             error!(error = %e, "Child process wait failed");
@@ -57,7 +57,7 @@ pub fn spawn_wait_watcher(
                                 "Failed to terminate task {}: {}",
                                 task_name, e
                             )),
-                        )).await {
+                        )) {
                             warn!(error = %e, "Result channel closed while sending TaskEventStopReason::Error");
                         };
                         error!(error = %e, "Failed to kill child process");
@@ -71,14 +71,14 @@ pub fn spawn_wait_watcher(
                     if let Err(_) = result_tx.send((
                         None,
                         TaskEventStopReason::Terminated(reason.clone()),
-                    )).await {
+                    )) {
                         warn!(reason = ?reason, "Result channel closed while sending TaskEventStopReason::Terminated");
                     };
                     debug!(reason = ?reason, "Child process terminated via watcher");
                 }
             }
             // Task finished, send handle terminate signal
-            if let Err(_) = handle_terminate_tx.send(true){
+            if let Err(_) = handle_terminator_tx.send(true){
                 warn!("Handle terminate channels closed while sending signal");
             };
             debug!("Watcher finished");

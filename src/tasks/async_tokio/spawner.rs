@@ -88,16 +88,14 @@ impl TaskSpawner {
     ) -> Result<(), TaskError> {
         if let Some(tx) = self.terminate_tx.lock().await.take() {
             if tx.send(reason.clone()).is_err() {
-                warn!(terminate_reason=?reason, "Terminate channel closed while sending signal");
-                return Err(TaskError::Thread(
-                    "Terminate channel closed while sending signal".to_string(),
-                ));
+                let msg = "Terminate channel closed while sending signal";
+                warn!(terminate_reason=?reason, msg);
+                return Err(TaskError::Channel(msg.to_string()));
             }
         } else {
-            warn!("Terminate signal already sent or channel missing");
-            return Err(TaskError::Thread(
-                "Terminate signal already sent or channel missing".to_string(),
-            ));
+            let msg = "Terminate signal already sent or channel missing";
+            warn!(msg);
+            return Err(TaskError::Channel(msg.to_string()));
         }
 
         Ok(())
@@ -130,8 +128,8 @@ pub async fn join_all_handles(task_handles: &mut Vec<JoinHandle<()>>) -> Result<
     }
 
     if !errors.is_empty() {
-        return Err(TaskError::Thread(format!(
-            "Multiple task join failures: {}",
+        return Err(TaskError::Handle(format!(
+            "Multiple task handles join failures: {}",
             errors.join("; ")
         )));
     }

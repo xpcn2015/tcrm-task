@@ -2,9 +2,9 @@ use std::process::Stdio;
 
 use tokio::process::Command;
 
-use crate::tasks::{config::TaskConfig, error::TaskError};
+use crate::tasks::config::TaskConfig;
 
-pub fn setup_command(cmd: &mut Command, config: &TaskConfig) -> Result<(), TaskError> {
+pub fn setup_command(cmd: &mut Command, config: &TaskConfig) {
     // Setup additional arguments
     if let Some(args) = &config.args {
         cmd.args(args);
@@ -20,7 +20,7 @@ pub fn setup_command(cmd: &mut Command, config: &TaskConfig) -> Result<(), TaskE
         cmd.envs(envs);
     }
 
-    // Setup stdio with better configuration
+    // Setup stdio
     cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(
         if config.enable_stdin.unwrap_or(false) {
             Stdio::piped()
@@ -34,6 +34,4 @@ pub fn setup_command(cmd: &mut Command, config: &TaskConfig) -> Result<(), TaskE
     {
         cmd.process_group(0);
     }
-
-    Ok(())
 }

@@ -26,13 +26,16 @@ impl TaskSpawner {
         let mut cmd = Command::new(&self.config.command);
         let mut cmd = cmd.kill_on_drop(true);
 
-        setup_command(&mut cmd, &self.config)?;
+        setup_command(&mut cmd, &self.config);
         let mut child = cmd.spawn()?;
         let child_id = match child.id() {
             Some(id) => id,
             None => {
                 error!("Failed to get process id");
-                return Err(TaskError::Custom("Failed to get process id".to_string()));
+                return Err(TaskError::IO(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "Failed to get process id",
+                )));
             }
         };
         self.process_id = Some(child_id);
@@ -47,9 +50,9 @@ impl TaskSpawner {
             warn!("Event channel closed while sending TaskEvent::Started");
         }
 
-        let (result_tx, result_rx) = mpsc::channel::<(Option<i32>, TaskEventStopReason)>(1);
+        let (result_tx, result_rx) = oneshot::channel::<(Option<i32>, TaskEventStopReason)>();
         let (terminate_tx, terminate_rx) = oneshot::channel::<TaskTerminateReason>();
-        let (handle_terminate_tx, handle_terminate_rx) = watch::channel(false);
+        let (handle_terminator_tx, handle_terminator_rx) = watch::channel(false);
 
         // Spawn stdout and stderr watchers
         let handles = spawn_output_watchers(self.task_name.clone(), event_tx.clone(), &mut child);
@@ -57,7 +60,7 @@ impl TaskSpawner {
 
         // Spawn stdin watcher if configured
         if let Some((stdin, stdin_rx)) = child.stdin.take().zip(self.stdin_rx.take()) {
-            let handle = spawn_stdin_watcher(stdin, stdin_rx, handle_terminate_rx.clone());
+            let handle = spawn_stdin_watcher(stdin, stdin_rx, handle_terminator_rx.clone());
             task_handles.push(handle);
         }
 
@@ -69,7 +72,7 @@ impl TaskSpawner {
             self.state.clone(),
             child,
             terminate_rx,
-            handle_terminate_tx,
+            handle_terminator_tx,
             result_tx,
         );
         task_handles.push(handle);
