@@ -1,12 +1,13 @@
 # TCRM Task
 
-Task execution unit for TCRM project
+Task execution unit for the TCRM project
 
 ## Features
 
--  **Asynchronous Execution**: Built on Tokio for async task execution
--  **Task Timeout**: Configurable execution timeout
--  **Event System**: Real-time monitoring of task lifecycle and output
+- **Asynchronous Execution**: Built on Tokio for async task execution
+- **Task Timeout**: Configurable execution timeout
+- **Event System**: Real-time monitoring of task lifecycle and output
+- **Optional Tracing/Logging**: Enable structured logging with the `tracing` Cargo feature
 
 ## Installation
 
@@ -15,6 +16,7 @@ Add this to your `Cargo.toml`:
 ```toml
 [dependencies]
 tcrm-task = { version = "0.1.0" }
+
 ```
 
 ## Quick Start
@@ -31,12 +33,17 @@ use tokio::sync::mpsc;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create a task configuration
-    let config = TaskConfig::new("echo")
-        .args(["Hello, World!"])
-        .timeout_ms(5000);
+    // Cross-platform shell example
+    let config = if cfg!(windows) {
+        TaskConfig::new("powershell")
+            .args(["-Command", "echo Hello from Windows!"])
+            .timeout_ms(5000)
+    } else {
+        TaskConfig::new("bash")
+            .args(["-c", "echo Hello from Unix!"])
+            .timeout_ms(5000)
+    };
 
-    // Create a task spawner
     let mut spawner = TaskSpawner::new("hello_task".to_string(), config);
 
     // Create an event channel to receive task events
@@ -49,24 +56,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Listen for events
     while let Some(event) = event_rx.recv().await {
         match event {
-            TaskEvent::Started { task_name } => {
-                println!("Task '{}' started", task_name);
-            }
-            TaskEvent::Output { task_name, line, src } => {
-                println!("Task '{}' output ({:?}): {}", task_name, src, line);
-            }
+            TaskEvent::Started { task_name } => println!("Task '{}' started", task_name),
+            TaskEvent::Output { task_name, line, src } => println!("Task '{}' output ({:?}): {}", task_name, src, line),
             TaskEvent::Stopped { task_name, exit_code, reason } => {
-                println!("Task '{}' stopped with exit code {:?}, reason: {:?}", 
-                         task_name, exit_code, reason);
+                println!("Task '{}' stopped with exit code {:?}, reason: {:?}", task_name, exit_code, reason);
                 break;
             }
-            TaskEvent::Error { task_name, error } => {
-                eprintln!("Task '{}' error: {}", task_name, error);
-            }
+            TaskEvent::Error { task_name, error } => eprintln!("Task '{}' error: {}", task_name, error),
             _ => {}
         }
     }
-
     Ok(())
 }
 ```
@@ -98,18 +97,17 @@ use tokio::sync::mpsc;
 
 // Create stdin channel
 let (stdin_tx, stdin_rx) = mpsc::channel::<String>(10);
-
-// Configure task with stdin enabled
-let config = TaskConfig::new("python3")
-    .args(["-i"])  // Interactive mode
-    .enable_stdin(true);
-
-let mut spawner = TaskSpawner::new("python_task".to_string(), config)
+let config = if cfg!(windows) {
+    TaskConfig::new("powershell")
+        .args(["-Command", "cat"])
+        .enable_stdin(true)
+} else {
+    TaskConfig::new("cat")
+        .enable_stdin(true)
+};
+let mut spawner = TaskSpawner::new("cat_task".to_string(), config)
     .set_stdin(stdin_rx);
-
-// Send input to the process
-stdin_tx.send("print('Hello from Python!')".to_string()).await?;
-stdin_tx.send("exit()".to_string()).await?;
+stdin_tx.send("Hello from stdin!".to_string()).await?;
 ```
 
 ## Task States
@@ -153,8 +151,7 @@ match event {
 }
 ```
 
-
-## Features flag
+## Features
 
 ### Default Features
 
@@ -163,14 +160,15 @@ match event {
 ### Optional Features
 
 - `flatbuffers`: Enables FlatBuffers serialization support
+- `tracing`: Enables structured logging/tracing macros
 
 ## Examples
 
-Check the `examples/` directory for more comprehensive examples:
-
+See the `examples/` directory for:
 - Basic process execution
 - Interactive process with stdin
 - Configuration validation
+- Tracing/logging output
 
 ## Testing
 
@@ -180,8 +178,8 @@ Run the test suite:
 # Run all tests
 cargo test
 
-# Run tests with logging
-RUST_LOG=debug cargo test
+# Run tests with logging/tracing
+RUST_LOG=debug cargo test --features tracing
 
 # Run specific test module
 cargo test tasks::tests
