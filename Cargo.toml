@@ -9,12 +9,7 @@ license = "MIT OR Apache-2.0"
 documentation = "https://docs.rs/tcrm-task"
 homepage = "https://github.com/jxpcn/tcrm-task"
 keywords = ["async", "task", "tokio", "process", "tcrm"]
-categories = [
-    "asynchronous",
-    "command-line-utilities",
-    "task-scheduling",
-    "development-tools",
-]
+categories = ["asynchronous", "command-line-utilities", "concurrency"]
 exclude = [".vscode/*"]
 
 
