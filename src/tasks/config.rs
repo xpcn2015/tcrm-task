@@ -17,12 +17,6 @@ pub struct TaskConfig {
     /// Environment variables for the command
     pub(crate) env: Option<HashMap<String, String>>,
 
-    /// Shell options if the command should run in a shell
-    pub(crate) shell: Option<TaskShell>,
-
-    /// Using pseudo-terminal to run this task
-    pub(crate) pty: Option<bool>,
-
     /// Maximum allowed runtime in milliseconds
     pub(crate) timeout_ms: Option<u64>,
 
@@ -38,8 +32,6 @@ impl Default for TaskConfig {
             args: None,
             working_dir: None,
             env: None,
-            shell: Some(TaskShell::None),
-            pty: Some(false),
             timeout_ms: None,
             enable_stdin: Some(false),
         }
@@ -77,15 +69,6 @@ impl TaskConfig {
         self
     }
 
-    pub fn shell(mut self, shell: TaskShell) -> Self {
-        self.shell = Some(shell);
-        self
-    }
-    pub fn pty(mut self, pty: bool) -> Self {
-        self.pty = Some(pty);
-        self
-    }
-
     pub fn timeout_ms(mut self, timeout: u64) -> Self {
         self.timeout_ms = Some(timeout);
         self
@@ -96,12 +79,121 @@ impl TaskConfig {
     }
 
     pub fn validate(&self) -> Result<(), TaskError> {
+        const MAX_COMMAND_LEN: usize = 4096;
+        const MAX_ARG_LEN: usize = 4096;
+        const MAX_WORKING_DIR_LEN: usize = 4096;
+        const MAX_ENV_KEY_LEN: usize = 1024;
+        const MAX_ENV_VALUE_LEN: usize = 4096;
+
+        // Validate command
         if self.command.is_empty() {
             return Err(TaskError::InvalidConfiguration(
                 "Command cannot be empty".to_string(),
             ));
         }
+        if self.command.trim() != self.command {
+            return Err(TaskError::InvalidConfiguration(
+                "Command cannot have leading or trailing whitespace".to_string(),
+            ));
+        }
+        if self.command.len() > MAX_COMMAND_LEN {
+            return Err(TaskError::InvalidConfiguration(
+                "Command length exceeds maximum allowed length".to_string(),
+            ));
+        }
 
+        // Validate arguments
+        if let Some(args) = &self.args {
+            for arg in args {
+                if arg.is_empty() {
+                    return Err(TaskError::InvalidConfiguration(
+                        "Arguments cannot be empty".to_string(),
+                    ));
+                }
+                if arg.trim() != arg {
+                    return Err(TaskError::InvalidConfiguration(format!(
+                        "Argument '{}' cannot have leading/trailing whitespace",
+                        arg
+                    )));
+                }
+                if arg.len() > MAX_ARG_LEN {
+                    return Err(TaskError::InvalidConfiguration(format!(
+                        "Argument '{}' exceeds maximum length",
+                        arg
+                    )));
+                }
+            }
+        }
+
+        // Validate working directory
+        if let Some(dir) = &self.working_dir {
+            let path = std::path::Path::new(dir);
+            if !path.exists() {
+                return Err(TaskError::InvalidConfiguration(format!(
+                    "Working directory '{}' does not exist",
+                    dir
+                )));
+            }
+            if !path.is_dir() {
+                return Err(TaskError::InvalidConfiguration(format!(
+                    "Working directory '{}' is not a directory",
+                    dir
+                )));
+            }
+            if dir.trim() != dir {
+                return Err(TaskError::InvalidConfiguration(
+                    "Working directory cannot have leading/trailing whitespace".to_string(),
+                ));
+            }
+            if dir.len() > MAX_WORKING_DIR_LEN {
+                return Err(TaskError::InvalidConfiguration(
+                    "Working directory path exceeds maximum length".to_string(),
+                ));
+            }
+        }
+
+        // Validate environment variables
+        if let Some(env) = &self.env {
+            for (k, v) in env {
+                if k.is_empty() {
+                    return Err(TaskError::InvalidConfiguration(
+                        "Environment variable key cannot be empty".to_string(),
+                    ));
+                }
+                if k.contains('=') {
+                    return Err(TaskError::InvalidConfiguration(format!(
+                        "Environment variable key '{}' cannot contain '='",
+                        k
+                    )));
+                }
+                if k.contains(' ') {
+                    return Err(TaskError::InvalidConfiguration(format!(
+                        "Environment variable key '{}' cannot contain spaces",
+                        k
+                    )));
+                }
+                if k.len() > MAX_ENV_KEY_LEN {
+                    return Err(TaskError::InvalidConfiguration(format!(
+                        "Environment variable key '{}' exceeds maximum length",
+                        k
+                    )));
+                }
+                if v.trim() != v {
+                    return Err(TaskError::InvalidConfiguration(format!(
+                        "Environment variable '{}' value cannot have leading/trailing whitespace",
+                        k
+                    )));
+                }
+                if v.len() > MAX_ENV_VALUE_LEN {
+                    return Err(TaskError::InvalidConfiguration(format!(
+                        "Environment variable '{}' value exceeds maximum length",
+                        k
+                    )));
+                }
+            }
+        }
+
+        // Validate timeout
         if let Some(timeout) = self.timeout_ms {
             if timeout == 0 {
                 return Err(TaskError::InvalidConfiguration(
@@ -123,22 +215,5 @@ pub enum StreamSource {
 impl Default for StreamSource {
     fn default() -> Self {
         Self::Stdout
-    }
-}
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-#[serde(rename_all = "lowercase")]
-pub enum TaskShell {
-    None,
-    Auto,
-    #[cfg(windows)]
-    Cmd,
-    #[cfg(windows)]
-    Powershell,
-    #[cfg(unix)]
-    Bash,
-}
-impl Default for TaskShell {
-    fn default() -> Self {
-        Self::None
     }
 }

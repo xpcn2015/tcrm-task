@@ -119,113 +119,6 @@ pub mod tcrm {
             since = "2.0.0",
             note = "Use associated constants instead. This will no longer be generated in 2021."
         )]
-        pub const ENUM_MIN_TASK_SHELL: i8 = 0;
-        #[deprecated(
-            since = "2.0.0",
-            note = "Use associated constants instead. This will no longer be generated in 2021."
-        )]
-        pub const ENUM_MAX_TASK_SHELL: i8 = 4;
-        #[deprecated(
-            since = "2.0.0",
-            note = "Use associated constants instead. This will no longer be generated in 2021."
-        )]
-        #[allow(non_camel_case_types)]
-        pub const ENUM_VALUES_TASK_SHELL: [TaskShell; 5] = [
-            TaskShell::None,
-            TaskShell::Auto,
-            TaskShell::Cmd,
-            TaskShell::Powershell,
-            TaskShell::Bash,
-        ];
-
-        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
-        #[repr(transparent)]
-        pub struct TaskShell(pub i8);
-        #[allow(non_upper_case_globals)]
-        impl TaskShell {
-            pub const None: Self = Self(0);
-            pub const Auto: Self = Self(1);
-            pub const Cmd: Self = Self(2);
-            pub const Powershell: Self = Self(3);
-            pub const Bash: Self = Self(4);
-
-            pub const ENUM_MIN: i8 = 0;
-            pub const ENUM_MAX: i8 = 4;
-            pub const ENUM_VALUES: &'static [Self] = &[
-                Self::None,
-                Self::Auto,
-                Self::Cmd,
-                Self::Powershell,
-                Self::Bash,
-            ];
-            /// Returns the variant's name or "" if unknown.
-            pub fn variant_name(self) -> Option<&'static str> {
-                match self {
-                    Self::None => Some("None"),
-                    Self::Auto => Some("Auto"),
-                    Self::Cmd => Some("Cmd"),
-                    Self::Powershell => Some("Powershell"),
-                    Self::Bash => Some("Bash"),
-                    _ => None,
-                }
-            }
-        }
-        impl core::fmt::Debug for TaskShell {
-            fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-                if let Some(name) = self.variant_name() {
-                    f.write_str(name)
-                } else {
-                    f.write_fmt(format_args!("<UNKNOWN {:?}>", self.0))
-                }
-            }
-        }
-        impl<'a> flatbuffers::Follow<'a> for TaskShell {
-            type Inner = Self;
-            #[inline]
-            unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                let b = unsafe { flatbuffers::read_scalar_at::<i8>(buf, loc) };
-                Self(b)
-            }
-        }
-
-        impl flatbuffers::Push for TaskShell {
-            type Output = TaskShell;
-            #[inline]
-            unsafe fn push(&self, dst: &mut [u8], _written_len: usize) {
-                unsafe { flatbuffers::emplace_scalar::<i8>(dst, self.0) };
-            }
-        }
-
-        impl flatbuffers::EndianScalar for TaskShell {
-            type Scalar = i8;
-            #[inline]
-            fn to_little_endian(self) -> i8 {
-                self.0.to_le()
-            }
-            #[inline]
-            #[allow(clippy::wrong_self_convention)]
-            fn from_little_endian(v: i8) -> Self {
-                let b = i8::from_le(v);
-                Self(b)
-            }
-        }
-
-        impl<'a> flatbuffers::Verifiable for TaskShell {
-            #[inline]
-            fn run_verifier(
-                v: &mut flatbuffers::Verifier,
-                pos: usize,
-            ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
-                use self::flatbuffers::Verifiable;
-                i8::run_verifier(v, pos)
-            }
-        }
-
-        impl flatbuffers::SimpleToVerifyInSlice for TaskShell {}
-        #[deprecated(
-            since = "2.0.0",
-            note = "Use associated constants instead. This will no longer be generated in 2021."
-        )]
         pub const ENUM_MIN_TASK_STATE: i8 = 0;
         #[deprecated(
             since = "2.0.0",
@@ -698,10 +591,8 @@ pub mod tcrm {
             pub const VT_ARGS: flatbuffers::VOffsetT = 6;
             pub const VT_WORKING_DIR: flatbuffers::VOffsetT = 8;
             pub const VT_ENV: flatbuffers::VOffsetT = 10;
-            pub const VT_SHELL: flatbuffers::VOffsetT = 12;
-            pub const VT_PTY: flatbuffers::VOffsetT = 14;
-            pub const VT_TIMEOUT_MS: flatbuffers::VOffsetT = 16;
-            pub const VT_ENABLE_STDIN: flatbuffers::VOffsetT = 18;
+            pub const VT_TIMEOUT_MS: flatbuffers::VOffsetT = 12;
+            pub const VT_ENABLE_STDIN: flatbuffers::VOffsetT = 14;
 
             #[inline]
             pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -732,8 +623,6 @@ pub mod tcrm {
                     builder.add_command(x);
                 }
                 builder.add_enable_stdin(args.enable_stdin);
-                builder.add_pty(args.pty);
-                builder.add_shell(args.shell);
                 builder.finish()
             }
 
@@ -787,28 +676,6 @@ pub mod tcrm {
                 }
             }
             #[inline]
-            pub fn shell(&self) -> TaskShell {
-                // Safety:
-                // Created from valid Table for this object
-                // which contains a valid value in this slot
-                unsafe {
-                    self._tab
-                        .get::<TaskShell>(TaskConfig::VT_SHELL, Some(TaskShell::None))
-                        .unwrap()
-                }
-            }
-            #[inline]
-            pub fn pty(&self) -> bool {
-                // Safety:
-                // Created from valid Table for this object
-                // which contains a valid value in this slot
-                unsafe {
-                    self._tab
-                        .get::<bool>(TaskConfig::VT_PTY, Some(false))
-                        .unwrap()
-                }
-            }
-            #[inline]
             pub fn timeout_ms(&self) -> u64 {
                 // Safety:
                 // Created from valid Table for this object
@@ -856,8 +723,6 @@ pub mod tcrm {
                     .visit_field::<flatbuffers::ForwardsUOffset<
                         flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<EnvEntry>>,
                     >>("env", Self::VT_ENV, false)?
-                    .visit_field::<TaskShell>("shell", Self::VT_SHELL, false)?
-                    .visit_field::<bool>("pty", Self::VT_PTY, false)?
                     .visit_field::<u64>("timeout_ms", Self::VT_TIMEOUT_MS, false)?
                     .visit_field::<bool>("enable_stdin", Self::VT_ENABLE_STDIN, false)?
                     .finish();
@@ -877,8 +742,6 @@ pub mod tcrm {
                     flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<EnvEntry<'a>>>,
                 >,
             >,
-            pub shell: TaskShell,
-            pub pty: bool,
             pub timeout_ms: u64,
             pub enable_stdin: bool,
         }
@@ -890,8 +753,6 @@ pub mod tcrm {
                     args: None,
                     working_dir: None,
                     env: None,
-                    shell: TaskShell::None,
-                    pty: false,
                     timeout_ms: 0,
                     enable_stdin: false,
                 }
@@ -936,15 +797,6 @@ pub mod tcrm {
                     .push_slot_always::<flatbuffers::WIPOffset<_>>(TaskConfig::VT_ENV, env);
             }
             #[inline]
-            pub fn add_shell(&mut self, shell: TaskShell) {
-                self.fbb_
-                    .push_slot::<TaskShell>(TaskConfig::VT_SHELL, shell, TaskShell::None);
-            }
-            #[inline]
-            pub fn add_pty(&mut self, pty: bool) {
-                self.fbb_.push_slot::<bool>(TaskConfig::VT_PTY, pty, false);
-            }
-            #[inline]
             pub fn add_timeout_ms(&mut self, timeout_ms: u64) {
                 self.fbb_
                     .push_slot::<u64>(TaskConfig::VT_TIMEOUT_MS, timeout_ms, 0);
@@ -979,8 +831,6 @@ pub mod tcrm {
                 ds.field("args", &self.args());
                 ds.field("working_dir", &self.working_dir());
                 ds.field("env", &self.env());
-                ds.field("shell", &self.shell());
-                ds.field("pty", &self.pty());
                 ds.field("timeout_ms", &self.timeout_ms());
                 ds.field("enable_stdin", &self.enable_stdin());
                 ds.finish()

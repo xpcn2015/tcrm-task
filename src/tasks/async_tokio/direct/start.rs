@@ -1,7 +1,8 @@
+use tokio::process::Command;
 use tokio::sync::{mpsc, oneshot, watch};
 use tracing::{error, instrument, warn};
 
-use crate::tasks::async_tokio::direct::command::{setup_command, shell_command};
+use crate::tasks::async_tokio::direct::command::setup_command;
 use crate::tasks::async_tokio::direct::watchers::input::spawn_stdin_watcher;
 use crate::tasks::async_tokio::direct::watchers::output::spawn_output_watchers;
 use crate::tasks::async_tokio::direct::watchers::result::spawn_result_watcher;
@@ -22,7 +23,7 @@ impl TaskSpawner {
 
         self.config.validate()?;
 
-        let mut cmd = shell_command(&self.config)?;
+        let mut cmd = Command::new(&self.config.command);
         let mut cmd = cmd.kill_on_drop(true);
 
         setup_command(&mut cmd, &self.config)?;

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     flat_buffers::{conversion::error::ConversionError, tcrm_task_generated},
-    tasks::config::{StreamSource, TaskConfig, TaskShell},
+    tasks::config::{StreamSource, TaskConfig},
 };
 
 impl TryFrom<tcrm_task_generated::tcrm::task::StreamSource> for StreamSource {
@@ -23,38 +23,6 @@ impl From<StreamSource> for tcrm_task_generated::tcrm::task::StreamSource {
         match source {
             StreamSource::Stdout => tcrm_task_generated::tcrm::task::StreamSource::Stdout,
             StreamSource::Stderr => tcrm_task_generated::tcrm::task::StreamSource::Stderr,
-        }
-    }
-}
-impl TryFrom<tcrm_task_generated::tcrm::task::TaskShell> for TaskShell {
-    type Error = ConversionError;
-
-    fn try_from(fb_shell: tcrm_task_generated::tcrm::task::TaskShell) -> Result<Self, Self::Error> {
-        match fb_shell {
-            tcrm_task_generated::tcrm::task::TaskShell::None => Ok(TaskShell::None),
-            tcrm_task_generated::tcrm::task::TaskShell::Auto => Ok(TaskShell::Auto),
-            #[cfg(windows)]
-            tcrm_task_generated::tcrm::task::TaskShell::Cmd => Ok(TaskShell::Cmd),
-            #[cfg(windows)]
-            tcrm_task_generated::tcrm::task::TaskShell::Powershell => Ok(TaskShell::Powershell),
-            #[cfg(unix)]
-            tcrm_task_generated::tcrm::task::TaskShell::Bash => Ok(TaskShell::Bash),
-            _ => Err(ConversionError::InvalidTaskShell(fb_shell.0)),
-        }
-    }
-}
-
-impl From<TaskShell> for tcrm_task_generated::tcrm::task::TaskShell {
-    fn from(shell: TaskShell) -> Self {
-        match shell {
-            TaskShell::None => tcrm_task_generated::tcrm::task::TaskShell::None,
-            TaskShell::Auto => tcrm_task_generated::tcrm::task::TaskShell::Auto,
-            #[cfg(windows)]
-            TaskShell::Cmd => tcrm_task_generated::tcrm::task::TaskShell::Cmd,
-            #[cfg(windows)]
-            TaskShell::Powershell => tcrm_task_generated::tcrm::task::TaskShell::Powershell,
-            #[cfg(unix)]
-            TaskShell::Bash => tcrm_task_generated::tcrm::task::TaskShell::Bash,
         }
     }
 }
@@ -82,8 +50,6 @@ impl<'a> TryFrom<tcrm_task_generated::tcrm::task::TaskConfig<'a>> for TaskConfig
             args,
             working_dir: fb_config.working_dir().map(|s| s.to_string()),
             env,
-            shell: Some(fb_config.shell().try_into()?),
-            pty: Some(fb_config.pty()),
             timeout_ms: if fb_config.timeout_ms() == 0 {
                 None
             } else {
@@ -135,8 +101,6 @@ impl TaskConfig {
                 args: args_vec,
                 working_dir: working_dir_offset,
                 env: env_vec,
-                shell: self.shell.clone().unwrap_or_default().into(),
-                pty: self.pty.unwrap_or_default(),
                 timeout_ms: self.timeout_ms.unwrap_or_default(),
                 enable_stdin: self.enable_stdin.unwrap_or_default(),
             },
