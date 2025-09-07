@@ -103,3 +103,241 @@ impl TaskSpawner {
         Ok(child_id)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use tokio::sync::mpsc;
+
+    use crate::tasks::{
+        async_tokio::spawner::TaskSpawner,
+        config::{StreamSource, TaskConfig},
+        error::TaskError,
+        event::{TaskEvent, TaskEventStopReason},
+        state::TaskTerminateReason,
+    };
+    #[tokio::test]
+    async fn start_direct_fn_echo_command() {
+        let (tx, mut rx) = mpsc::channel::<TaskEvent>(1024);
+        #[cfg(windows)]
+        let config = TaskConfig::new("powershell").args(["-Command", "echo hello"]);
+        #[cfg(unix)]
+        let config = TaskConfig::new("bash").args(["-c", "echo hello"]);
+
+        let mut spawner = TaskSpawner::new("echo_task".to_string(), config);
+
+        let result = spawner.start_direct(tx).await;
+        assert!(result.is_ok());
+
+        let mut started = false;
+        let mut stopped = false;
+        while let Some(event) = rx.recv().await {
+            match event {
+                TaskEvent::Started { task_name } => {
+                    assert_eq!(task_name, "echo_task");
+                    started = true;
+                }
+                TaskEvent::Output {
+                    task_name,
+                    line,
+                    src,
+                } => {
+                    assert_eq!(task_name, "echo_task");
+                    assert_eq!(line, "hello");
+                    assert_eq!(src, StreamSource::Stdout);
+                }
+                TaskEvent::Stopped {
+                    task_name,
+                    exit_code,
+                    reason: _,
+                } => {
+                    assert_eq!(task_name, "echo_task");
+                    assert_eq!(exit_code, Some(0));
+                    stopped = true;
+                }
+                _ => {}
+            }
+        }
+
+        assert!(started);
+        assert!(stopped);
+    }
+    #[tokio::test]
+    async fn start_direct_timeout_terminated_task() {
+        #[cfg(windows)]
+        let config = TaskConfig::new("powershell")
+            .args(["-Command", "sleep 2"])
+            .timeout_ms(1);
+        #[cfg(unix)]
+        let config = TaskConfig::new("bash")
+            .args(["-c", "sleep 2"])
+            .timeout_ms(1);
+
+        let (tx, mut rx) = mpsc::channel::<TaskEvent>(1024);
+        let mut spawner = TaskSpawner::new("sleep_with_timeout_task".into(), config);
+
+        let result = spawner.start_direct(tx).await;
+        assert!(result.is_ok());
+
+        let mut started = false;
+        let mut stopped = false;
+        while let Some(event) = rx.recv().await {
+            match event {
+                TaskEvent::Started { task_name } => {
+                    assert_eq!(task_name, "sleep_with_timeout_task");
+                    started = true;
+                }
+
+                TaskEvent::Stopped {
+                    task_name,
+                    exit_code,
+                    reason,
+                } => {
+                    assert_eq!(task_name, "sleep_with_timeout_task");
+                    assert_eq!(exit_code, None);
+                    assert_eq!(
+                        reason,
+                        TaskEventStopReason::Terminated(TaskTerminateReason::Timeout)
+                    );
+                    stopped = true;
+                }
+                _ => {}
+            }
+        }
+
+        assert!(started);
+        assert!(stopped);
+    }
+
+    #[tokio::test]
+    async fn start_direct_fn_invalid_empty_command() {
+        let (tx, _rx) = mpsc::channel::<TaskEvent>(1024);
+        let config = TaskConfig::new(""); // invalid: empty command
+        let mut spawner = TaskSpawner::new("bad_task".to_string(), config);
+
+        let result = spawner.start_direct(tx).await;
+        assert!(matches!(result, Err(TaskError::InvalidConfiguration(_))));
+    }
+
+    #[tokio::test]
+    async fn start_direct_fn_stdin_valid() {
+        // Channel for receiving task events
+        let (tx, mut rx) = mpsc::channel::<TaskEvent>(1024);
+        let (stdin_tx, stdin_rx) = mpsc::channel::<String>(1024);
+
+        #[cfg(windows)]
+        let config = TaskConfig::new("powershell")
+            .args(["-Command", "$line = Read-Host; Write-Output $line"])
+            .enable_stdin(true);
+        #[cfg(unix)]
+        let config = TaskConfig::new("bash")
+            .args(["-c", "read line; echo $line"])
+            .enable_stdin(true);
+
+        let mut spawner = TaskSpawner::new("stdin_task".to_string(), config).set_stdin(stdin_rx);
+
+        // Spawn the task
+        let result = spawner.start_direct(tx).await;
+        assert!(result.is_ok());
+
+        // Send input via stdin if enabled
+        stdin_tx.send("hello world".to_string()).await.unwrap();
+
+        let mut started = false;
+        let mut output_ok = false;
+        let mut stopped = false;
+
+        while let Some(event) = rx.recv().await {
+            match event {
+                TaskEvent::Started { task_name } => {
+                    assert_eq!(task_name, "stdin_task");
+                    started = true;
+                }
+                TaskEvent::Output {
+                    task_name,
+                    line,
+                    src,
+                } => {
+                    assert_eq!(task_name, "stdin_task");
+                    assert_eq!(line, "hello world");
+                    assert_eq!(src, StreamSource::Stdout);
+                    output_ok = true;
+                }
+                TaskEvent::Stopped {
+                    task_name,
+                    exit_code,
+                    ..
+                } => {
+                    assert_eq!(task_name, "stdin_task");
+                    assert_eq!(exit_code, Some(0));
+                    stopped = true;
+                }
+                _ => {}
+            }
+        }
+
+        assert!(started);
+        assert!(output_ok);
+        assert!(stopped);
+    }
+
+    #[tokio::test]
+    async fn start_direct_fn_stdin_ignore() {
+        // Channel for receiving task events
+        let (tx, mut rx) = mpsc::channel::<TaskEvent>(1024);
+        let (stdin_tx, stdin_rx) = mpsc::channel::<String>(1024);
+
+        #[cfg(windows)]
+        let config = TaskConfig::new("powershell")
+            .args(["-Command", "$line = Read-Host; Write-Output $line"]);
+        #[cfg(unix)]
+        let config = TaskConfig::new("bash").args(["-c", "read line; echo $line"]);
+
+        // Note: stdin is not enabled in config, so stdin should be ignored
+        let mut spawner = TaskSpawner::new("stdin_task".to_string(), config).set_stdin(stdin_rx);
+
+        // Spawn the task
+        let result = spawner.start_direct(tx).await;
+        assert!(result.is_ok());
+
+        // Send input, but it should be ignored (receiver will be dropped, so this should error)
+        let send_result = stdin_tx.send("hello world".to_string()).await;
+        assert!(
+            send_result.is_err(),
+            "Sending to stdin_tx should error because receiver is dropped"
+        );
+
+        let mut started = false;
+        let mut output_found = false;
+        let mut stopped = false;
+
+        while let Some(event) = rx.recv().await {
+            match event {
+                TaskEvent::Started { task_name } => {
+                    assert_eq!(task_name, "stdin_task");
+                    started = true;
+                }
+                TaskEvent::Output { .. } => {
+                    // Should NOT receive output from stdin
+                    output_found = true;
+                }
+                TaskEvent::Stopped {
+                    task_name,
+                    exit_code,
+                    ..
+                } => {
+                    assert_eq!(task_name, "stdin_task");
+                    assert_eq!(exit_code, Some(0));
+                    stopped = true;
+                }
+                _ => {}
+            }
+        }
+
+        assert!(started);
+        assert!(
+            !output_found,
+            "Should not receive output from stdin when not enabled"
+        );
+        assert!(stopped);
+    }
+}

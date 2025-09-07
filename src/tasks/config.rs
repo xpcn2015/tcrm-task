@@ -96,6 +96,18 @@ impl TaskConfig {
     /// Validate the configuration
     ///
     /// Returns `Ok(())` if valid, or `TaskError::InvalidConfiguration` describing the problem
+    /// # Examples
+    ///
+    /// ```
+    /// use tcrm_task::tasks::config::TaskConfig;
+    /// // Valid config
+    /// let config = TaskConfig::new("echo");
+    /// assert!(config.validate().is_ok());
+    ///
+    /// // Invalid config (empty command)
+    /// let config = TaskConfig::new("");
+    /// assert!(config.validate().is_err());
+    /// ```
     pub fn validate(&self) -> Result<(), TaskError> {
         const MAX_COMMAND_LEN: usize = 4096;
         const MAX_ARG_LEN: usize = 4096;
@@ -233,5 +245,175 @@ pub enum StreamSource {
 impl Default for StreamSource {
     fn default() -> Self {
         Self::Stdout
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{collections::HashMap, env::temp_dir};
+
+    use crate::tasks::{config::TaskConfig, error::TaskError};
+
+    #[test]
+    fn validation() {
+        // Valid config
+        let config = TaskConfig::new("echo").args(["hello"]);
+        assert!(config.validate().is_ok());
+
+        // Empty command should fail
+        let config = TaskConfig::new("");
+        assert!(matches!(
+            config.validate(),
+            Err(TaskError::InvalidConfiguration(_))
+        ));
+
+        // Command with leading/trailing whitespace should fail
+        let config = TaskConfig::new("  echo  ");
+        assert!(matches!(
+            config.validate(),
+            Err(TaskError::InvalidConfiguration(_))
+        ));
+
+        // Command exceeding max length should fail
+        let long_cmd = "a".repeat(4097);
+        let config = TaskConfig::new(long_cmd);
+        assert!(matches!(
+            config.validate(),
+            Err(TaskError::InvalidConfiguration(_))
+        ));
+
+        // Zero timeout should fail
+        let config = TaskConfig::new("echo").timeout_ms(0);
+        assert!(matches!(
+            config.validate(),
+            Err(TaskError::InvalidConfiguration(_))
+        ));
+
+        // Valid timeout should pass
+        let config = TaskConfig::new("echo").timeout_ms(30);
+        assert!(config.validate().is_ok());
+
+        // Arguments with empty string should fail
+        let config = TaskConfig::new("echo").args([""]);
+        assert!(matches!(
+            config.validate(),
+            Err(TaskError::InvalidConfiguration(_))
+        ));
+
+        // Argument with leading/trailing whitespace should fail
+        let config = TaskConfig::new("echo").args([" hello "]);
+        assert!(matches!(
+            config.validate(),
+            Err(TaskError::InvalidConfiguration(_))
+        ));
+
+        // Argument exceeding max length should fail
+        let long_arg = "a".repeat(4097);
+        let config = TaskConfig::new("echo").args([long_arg]);
+        assert!(matches!(
+            config.validate(),
+            Err(TaskError::InvalidConfiguration(_))
+        ));
+
+        // Working directory that does not exist should fail
+        let config = TaskConfig::new("echo").working_dir("/non/existent/dir");
+        assert!(matches!(
+            config.validate(),
+            Err(TaskError::InvalidConfiguration(_))
+        ));
+
+        // Working directory with temp dir should pass
+        let dir = temp_dir();
+        let config = TaskConfig::new("echo").working_dir(dir.as_path().to_str().unwrap());
+        assert!(config.validate().is_ok());
+
+        // Working directory with whitespace should fail
+        let dir = temp_dir();
+        let dir_str = format!(" {} ", dir.as_path().to_str().unwrap());
+        let config = TaskConfig::new("echo").working_dir(&dir_str);
+        assert!(matches!(
+            config.validate(),
+            Err(TaskError::InvalidConfiguration(_))
+        ));
+
+        // Environment variable with empty key should fail
+        let mut env = HashMap::new();
+        env.insert(String::new(), "value".to_string());
+        let config = TaskConfig::new("echo").env(env);
+        assert!(matches!(
+            config.validate(),
+            Err(TaskError::InvalidConfiguration(_))
+        ));
+
+        // Environment variable with space in key should fail
+        let mut env = HashMap::new();
+        env.insert("KEY WITH SPACE".to_string(), "value".to_string());
+        let config = TaskConfig::new("echo").env(env);
+        assert!(matches!(
+            config.validate(),
+            Err(TaskError::InvalidConfiguration(_))
+        ));
+
+        // Environment variable with '=' in key should fail
+        let mut env = HashMap::new();
+        env.insert("KEY=BAD".to_string(), "value".to_string());
+        let config = TaskConfig::new("echo").env(env);
+        assert!(matches!(
+            config.validate(),
+            Err(TaskError::InvalidConfiguration(_))
+        ));
+
+        // Environment variable key exceeding max length should fail
+        let mut env = HashMap::new();
+        env.insert("A".repeat(1025), "value".to_string());
+        let config = TaskConfig::new("echo").env(env);
+        assert!(matches!(
+            config.validate(),
+            Err(TaskError::InvalidConfiguration(_))
+        ));
+
+        // Environment variable value with whitespace should fail
+        let mut env = HashMap::new();
+        env.insert("KEY".to_string(), " value ".to_string());
+        let config = TaskConfig::new("echo").env(env);
+        assert!(matches!(
+            config.validate(),
+            Err(TaskError::InvalidConfiguration(_))
+        ));
+
+        // Environment variable value exceeding max length should fail
+        let mut env = HashMap::new();
+        env.insert("KEY".to_string(), "A".repeat(4097));
+        let config = TaskConfig::new("echo").env(env);
+        assert!(matches!(
+            config.validate(),
+            Err(TaskError::InvalidConfiguration(_))
+        ));
+
+        // Environment variable key/value valid should pass
+        let mut env = HashMap::new();
+        env.insert("KEY".to_string(), "some value".to_string());
+        let config = TaskConfig::new("echo").env(env);
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn config_builder() {
+        let config = TaskConfig::new("cargo")
+            .args(["build", "--release"])
+            .working_dir("/home/user/project")
+            .env([("RUST_LOG", "debug"), ("CARGO_TARGET_DIR", "target")])
+            .timeout_ms(300)
+            .enable_stdin(true);
+
+        assert_eq!(config.command, "cargo");
+        assert_eq!(
+            config.args,
+            Some(vec!["build".to_string(), "--release".to_string()])
+        );
+        assert_eq!(config.working_dir, Some("/home/user/project".to_string()));
+        assert!(config.env.is_some());
+        assert_eq!(config.timeout_ms, Some(300));
+        assert_eq!(config.enable_stdin, Some(true));
     }
 }
