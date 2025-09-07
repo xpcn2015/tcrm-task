@@ -44,7 +44,6 @@ pub fn spawn_std_watcher<T>(
 where
     T: tokio::io::AsyncRead + Unpin + Send + 'static,
 {
-    let src_tracing = src.clone();
     let handle = tokio::spawn(
         async move {
             let reader = BufReader::new(std);
@@ -67,7 +66,7 @@ where
 
             debug!("Watcher finished");
         }
-        .instrument(tracing::debug_span!("tokio::spawn(std_watcher)", stream = ?src_tracing)),
+        .instrument(tracing::debug_span!("spawn")),
     );
     debug!(
         handle_id = %handle.id(),

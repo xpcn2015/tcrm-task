@@ -61,7 +61,7 @@ pub fn spawn_result_watcher(
 
             debug!("Watcher finished");
         }
-        .instrument(tracing::debug_span!("tokio::spawn(result_watcher)")),
+        .instrument(tracing::debug_span!("spawn")),
     );
     debug!(
         handle_id = %handle.id(),

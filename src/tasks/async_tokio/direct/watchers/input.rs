@@ -52,7 +52,7 @@ pub fn spawn_stdin_watcher(
 
             debug!("Watcher finished");
         }
-        .instrument(tracing::debug_span!("tokio::spawn(stdin_watcher)")),
+        .instrument(tracing::debug_span!("spawn")),
     );
 
     debug!(

@@ -29,7 +29,7 @@ pub fn spawn_timeout_watcher(
 
             debug!("Watcher finished");
         }
-        .instrument(tracing::debug_span!("tokio::spawn(timeout_watcher)")),
+        .instrument(tracing::debug_span!("spawn")),
     );
     debug!(
         handle_id = %handle.id(),
