@@ -6,22 +6,22 @@ use crate::tasks::error::TaskError;
 #[serde(default)]
 pub struct TaskConfig {
     /// The command or executable to run
-    pub(crate) command: String,
+    pub command: String,
 
     /// Arguments to pass to the command
-    pub(crate) args: Option<Vec<String>>,
+    pub args: Option<Vec<String>>,
 
     /// Working directory for the command
-    pub(crate) working_dir: Option<String>,
+    pub working_dir: Option<String>,
 
     /// Environment variables for the command
-    pub(crate) env: Option<HashMap<String, String>>,
+    pub env: Option<HashMap<String, String>>,
 
     /// Maximum allowed runtime in milliseconds
-    pub(crate) timeout_ms: Option<u64>,
+    pub timeout_ms: Option<u64>,
 
     /// Allow providing input to the task via stdin.
-    pub(crate) enable_stdin: Option<bool>,
+    pub enable_stdin: Option<bool>,
 }
 
 pub type SharedTaskConfig = Arc<TaskConfig>;
