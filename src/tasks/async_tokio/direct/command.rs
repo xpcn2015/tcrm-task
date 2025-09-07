@@ -4,7 +4,10 @@ use tokio::process::Command;
 
 use crate::tasks::config::TaskConfig;
 
-pub fn setup_command(cmd: &mut Command, config: &TaskConfig) {
+/// Configures a `tokio::process::Command` based on the provided `TaskConfig`.
+///
+/// Sets arguments, working directory, environment, and stdio options.
+pub(crate) fn setup_command(cmd: &mut Command, config: &TaskConfig) {
     // Setup additional arguments
     if let Some(args) = &config.args {
         cmd.args(args);

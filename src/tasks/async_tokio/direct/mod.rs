@@ -1,6 +1,6 @@
-pub mod command;
+pub(crate) mod command;
 pub mod start;
-pub mod watchers;
+pub(crate) mod watchers;
 
 #[cfg(test)]
-pub mod tests;
+mod tests;

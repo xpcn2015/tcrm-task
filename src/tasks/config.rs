@@ -2,8 +2,9 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Arc};
 
 use crate::tasks::error::TaskError;
+
+/// Configuration for a task to be executed
 #[derive(Debug, Deserialize, Serialize, Clone)]
-#[serde(default)]
 pub struct TaskConfig {
     /// The command or executable to run
     pub command: String,
@@ -20,7 +21,7 @@ pub struct TaskConfig {
     /// Maximum allowed runtime in milliseconds
     pub timeout_ms: Option<u64>,
 
-    /// Allow providing input to the task via stdin.
+    /// Allow providing input to the task via stdin
     pub enable_stdin: Option<bool>,
 }
 
@@ -37,7 +38,16 @@ impl Default for TaskConfig {
         }
     }
 }
+
 impl TaskConfig {
+    /// Create a new task configuration with the given command
+    ///
+    /// # Example
+    /// ```rust
+    /// use tcrm_task::tasks::config::TaskConfig;
+    ///
+    /// let config = TaskConfig::new("echo");
+    /// ```
     pub fn new(command: impl Into<String>) -> Self {
         TaskConfig {
             command: command.into(),
@@ -45,6 +55,7 @@ impl TaskConfig {
         }
     }
 
+    /// Set the arguments for the command
     pub fn args<I, S>(mut self, args: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -54,11 +65,13 @@ impl TaskConfig {
         self
     }
 
+    /// Set the working directory for the command
     pub fn working_dir(mut self, dir: impl Into<String>) -> Self {
         self.working_dir = Some(dir.into());
         self
     }
 
+    /// Set environment variables for the command
     pub fn env<K, V, I>(mut self, env: I) -> Self
     where
         K: Into<String>,
@@ -69,15 +82,20 @@ impl TaskConfig {
         self
     }
 
+    /// Set the maximum allowed runtime in milliseconds
     pub fn timeout_ms(mut self, timeout: u64) -> Self {
         self.timeout_ms = Some(timeout);
         self
     }
+    /// Enable or disable stdin for the task
     pub fn enable_stdin(mut self, b: bool) -> Self {
         self.enable_stdin = Some(b);
         self
     }
 
+    /// Validate the configuration
+    ///
+    /// Returns `Ok(())` if valid, or `TaskError::InvalidConfiguration` describing the problem
     pub fn validate(&self) -> Result<(), TaskError> {
         const MAX_COMMAND_LEN: usize = 4096;
         const MAX_ARG_LEN: usize = 4096;

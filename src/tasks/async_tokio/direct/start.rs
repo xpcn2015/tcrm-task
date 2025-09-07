@@ -55,7 +55,12 @@ impl TaskSpawner {
         let (handle_terminator_tx, handle_terminator_rx) = watch::channel(false);
 
         // Spawn stdout and stderr watchers
-        let handles = spawn_output_watchers(self.task_name.clone(), event_tx.clone(), &mut child);
+        let handles = spawn_output_watchers(
+            self.task_name.clone(),
+            event_tx.clone(),
+            &mut child,
+            handle_terminator_rx.clone(),
+        );
         task_handles.extend(handles);
 
         // Spawn stdin watcher if configured
@@ -72,14 +77,15 @@ impl TaskSpawner {
             self.state.clone(),
             child,
             terminate_rx,
-            handle_terminator_tx,
+            handle_terminator_tx.clone(),
             result_tx,
         );
         task_handles.push(handle);
 
         // Spawn timeout watcher if configured
         if let Some(timeout_ms) = self.config.timeout_ms {
-            let handle = spawn_timeout_watcher(self.terminate_tx.clone(), timeout_ms);
+            let handle =
+                spawn_timeout_watcher(self.terminate_tx.clone(), timeout_ms, handle_terminator_rx);
             task_handles.push(handle);
         }
 

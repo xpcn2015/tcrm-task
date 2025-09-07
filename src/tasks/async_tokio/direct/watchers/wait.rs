@@ -12,8 +12,11 @@ use crate::tasks::{
     state::{TaskState, TaskTerminateReason},
 };
 
+/// Spawns a watcher that waits for the child process to exit or be terminated
+///
+/// Sends stop reason and signals other watchers to terminate
 #[instrument(skip_all)]
-pub fn spawn_wait_watcher(
+pub(crate) fn spawn_wait_watcher(
     task_name: String,
     state: Arc<RwLock<TaskState>>,
     mut child: Child,

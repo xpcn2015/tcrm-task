@@ -5,12 +5,16 @@ use tokio::{
     task::JoinHandle,
 };
 use tracing::{Instrument, debug, instrument, warn};
-
+/// Spawns an asynchronous watcher for task stdin
+///
+/// Listens for lines from a channel and writes them to the child process's stdin
+///
+/// Terminates when the channel is closed or a termination signal is received
 #[instrument(skip_all)]
-pub fn spawn_stdin_watcher(
+pub(crate) fn spawn_stdin_watcher(
     mut stdin: ChildStdin,
     mut stdin_rx: mpsc::Receiver<String>,
-    mut handle_terminate_rx: watch::Receiver<bool>,
+    mut handle_terminator_rx: watch::Receiver<bool>,
 ) -> JoinHandle<()> {
     let handle = tokio::spawn(
         async move {
@@ -36,8 +40,8 @@ pub fn spawn_stdin_watcher(
                     }
 
                     // Termination signal
-                    _ = handle_terminate_rx.changed() => {
-                        if *handle_terminate_rx.borrow() {
+                    _ = handle_terminator_rx.changed() => {
+                        if *handle_terminator_rx.borrow() {
                             debug!("Termination signal received, closing stdin watcher");
                             break;
                         }

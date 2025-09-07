@@ -12,8 +12,12 @@ use crate::tasks::{
     event::{TaskEvent, TaskEventStopReason},
     state::TaskState,
 };
+
+/// Spawns a watcher that waits for the task result and updates state
+///
+/// Joins all watcher handles and sends a `TaskEvent::Stopped` event
 #[instrument(skip_all)]
-pub fn spawn_result_watcher(
+pub(crate) fn spawn_result_watcher(
     task_name: String,
     state: Arc<RwLock<TaskState>>,
     finished_arc: Arc<RwLock<Option<Instant>>>,

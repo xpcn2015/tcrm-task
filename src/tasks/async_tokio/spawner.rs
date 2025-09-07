@@ -14,7 +14,10 @@ pub struct TaskInfo {
     pub name: String,
     pub state: TaskState,
     pub uptime: Duration,
+    pub created_at: Instant,
+    pub finished_at: Option<Instant>,
 }
+/// Spawns and manages the lifecycle of a task
 #[derive(Debug)]
 pub struct TaskSpawner {
     pub(crate) config: TaskConfig,
@@ -28,6 +31,7 @@ pub struct TaskSpawner {
 }
 
 impl TaskSpawner {
+    /// Create a new task spawner for the given task name and configuration
     pub fn new(task_name: String, config: TaskConfig) -> Self {
         Self {
             task_name,
@@ -41,11 +45,9 @@ impl TaskSpawner {
         }
     }
 
-    /// Sets the stdin receiver for the task.
+    /// Set the stdin receiver for the task, enabling asynchronous input
     ///
-    /// This allows the task to receive input asynchronously.
-    ///
-    /// Has no effect if `enable_stdin` in the task configuration is `false`.
+    /// Has no effect if `enable_stdin` is false in the configuration
     pub fn set_stdin(mut self, stdin_rx: mpsc::Receiver<String>) -> Self {
         if self.config.enable_stdin.unwrap_or_default() {
             self.stdin_rx = Some(stdin_rx);
@@ -53,34 +55,46 @@ impl TaskSpawner {
         self
     }
 
-    /// Get task current state
+    /// Get the current state of the task
     pub async fn get_state(&self) -> TaskState {
         self.state.read().await.clone()
     }
 
-    /// Check if task is still running
+    /// Check if the task is currently running
     pub async fn is_running(&self) -> bool {
         let state = self.state.read().await.clone();
-        matches!(state, TaskState::Running | TaskState::Ready)
+        state == TaskState::Running
+    }
+    /// Check if the task is currently ready
+    pub async fn is_ready(&self) -> bool {
+        let state = self.state.read().await.clone();
+        state == TaskState::Ready
     }
 
-    /// Get task uptime
+    /// Get the uptime of the task since creation
     pub fn uptime(&self) -> Duration {
         self.created_at.elapsed()
     }
 
+    /// Get information about the task, including name, state, and uptime
     pub async fn get_task_info(&self) -> TaskInfo {
         TaskInfo {
             name: self.task_name.clone(),
             state: self.get_state().await,
             uptime: self.uptime(),
+            created_at: self.created_at,
+            finished_at: self.finished_at.read().await.clone(),
         }
     }
-
-    pub async fn update_state(&self, new_state: TaskState) {
+    /// Update the state of the task
+    pub(crate) async fn update_state(&self, new_state: TaskState) {
         let mut state = self.state.write().await;
         *state = new_state;
     }
+
+    /// Send a termination signal to the running task
+    ///
+    /// Returns an error if the signal cannot be sent
     #[instrument[skip_all]]
     pub async fn send_terminate_signal(
         &self,
@@ -102,8 +116,12 @@ impl TaskSpawner {
     }
 }
 
-/// Wait for all spawned threads to complete
-pub async fn join_all_handles(task_handles: &mut Vec<JoinHandle<()>>) -> Result<(), TaskError> {
+/// Waits for all spawned task handles to complete, with a timeout
+///
+/// Returns an error if any handle fails or times out
+pub(crate) async fn join_all_handles(
+    task_handles: &mut Vec<JoinHandle<()>>,
+) -> Result<(), TaskError> {
     if task_handles.is_empty() {
         return Ok(());
     }
