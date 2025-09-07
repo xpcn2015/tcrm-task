@@ -8,7 +8,7 @@ use tracing_subscriber::{
 
 use crate::tasks::{
     async_tokio::spawner::TaskSpawner,
-    config::{StreamSource, TaskConfig, TaskShell},
+    config::{StreamSource, TaskConfig},
     error::TaskError,
     event::{TaskEvent, TaskEventStopReason},
     state::TaskTerminateReason,
@@ -45,9 +45,7 @@ impl tracing::field::Visit for TaskNameVisitor {
 #[tokio::test]
 async fn start_direct_fn_echo_command() {
     let (tx, mut rx) = mpsc::channel::<TaskEvent>(1024);
-    let config = TaskConfig::new("echo")
-        .args(["hello"])
-        .shell(TaskShell::Auto);
+    let config = TaskConfig::new("echo").args(["hello"]);
     let mut spawner = TaskSpawner::new("echo_task".to_string(), config);
 
     let result = spawner.start_direct(tx).await;
@@ -97,10 +95,7 @@ async fn start_direct_fn_invalid_empty_command() {
 }
 #[tokio::test]
 async fn start_direct_timeout_terminated_task() {
-    let config = TaskConfig::new("sleep")
-        .args(vec!["2"])
-        .timeout_ms(500)
-        .shell(TaskShell::Auto);
+    let config = TaskConfig::new("sleep").args(vec!["2"]).timeout_ms(500);
     let (tx, mut rx) = mpsc::channel::<TaskEvent>(1024);
     let mut spawner = TaskSpawner::new("sleep_with_timeout_task".into(), config);
 
@@ -149,7 +144,6 @@ async fn start_direct_fn_stdin() {
     // Configure a task that reads a single line from stdin and echoes it
     #[cfg(windows)]
     let config = TaskConfig::new("$line = Read-Host; Write-Output $line")
-        .shell(TaskShell::Powershell)
         // .timeout_ms(2000)
         .enable_stdin(true);
 

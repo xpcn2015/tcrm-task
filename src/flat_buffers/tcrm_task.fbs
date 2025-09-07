@@ -7,21 +7,11 @@ enum StreamSource: byte {
   Stderr = 1
 }
 
-enum TaskShell: byte {
-  None = 0,
-  Auto = 1,
-  Cmd = 2,        // only valid on Windows
-  Powershell = 3, // only valid on Windows
-  Bash = 4        // only valid on Unix
-}
-
 table TaskConfig {
   command: string (required);
   args: [string];
   working_dir: string;
   env: [EnvEntry];
-  shell: TaskShell = None;
-  pty: bool = false;
   timeout_ms: ulong;
   enable_stdin: bool = false;
 }
