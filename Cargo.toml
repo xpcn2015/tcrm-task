@@ -3,13 +3,19 @@ name = "tcrm-task"
 version = "0.1.0"
 edition = "2024"
 description = "Task execution unit for TCRM project"
-repository = "https://github.com/xpcn2015/tcrm-task"
+repository = "https://github.com/jxpcn/tcrm-task"
 readme = "README.md"
 license = "MIT"
+authors = ["xpcn"]
 documentation = "https://docs.rs/tcrm-task"
-homepage = "https://github.com/xpcn2015/tcrm-task"
+homepage = "https://github.com/jxpcn/tcrm-task"
 keywords = ["async", "task", "tokio", "process", "tcrm"]
-categories = ["asynchronous", "command-line-utilities", "task-scheduling", "development-tools"]
+categories = [
+    "asynchronous",
+    "command-line-utilities",
+    "task-scheduling",
+    "development-tools",
+]
 exclude = [".vscode/*"]
 
 
