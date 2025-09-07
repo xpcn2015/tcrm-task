@@ -28,9 +28,9 @@ pub(crate) fn spawn_stdin_watcher(
                                 if !line.ends_with('\n') {
                                     line.push('\n');
                                 }
-                                if let Err(e) = stdin.write_all(line.as_bytes()).await {
+                                if let Err(_e) = stdin.write_all(line.as_bytes()).await {
                                         #[cfg(feature = "tracing")]
-                                        tracing::warn!(error=%e, "Failed to write to child stdin");
+                                        tracing::warn!(error=%_e, "Failed to write to child stdin");
                                     break;
                                 }
                             }
