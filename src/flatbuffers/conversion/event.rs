@@ -1,5 +1,5 @@
 use crate::{
-    flat_buffers::tcrm_task_generated,
+    flatbuffers::tcrm_task_generated,
     tasks::event::{TaskEvent, TaskEventStopReason},
 };
 

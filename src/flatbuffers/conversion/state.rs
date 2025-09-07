@@ -1,5 +1,5 @@
 use crate::{
-    flat_buffers::{conversion::error::ConversionError, tcrm_task_generated},
+    flatbuffers::{conversion::error::ConversionError, tcrm_task_generated},
     tasks::state::{TaskState, TaskTerminateReason},
 };
 
