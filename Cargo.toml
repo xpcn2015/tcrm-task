@@ -16,7 +16,7 @@ tokio = { version = "1.47", features = [
     "sync",
     "signal",
 ], optional = true }
-tracing = "0.1"
+tracing = { version = "0.1", optional = true }
 thiserror = "2.0"
 flatbuffers = { version = "25.2", optional = true }
 
@@ -24,6 +24,19 @@ flatbuffers = { version = "25.2", optional = true }
 default = ["tokio"]
 tokio = ["dep:tokio"]
 flatbuffers = ["dep:flatbuffers"]
+tracing = ["dep:tracing"]
+tracing-release_max_level_off = ["tracing/release_max_level_off"]
+tracing-release_max_level_error = ["tracing/release_max_level_error"]
+tracing-release_max_level_warn = ["tracing/release_max_level_warn"]
+tracing-release_max_level_info = ["tracing/release_max_level_info"]
+tracing-release_max_level_debug = ["tracing/release_max_level_debug"]
+tracing-release_max_level_trace = ["tracing/release_max_level_trace"]
+tracint-max_level_off = ["tracing/max_level_off"]
+tracing-max_level_error = ["tracing/max_level_error"]
+tracing-max_level_warn = ["tracing/max_level_warn"]
+tracing-max_level_info = ["tracing/max_level_info"]
+tracing-max_level_debug = ["tracing/max_level_debug"]
+tracing-max_level_trace = ["tracing/max_level_trace"]
 
 [dev-dependencies]
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }

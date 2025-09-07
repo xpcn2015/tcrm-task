@@ -4,14 +4,14 @@ use tokio::{
     sync::{Mutex, oneshot, watch},
     task::JoinHandle,
 };
-use tracing::{Instrument, debug, instrument, warn};
 
-use crate::tasks::state::TaskTerminateReason;
+use crate::{helper::tracing::MaybeInstrument, tasks::state::TaskTerminateReason};
 
 /// Spawns a watcher that triggers a timeout after the specified duration
 ///
 /// Sends a termination signal if the timeout elapses
-#[instrument(skip(terminate_tx))]
+
+#[cfg_attr(feature = "tracing", tracing::instrument(skip(terminate_tx)))]
 pub(crate) fn spawn_timeout_watcher(
     terminate_tx: Arc<Mutex<Option<oneshot::Sender<TaskTerminateReason>>>>,
     timeout_ms: u64,
@@ -27,28 +27,33 @@ pub(crate) fn spawn_timeout_watcher(
                         match terminate_tx.lock().await.take() {
                             Some(tx) => {
                                 if let Err(_) = tx.send(TaskTerminateReason::Timeout) {
-                                    warn!("Event channel closed while sending TaskEvent::Timeout");
+                                        #[cfg(feature = "tracing")]
+                                        tracing::warn!("Event channel closed while sending TaskEvent::Timeout");
                                 }
                             }
                             None => {
-                                warn!("Terminate signal already sent or channel missing");
+                                    #[cfg(feature = "tracing")]
+                                    tracing::warn!("Terminate signal already sent or channel missing");
                             }
                         }
                         break;
                     }
                     _ = handle_terminator_rx.changed() => {
                         if *handle_terminator_rx.borrow() {
-                            debug!("Termination signal received, closing timeout watcher");
+                                #[cfg(feature = "tracing")]
+                                tracing::debug!("Termination signal received, closing timeout watcher");
                             break;
                         }
                     }
                 }
             }
-            debug!("Watcher finished");
+                #[cfg(feature = "tracing")]
+                tracing::debug!("Watcher finished");
         }
-        .instrument(tracing::debug_span!("spawn")),
+        .maybe_instrument("spawn"),
     );
-    debug!(
+    #[cfg(feature = "tracing")]
+    tracing::debug!(
         handle_id = %handle.id(),
         "Spawned timeout watcher handle"
     );

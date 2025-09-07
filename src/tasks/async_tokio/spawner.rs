@@ -3,7 +3,6 @@ use std::time::Duration;
 use tokio::sync::{Mutex, RwLock, mpsc, oneshot};
 use tokio::task::JoinHandle;
 use tokio::time::{Instant, timeout};
-use tracing::{instrument, warn};
 
 use crate::tasks::error::TaskError;
 use crate::tasks::state::TaskTerminateReason;
@@ -95,7 +94,7 @@ impl TaskSpawner {
     /// Send a termination signal to the running task
     ///
     /// Returns an error if the signal cannot be sent
-    #[instrument[skip_all]]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub async fn send_terminate_signal(
         &self,
         reason: TaskTerminateReason,
@@ -103,12 +102,14 @@ impl TaskSpawner {
         if let Some(tx) = self.terminate_tx.lock().await.take() {
             if tx.send(reason.clone()).is_err() {
                 let msg = "Terminate channel closed while sending signal";
-                warn!(terminate_reason=?reason, msg);
+                #[cfg(feature = "tracing")]
+                tracing::warn!(terminate_reason=?reason, msg);
                 return Err(TaskError::Channel(msg.to_string()));
             }
         } else {
             let msg = "Terminate signal already sent or channel missing";
-            warn!(msg);
+            #[cfg(feature = "tracing")]
+            tracing::warn!(msg);
             return Err(TaskError::Channel(msg.to_string()));
         }
 

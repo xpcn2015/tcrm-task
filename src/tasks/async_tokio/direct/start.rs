@@ -1,6 +1,5 @@
 use tokio::process::Command;
 use tokio::sync::{mpsc, oneshot, watch};
-use tracing::{error, instrument, warn};
 
 use crate::tasks::async_tokio::direct::command::setup_command;
 use crate::tasks::async_tokio::direct::watchers::input::spawn_stdin_watcher;
@@ -14,7 +13,7 @@ use crate::tasks::event::{TaskEvent, TaskEventStopReason};
 use crate::tasks::state::{TaskState, TaskTerminateReason};
 
 impl TaskSpawner {
-    #[instrument(skip(self, event_tx), fields(task_name = %self.task_name))]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self, event_tx), fields(task_name = %self.task_name)))]
     pub async fn start_direct(
         &mut self,
         event_tx: mpsc::Sender<TaskEvent>,
@@ -31,7 +30,8 @@ impl TaskSpawner {
         let child_id = match child.id() {
             Some(id) => id,
             None => {
-                error!("Failed to get process id");
+                #[cfg(feature = "tracing")]
+                tracing::error!("Failed to get process id");
                 return Err(TaskError::IO(std::io::Error::new(
                     std::io::ErrorKind::Other,
                     "Failed to get process id",
@@ -47,7 +47,8 @@ impl TaskSpawner {
             })
             .await
         {
-            warn!("Event channel closed while sending TaskEvent::Started");
+            #[cfg(feature = "tracing")]
+            tracing::warn!("Event channel closed while sending TaskEvent::Started");
         }
 
         let (result_tx, result_rx) = oneshot::channel::<(Option<i32>, TaskEventStopReason)>();

@@ -4,9 +4,11 @@ use tokio::{
     sync::mpsc,
     task::JoinHandle,
 };
-use tracing::{Instrument, debug, instrument, trace, warn};
 
-use crate::tasks::{config::StreamSource, event::TaskEvent};
+use crate::{
+    helper::tracing::MaybeInstrument,
+    tasks::{config::StreamSource, event::TaskEvent},
+};
 
 /// Spawns watchers for stdout and stderr of a child process
 ///
@@ -48,7 +50,7 @@ pub(crate) fn spawn_output_watchers(
 /// Spawns a watcher for a single output stream (stdout or stderr)
 ///
 /// Each line is sent as a `TaskEvent::Output`
-#[instrument(skip_all, fields(stream = ?src))]
+#[cfg_attr(feature = "tracing", tracing::instrument(skip_all, fields(stream = ?src)))]
 fn spawn_std_watcher<T>(
     std: T,
     task_name: String,
@@ -68,7 +70,8 @@ where
                     line_result = lines.next_line() => {
                         match line_result {
                             Ok(Some(line)) => {
-                                trace!(line = %line);
+                                    #[cfg(feature = "tracing")]
+                                    tracing::trace!(line = %line);
                                 if let Err(_) = event_tx
                                     .send(TaskEvent::Output {
                                         task_name: task_name.clone(),
@@ -77,7 +80,8 @@ where
                                     })
                                     .await
                                 {
-                                    warn!("Event channel closed while sending TaskEvent::Output");
+                                        #[cfg(feature = "tracing")]
+                                        tracing::warn!("Event channel closed while sending TaskEvent::Output");
                                     break;
                                 }
                             }
@@ -85,25 +89,29 @@ where
                                 // EOF
                                 break;
                             }
-                            Err(e) => {
-                                warn!(error=%e, "Error reading line from output stream");
+                            Err(_e) => {
+                                    #[cfg(feature = "tracing")]
+                                    tracing::warn!(error=%_e, "Error reading line from output stream");
                                 break;
                             }
                         }
                     }
                     _ = handle_terminator_rx.changed() => {
                         if *handle_terminator_rx.borrow() {
-                            debug!("Termination signal received, closing output watcher");
+                                #[cfg(feature = "tracing")]
+                                tracing::debug!("Termination signal received, closing output watcher");
                             break;
                         }
                     }
                 }
             }
-            debug!("Watcher finished");
+                #[cfg(feature = "tracing")]
+                tracing::debug!("Watcher finished");
         }
-        .instrument(tracing::debug_span!("spawn")),
+        .maybe_instrument("spawn"),
     );
-    debug!(
+    #[cfg(feature = "tracing")]
+    tracing::debug!(
         handle_id = %handle.id(),
         "Spawned std output watcher handle"
     );

@@ -4,13 +4,14 @@ use tokio::{
     sync::{mpsc, watch},
     task::JoinHandle,
 };
-use tracing::{Instrument, debug, instrument, warn};
+
+use crate::helper::tracing::MaybeInstrument;
 /// Spawns an asynchronous watcher for task stdin
 ///
 /// Listens for lines from a channel and writes them to the child process's stdin
 ///
 /// Terminates when the channel is closed or a termination signal is received
-#[instrument(skip_all)]
+#[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
 pub(crate) fn spawn_stdin_watcher(
     mut stdin: ChildStdin,
     mut stdin_rx: mpsc::Receiver<String>,
@@ -28,7 +29,8 @@ pub(crate) fn spawn_stdin_watcher(
                                     line.push('\n');
                                 }
                                 if let Err(e) = stdin.write_all(line.as_bytes()).await {
-                                    warn!(error=%e, "Failed to write to child stdin");
+                                        #[cfg(feature = "tracing")]
+                                        tracing::warn!(error=%e, "Failed to write to child stdin");
                                     break;
                                 }
                             }
@@ -41,8 +43,8 @@ pub(crate) fn spawn_stdin_watcher(
 
                     // Termination signal
                     _ = handle_terminator_rx.changed() => {
-                        if *handle_terminator_rx.borrow() {
-                            debug!("Termination signal received, closing stdin watcher");
+                        if *handle_terminator_rx.borrow() {#[cfg(feature = "tracing")]
+                            tracing::debug!("Termination signal received, closing stdin watcher");
                             break;
                         }
                     }
@@ -50,16 +52,17 @@ pub(crate) fn spawn_stdin_watcher(
             }
 
             // Close stdin when channel is closed
-            if let Err(e) = stdin.shutdown().await {
-                warn!(error=%e, "Failed to shutdown child stdin");
+            if let Err(_e) = stdin.shutdown().await {
+                #[cfg(feature = "tracing")]
+                tracing::warn!(error=%_e, "Failed to shutdown child stdin");
             }
-
-            debug!("Watcher finished");
+            #[cfg(feature = "tracing")]
+            tracing::debug!("Watcher finished");
         }
-        .instrument(tracing::debug_span!("spawn")),
+        .maybe_instrument("spawn"),
     );
-
-    debug!(
+    #[cfg(feature = "tracing")]
+    tracing::debug!(
         handle_id = %handle.id(),
         "Spawned stdin watcher handle"
     );
