@@ -335,6 +335,113 @@ pub mod tcrm {
             since = "2.0.0",
             note = "Use associated constants instead. This will no longer be generated in 2021."
         )]
+        pub const ENUM_MIN_TASK_ERROR_TYPE: i8 = 0;
+        #[deprecated(
+            since = "2.0.0",
+            note = "Use associated constants instead. This will no longer be generated in 2021."
+        )]
+        pub const ENUM_MAX_TASK_ERROR_TYPE: i8 = 4;
+        #[deprecated(
+            since = "2.0.0",
+            note = "Use associated constants instead. This will no longer be generated in 2021."
+        )]
+        #[allow(non_camel_case_types)]
+        pub const ENUM_VALUES_TASK_ERROR_TYPE: [TaskErrorType; 5] = [
+            TaskErrorType::IO,
+            TaskErrorType::Handle,
+            TaskErrorType::Channel,
+            TaskErrorType::InvalidConfiguration,
+            TaskErrorType::Custom,
+        ];
+
+        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+        #[repr(transparent)]
+        pub struct TaskErrorType(pub i8);
+        #[allow(non_upper_case_globals)]
+        impl TaskErrorType {
+            pub const IO: Self = Self(0);
+            pub const Handle: Self = Self(1);
+            pub const Channel: Self = Self(2);
+            pub const InvalidConfiguration: Self = Self(3);
+            pub const Custom: Self = Self(4);
+
+            pub const ENUM_MIN: i8 = 0;
+            pub const ENUM_MAX: i8 = 4;
+            pub const ENUM_VALUES: &'static [Self] = &[
+                Self::IO,
+                Self::Handle,
+                Self::Channel,
+                Self::InvalidConfiguration,
+                Self::Custom,
+            ];
+            /// Returns the variant's name or "" if unknown.
+            pub fn variant_name(self) -> Option<&'static str> {
+                match self {
+                    Self::IO => Some("IO"),
+                    Self::Handle => Some("Handle"),
+                    Self::Channel => Some("Channel"),
+                    Self::InvalidConfiguration => Some("InvalidConfiguration"),
+                    Self::Custom => Some("Custom"),
+                    _ => None,
+                }
+            }
+        }
+        impl core::fmt::Debug for TaskErrorType {
+            fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+                if let Some(name) = self.variant_name() {
+                    f.write_str(name)
+                } else {
+                    f.write_fmt(format_args!("<UNKNOWN {:?}>", self.0))
+                }
+            }
+        }
+        impl<'a> flatbuffers::Follow<'a> for TaskErrorType {
+            type Inner = Self;
+            #[inline]
+            unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+                let b = unsafe { flatbuffers::read_scalar_at::<i8>(buf, loc) };
+                Self(b)
+            }
+        }
+
+        impl flatbuffers::Push for TaskErrorType {
+            type Output = TaskErrorType;
+            #[inline]
+            unsafe fn push(&self, dst: &mut [u8], _written_len: usize) {
+                unsafe { flatbuffers::emplace_scalar::<i8>(dst, self.0) };
+            }
+        }
+
+        impl flatbuffers::EndianScalar for TaskErrorType {
+            type Scalar = i8;
+            #[inline]
+            fn to_little_endian(self) -> i8 {
+                self.0.to_le()
+            }
+            #[inline]
+            #[allow(clippy::wrong_self_convention)]
+            fn from_little_endian(v: i8) -> Self {
+                let b = i8::from_le(v);
+                Self(b)
+            }
+        }
+
+        impl<'a> flatbuffers::Verifiable for TaskErrorType {
+            #[inline]
+            fn run_verifier(
+                v: &mut flatbuffers::Verifier,
+                pos: usize,
+            ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
+                use self::flatbuffers::Verifiable;
+                i8::run_verifier(v, pos)
+            }
+        }
+
+        impl flatbuffers::SimpleToVerifyInSlice for TaskErrorType {}
+        #[deprecated(
+            since = "2.0.0",
+            note = "Use associated constants instead. This will no longer be generated in 2021."
+        )]
         pub const ENUM_MIN_TASK_EVENT: u8 = 0;
         #[deprecated(
             since = "2.0.0",
@@ -1343,6 +1450,144 @@ pub mod tcrm {
                 ds.finish()
             }
         }
+        pub enum TaskErrorOffset {}
+        #[derive(Copy, Clone, PartialEq)]
+
+        pub struct TaskError<'a> {
+            pub _tab: flatbuffers::Table<'a>,
+        }
+
+        impl<'a> flatbuffers::Follow<'a> for TaskError<'a> {
+            type Inner = TaskError<'a>;
+            #[inline]
+            unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+                Self {
+                    _tab: unsafe { flatbuffers::Table::new(buf, loc) },
+                }
+            }
+        }
+
+        impl<'a> TaskError<'a> {
+            pub const VT_KIND: flatbuffers::VOffsetT = 4;
+            pub const VT_MESSAGE: flatbuffers::VOffsetT = 6;
+
+            #[inline]
+            pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+                TaskError { _tab: table }
+            }
+            #[allow(unused_mut)]
+            pub fn create<
+                'bldr: 'args,
+                'args: 'mut_bldr,
+                'mut_bldr,
+                A: flatbuffers::Allocator + 'bldr,
+            >(
+                _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
+                args: &'args TaskErrorArgs<'args>,
+            ) -> flatbuffers::WIPOffset<TaskError<'bldr>> {
+                let mut builder = TaskErrorBuilder::new(_fbb);
+                if let Some(x) = args.message {
+                    builder.add_message(x);
+                }
+                builder.add_kind(args.kind);
+                builder.finish()
+            }
+
+            #[inline]
+            pub fn kind(&self) -> TaskErrorType {
+                // Safety:
+                // Created from valid Table for this object
+                // which contains a valid value in this slot
+                unsafe {
+                    self._tab
+                        .get::<TaskErrorType>(TaskError::VT_KIND, Some(TaskErrorType::IO))
+                        .unwrap()
+                }
+            }
+            #[inline]
+            pub fn message(&self) -> Option<&'a str> {
+                // Safety:
+                // Created from valid Table for this object
+                // which contains a valid value in this slot
+                unsafe {
+                    self._tab
+                        .get::<flatbuffers::ForwardsUOffset<&str>>(TaskError::VT_MESSAGE, None)
+                }
+            }
+        }
+
+        impl flatbuffers::Verifiable for TaskError<'_> {
+            #[inline]
+            fn run_verifier(
+                v: &mut flatbuffers::Verifier,
+                pos: usize,
+            ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
+                use self::flatbuffers::Verifiable;
+                v.visit_table(pos)?
+                    .visit_field::<TaskErrorType>("kind", Self::VT_KIND, false)?
+                    .visit_field::<flatbuffers::ForwardsUOffset<&str>>(
+                        "message",
+                        Self::VT_MESSAGE,
+                        false,
+                    )?
+                    .finish();
+                Ok(())
+            }
+        }
+        pub struct TaskErrorArgs<'a> {
+            pub kind: TaskErrorType,
+            pub message: Option<flatbuffers::WIPOffset<&'a str>>,
+        }
+        impl<'a> Default for TaskErrorArgs<'a> {
+            #[inline]
+            fn default() -> Self {
+                TaskErrorArgs {
+                    kind: TaskErrorType::IO,
+                    message: None,
+                }
+            }
+        }
+
+        pub struct TaskErrorBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
+            fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
+            start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+        }
+        impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> TaskErrorBuilder<'a, 'b, A> {
+            #[inline]
+            pub fn add_kind(&mut self, kind: TaskErrorType) {
+                self.fbb_
+                    .push_slot::<TaskErrorType>(TaskError::VT_KIND, kind, TaskErrorType::IO);
+            }
+            #[inline]
+            pub fn add_message(&mut self, message: flatbuffers::WIPOffset<&'b str>) {
+                self.fbb_
+                    .push_slot_always::<flatbuffers::WIPOffset<_>>(TaskError::VT_MESSAGE, message);
+            }
+            #[inline]
+            pub fn new(
+                _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
+            ) -> TaskErrorBuilder<'a, 'b, A> {
+                let start = _fbb.start_table();
+                TaskErrorBuilder {
+                    fbb_: _fbb,
+                    start_: start,
+                }
+            }
+            #[inline]
+            pub fn finish(self) -> flatbuffers::WIPOffset<TaskError<'a>> {
+                let o = self.fbb_.end_table(self.start_);
+                flatbuffers::WIPOffset::new(o.value())
+            }
+        }
+
+        impl core::fmt::Debug for TaskError<'_> {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                let mut ds = f.debug_struct("TaskError");
+                ds.field("kind", &self.kind());
+                ds.field("message", &self.message());
+                ds.finish()
+            }
+        }
         pub enum StartedEventOffset {}
         #[derive(Copy, Clone, PartialEq)]
 
@@ -2166,13 +2411,13 @@ pub mod tcrm {
                 }
             }
             #[inline]
-            pub fn error(&self) -> &'a str {
+            pub fn error(&self) -> TaskError<'a> {
                 // Safety:
                 // Created from valid Table for this object
                 // which contains a valid value in this slot
                 unsafe {
                     self._tab
-                        .get::<flatbuffers::ForwardsUOffset<&str>>(ErrorEvent::VT_ERROR, None)
+                        .get::<flatbuffers::ForwardsUOffset<TaskError>>(ErrorEvent::VT_ERROR, None)
                         .unwrap()
                 }
             }
@@ -2191,7 +2436,7 @@ pub mod tcrm {
                         Self::VT_TASK_NAME,
                         true,
                     )?
-                    .visit_field::<flatbuffers::ForwardsUOffset<&str>>(
+                    .visit_field::<flatbuffers::ForwardsUOffset<TaskError>>(
                         "error",
                         Self::VT_ERROR,
                         true,
@@ -2202,7 +2447,7 @@ pub mod tcrm {
         }
         pub struct ErrorEventArgs<'a> {
             pub task_name: Option<flatbuffers::WIPOffset<&'a str>>,
-            pub error: Option<flatbuffers::WIPOffset<&'a str>>,
+            pub error: Option<flatbuffers::WIPOffset<TaskError<'a>>>,
         }
         impl<'a> Default for ErrorEventArgs<'a> {
             #[inline]
@@ -2227,9 +2472,12 @@ pub mod tcrm {
                 );
             }
             #[inline]
-            pub fn add_error(&mut self, error: flatbuffers::WIPOffset<&'b str>) {
+            pub fn add_error(&mut self, error: flatbuffers::WIPOffset<TaskError<'b>>) {
                 self.fbb_
-                    .push_slot_always::<flatbuffers::WIPOffset<_>>(ErrorEvent::VT_ERROR, error);
+                    .push_slot_always::<flatbuffers::WIPOffset<TaskError>>(
+                        ErrorEvent::VT_ERROR,
+                        error,
+                    );
             }
             #[inline]
             pub fn new(

@@ -1,3 +1,4 @@
+
 namespace TCRM.Task;
 
 // Config
@@ -45,6 +46,21 @@ table CustomReason {
   message: string (required);
 }
 
+// Error
+
+enum TaskErrorType: byte {
+  IO = 0,
+  Handle = 1,
+  Channel = 2,
+  InvalidConfiguration = 3,
+  Custom = 4
+}
+
+table TaskError {
+  kind: TaskErrorType;
+  message: string;
+}
+
 // Event
 
 union TaskEvent {
@@ -86,7 +102,7 @@ table StoppedEvent {
 
 table ErrorEvent {
   task_name: string (required);
-  error: string (required);
+  error: TaskError (required);
 }
 
 table FinishedReason {}

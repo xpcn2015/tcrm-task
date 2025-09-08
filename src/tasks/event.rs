@@ -1,4 +1,4 @@
-use crate::tasks::{config::StreamSource, state::TaskTerminateReason};
+use crate::tasks::{config::StreamSource, error::TaskError, state::TaskTerminateReason};
 
 #[derive(Debug, Clone)]
 pub enum TaskEvent {
@@ -20,7 +20,7 @@ pub enum TaskEvent {
     },
     Error {
         task_name: String,
-        error: String,
+        error: TaskError,
     },
 }
 #[derive(Debug, Clone, PartialEq)]

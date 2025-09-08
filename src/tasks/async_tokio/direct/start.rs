@@ -20,22 +20,70 @@ impl TaskSpawner {
     ) -> Result<u32, TaskError> {
         self.update_state(TaskState::Initiating).await;
 
-        self.config.validate()?;
+        match self.config.validate() {
+            Ok(_) => {}
+            Err(e) => {
+                #[cfg(feature = "tracing")]
+                tracing::error!(error = %e, "Invalid task configuration");
+
+                let error_event = TaskEvent::Error {
+                    task_name: self.task_name.clone(),
+                    error: e.clone(),
+                };
+
+                if let Err(_) = event_tx.send(error_event).await {
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!("Event channel closed while sending TaskEvent::Error");
+                };
+
+                return Err(e);
+            }
+        }
 
         let mut cmd = Command::new(&self.config.command);
         let mut cmd = cmd.kill_on_drop(true);
 
         setup_command(&mut cmd, &self.config);
-        let mut child = cmd.spawn()?;
+        let mut child = match cmd.spawn() {
+            Ok(c) => c,
+            Err(e) => {
+                #[cfg(feature = "tracing")]
+                tracing::error!(error = %e, "Failed to spawn child process");
+
+                let error_event = TaskEvent::Error {
+                    task_name: self.task_name.clone(),
+                    error: TaskError::IO(e.to_string()),
+                };
+
+                if let Err(_) = event_tx.send(error_event).await {
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!("Event channel closed while sending TaskEvent::Error");
+                };
+
+                return Err(TaskError::IO(e.to_string()));
+            }
+        };
         let child_id = match child.id() {
             Some(id) => id,
             None => {
+                let msg = "Failed to get process id";
+
                 #[cfg(feature = "tracing")]
-                tracing::error!("Failed to get process id");
-                return Err(TaskError::IO(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "Failed to get process id",
-                )));
+                tracing::error!(msg);
+
+                let error_event = TaskEvent::Error {
+                    task_name: self.task_name.clone(),
+                    error: TaskError::IO(msg.to_string()),
+                };
+
+                if let Err(_) = event_tx.send(error_event).await {
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!("Event channel closed while sending TaskEvent::Error");
+                };
+
+                return Err(TaskError::IO(
+                    std::io::Error::new(std::io::ErrorKind::Other, msg).to_string(),
+                ));
             }
         };
         self.process_id = Some(child_id);
@@ -339,5 +387,72 @@ mod tests {
             "Should not receive output from stdin when not enabled"
         );
         assert!(stopped);
+    }
+
+    // Error scenario tests
+    #[tokio::test]
+    async fn start_direct_command_not_found() {
+        let (tx, mut rx) = mpsc::channel::<TaskEvent>(1024);
+        let config = TaskConfig::new("non_existent_command");
+        let mut spawner = TaskSpawner::new("error_task".to_string(), config);
+
+        let result = spawner.start_direct(tx).await;
+        assert!(matches!(result, Err(TaskError::IO(_))));
+
+        if let Some(TaskEvent::Error { task_name, error }) = rx.recv().await {
+            assert_eq!(task_name, "error_task");
+            assert!(matches!(error, TaskError::IO(_)));
+            if let TaskError::IO(msg) = error {
+                #[cfg(windows)]
+                assert!(msg.contains("not found") || msg.contains("cannot find"));
+                #[cfg(unix)]
+                assert!(msg.contains("No such file or directory"));
+            }
+        } else {
+            panic!("Expected TaskEvent::Error");
+        }
+    }
+
+    #[tokio::test]
+    async fn start_direct_invalid_working_directory() {
+        let (tx, mut rx) = mpsc::channel::<TaskEvent>(1024);
+        let config = TaskConfig::new("echo").working_dir("/non/existent/directory");
+
+        let mut spawner = TaskSpawner::new("working_dir_task".to_string(), config);
+
+        let result = spawner.start_direct(tx).await;
+        assert!(matches!(result, Err(TaskError::InvalidConfiguration(_))));
+
+        if let Some(TaskEvent::Error { task_name, error }) = rx.recv().await {
+            assert_eq!(task_name, "working_dir_task");
+            assert!(matches!(error, TaskError::InvalidConfiguration(_)));
+        } else {
+            panic!("Expected TaskEvent::Error");
+        }
+    }
+
+    #[tokio::test]
+    async fn start_direct_zero_timeout() {
+        let (tx, mut rx) = mpsc::channel::<TaskEvent>(1024);
+        #[cfg(windows)]
+        let config = TaskConfig::new("powershell")
+            .args(["-Command", "Start-Sleep -Seconds 1"])
+            .timeout_ms(0);
+        #[cfg(unix)]
+        let config = TaskConfig::new("sleep").args(["1"]).timeout_ms(0);
+
+        let mut spawner = TaskSpawner::new("timeout_task".to_string(), config);
+
+        // Zero timeout should be rejected as invalid configuration
+        let result = spawner.start_direct(tx).await;
+        assert!(matches!(result, Err(TaskError::InvalidConfiguration(_))));
+
+        // Should receive an error event
+        if let Some(TaskEvent::Error { task_name, error }) = rx.recv().await {
+            assert_eq!(task_name, "timeout_task");
+            assert!(matches!(error, TaskError::InvalidConfiguration(_)));
+        } else {
+            panic!("Expected TaskEvent::Error with InvalidConfiguration");
+        }
     }
 }
