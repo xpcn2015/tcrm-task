@@ -81,12 +81,12 @@ impl TaskEvent {
             }
             TaskEvent::Error { task_name, error } => {
                 let task_name_offset = builder.create_string(task_name);
-                let error_offset = builder.create_string(error);
+                let error_fb = error.to_flatbuffer(builder);
                 let ev = tcrm_task_generated::tcrm::task::ErrorEvent::create(
                     builder,
                     &tcrm_task_generated::tcrm::task::ErrorEventArgs {
                         task_name: Some(task_name_offset),
-                        error: Some(error_offset),
+                        error: Some(error_fb),
                     },
                 );
                 (

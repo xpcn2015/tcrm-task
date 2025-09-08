@@ -1,11 +1,9 @@
-use std::io;
-
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone)]
 pub enum TaskError {
     #[error("IO error: {0}")]
-    IO(#[from] io::Error),
+    IO(String),
 
     #[error("Handle error: {0}")]
     Handle(String),
