@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1 (2025/09/08)
+### Fixed
+- Correctly set `process_id` to `None` after task is stopped
+- Ensure `process_id` is `Some` while task is running
+- Added tests for process_id lifecycle and task state
+
 ## 0.2.0 (2025/09/08)
 ### Changed
 - Changed `TaskEvent::Error` to use `TaskError` instead of string

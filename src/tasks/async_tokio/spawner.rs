@@ -23,7 +23,7 @@ pub struct TaskSpawner {
     pub(crate) task_name: String,
     pub(crate) state: Arc<RwLock<TaskState>>,
     pub(crate) terminate_tx: Arc<Mutex<Option<oneshot::Sender<TaskTerminateReason>>>>,
-    pub(crate) process_id: Option<u32>,
+    pub(crate) process_id: Arc<RwLock<Option<u32>>>,
     pub(crate) created_at: Instant,
     pub(crate) finished_at: Arc<RwLock<Option<Instant>>>,
     pub(crate) stdin_rx: Option<mpsc::Receiver<String>>,
@@ -37,7 +37,7 @@ impl TaskSpawner {
             config,
             state: Arc::new(RwLock::new(TaskState::Pending)),
             terminate_tx: Arc::new(Mutex::new(None)),
-            process_id: None,
+            process_id: Arc::new(RwLock::new(None)),
             created_at: Instant::now(),
             finished_at: Arc::new(RwLock::new(None)),
             stdin_rx: None,
@@ -85,6 +85,12 @@ impl TaskSpawner {
             finished_at: self.finished_at.read().await.clone(),
         }
     }
+
+    /// Get the process ID of the running task (if any)
+    pub async fn get_process_id(&self) -> Option<u32> {
+        self.process_id.read().await.clone()
+    }
+
     /// Update the state of the task
     pub(crate) async fn update_state(&self, new_state: TaskState) {
         let mut state = self.state.write().await;

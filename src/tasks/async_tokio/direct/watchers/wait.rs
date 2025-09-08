@@ -25,6 +25,7 @@ pub(crate) fn spawn_wait_watcher(
     terminate_rx: oneshot::Receiver<TaskTerminateReason>,
     handle_terminator_tx: watch::Sender<bool>,
     result_tx: oneshot::Sender<(Option<i32>, TaskEventStopReason)>,
+    process_id: Arc<RwLock<Option<u32>>>,
 ) -> JoinHandle<()> {
     let handle = tokio::spawn(
         async move {
@@ -95,6 +96,8 @@ pub(crate) fn spawn_wait_watcher(
                     #[cfg(feature = "tracing")]
                     tracing::warn!("Handle terminate channels closed while sending signal");
             };
+                process_id.write().await.take();
+
                 #[cfg(feature = "tracing")]
                 tracing::debug!("Watcher finished");
         }
