@@ -46,10 +46,7 @@ impl TaskError {
         fb_error: tcrm_task_generated::tcrm::task::TaskError,
     ) -> Result<Self, ConversionError> {
         let kind = fb_error.kind();
-        let message = fb_error
-            .message()
-            .ok_or(ConversionError::MissingRequiredField("message"))?
-            .to_string();
+        let message = fb_error.message().unwrap_or("").to_string();
 
         match kind {
             tcrm_task_generated::tcrm::task::TaskErrorType::IO => Ok(TaskError::IO(message)),

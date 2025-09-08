@@ -81,9 +81,7 @@ impl TaskSpawner {
                     tracing::warn!("Event channel closed while sending TaskEvent::Error");
                 };
 
-                return Err(TaskError::IO(
-                    std::io::Error::new(std::io::ErrorKind::Other, msg).to_string(),
-                ));
+                return Err(TaskError::IO(msg.to_string()));
             }
         };
         self.process_id = Some(child_id);
