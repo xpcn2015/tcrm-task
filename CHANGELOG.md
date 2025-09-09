@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.3 (2025/09/09)
+### Fixed
+- Ensure `TaskState` is set to `Finished` if an error occurs during `start_direct` (configuration, process spawn, or process id failure)
+- Added test to verify `TaskState` does not stall at `Initiating` after error in `start_direct`
+
 ## 0.2.2 (2025/09/09)
 ### Added
 - New `update_state_to_ready` method for `TaskSpawner` to set state to `Ready`

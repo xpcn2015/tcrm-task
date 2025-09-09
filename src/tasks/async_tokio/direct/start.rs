@@ -26,6 +26,7 @@ impl TaskSpawner {
                 #[cfg(feature = "tracing")]
                 tracing::error!(error = %e, "Invalid task configuration");
 
+                self.update_state(TaskState::Finished).await;
                 let error_event = TaskEvent::Error {
                     task_name: self.task_name.clone(),
                     error: e.clone(),
@@ -35,7 +36,6 @@ impl TaskSpawner {
                     #[cfg(feature = "tracing")]
                     tracing::warn!("Event channel closed while sending TaskEvent::Error");
                 };
-
                 return Err(e);
             }
         }
@@ -50,6 +50,7 @@ impl TaskSpawner {
                 #[cfg(feature = "tracing")]
                 tracing::error!(error = %e, "Failed to spawn child process");
 
+                self.update_state(TaskState::Finished).await;
                 let error_event = TaskEvent::Error {
                     task_name: self.task_name.clone(),
                     error: TaskError::IO(e.to_string()),
@@ -71,6 +72,7 @@ impl TaskSpawner {
                 #[cfg(feature = "tracing")]
                 tracing::error!(msg);
 
+                self.update_state(TaskState::Finished).await;
                 let error_event = TaskEvent::Error {
                     task_name: self.task_name.clone(),
                     error: TaskError::IO(msg.to_string()),
@@ -263,6 +265,14 @@ mod tests {
 
         let result = spawner.start_direct(tx).await;
         assert!(matches!(result, Err(TaskError::InvalidConfiguration(_))));
+
+        // Ensure TaskState is Finished after error, not stalled at Initiating
+        let state = spawner.get_state().await;
+        assert_eq!(
+            state,
+            crate::tasks::state::TaskState::Finished,
+            "TaskState should be Finished after error, not Initiating"
+        );
     }
 
     #[tokio::test]
