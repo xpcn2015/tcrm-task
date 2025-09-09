@@ -186,4 +186,6 @@ cargo test tasks::tests
 
 ## License
 
-This project is licensed under the MIT License
+This project is licensed under either the MIT or Apache-2.0 License, at your option.
+
+See LICENSE file for details.
