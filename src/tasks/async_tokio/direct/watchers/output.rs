@@ -1,13 +1,15 @@
+use std::sync::Arc;
+
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Child,
-    sync::mpsc,
+    sync::{RwLock, mpsc},
     task::JoinHandle,
 };
 
 use crate::{
     helper::tracing::MaybeInstrument,
-    tasks::{config::StreamSource, event::TaskEvent},
+    tasks::{config::StreamSource, event::TaskEvent, state::TaskState},
 };
 
 /// Spawns watchers for stdout and stderr of a child process
@@ -15,6 +17,7 @@ use crate::{
 /// Sends output lines as `TaskEvent::Output` events
 pub(crate) fn spawn_output_watchers(
     task_name: String,
+    state: Arc<RwLock<TaskState>>,
     event_tx: mpsc::Sender<TaskEvent>,
     child: &mut Child,
     handle_terminator_rx: tokio::sync::watch::Receiver<bool>,
@@ -27,6 +30,7 @@ pub(crate) fn spawn_output_watchers(
         let handle = spawn_std_watcher(
             stdout,
             task_name.clone(),
+            state.clone(),
             event_tx.clone(),
             StreamSource::Stdout,
             handle_terminator_rx.clone(),
@@ -41,6 +45,7 @@ pub(crate) fn spawn_output_watchers(
         let handle = spawn_std_watcher(
             stderr,
             task_name,
+            state,
             event_tx,
             StreamSource::Stderr,
             handle_terminator_rx,
@@ -60,6 +65,7 @@ pub(crate) fn spawn_output_watchers(
 fn spawn_std_watcher<T>(
     std: T,
     task_name: String,
+    state: Arc<RwLock<TaskState>>,
     event_tx: mpsc::Sender<TaskEvent>,
     src: StreamSource,
     mut handle_terminator_rx: tokio::sync::watch::Receiver<bool>,
@@ -116,6 +122,7 @@ where
                                     tracing::debug!(stream=?src, "Ready indicator found in output stream");
                                 }
 
+                                *state.write().await = TaskState::Ready;
                                 if let Err(_) = event_tx
                                     .send(TaskEvent::Ready {
                                         task_name: task_name.clone(),
@@ -170,11 +177,13 @@ mod tests {
         let (_term_tx, term_rx) = watch::channel(false);
         let ready_indicator = Some("READY_INDICATOR".to_string());
         let task_name = "test_task_mismatch".to_string();
+        let state = Arc::new(RwLock::new(TaskState::Running));
 
         // src is Stdout, ready_indicator_source is Stderr (should NOT emit Ready)
         let handle = spawn_std_watcher(
             cursor,
             task_name.clone(),
+            state.clone(),
             tx,
             StreamSource::Stdout,
             term_rx,
@@ -193,6 +202,12 @@ mod tests {
             ready_event, false,
             "Should NOT emit Ready event if ready_indicator_source does not match src"
         );
+        let state_val = state.read().await.clone();
+        assert_eq!(
+            state_val,
+            TaskState::Running,
+            "State should not be set to Ready"
+        );
     }
 
     use super::*;
@@ -209,10 +224,12 @@ mod tests {
         let (_term_tx, term_rx) = watch::channel(false);
         let ready_indicator = Some("READY_INDICATOR".to_string());
         let task_name = "test_task".to_string();
+        let state = Arc::new(RwLock::new(TaskState::Running));
 
         let handle = spawn_std_watcher(
             cursor,
             task_name.clone(),
+            state.clone(),
             tx,
             StreamSource::Stdout,
             term_rx,
@@ -248,6 +265,12 @@ mod tests {
         assert!(
             ready_event,
             "Should emit Ready event when ready_indicator is present"
+        );
+        let state_val = state.read().await.clone();
+        assert_eq!(
+            state_val,
+            TaskState::Ready,
+            "State should be set to Ready when ready indicator is found"
         );
     }
 }

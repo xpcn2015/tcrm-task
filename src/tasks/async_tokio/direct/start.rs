@@ -106,6 +106,7 @@ impl TaskSpawner {
         // Spawn stdout and stderr watchers
         let handles = spawn_output_watchers(
             self.task_name.clone(),
+            self.state.clone(),
             event_tx.clone(),
             &mut child,
             handle_terminator_rx.clone(),
