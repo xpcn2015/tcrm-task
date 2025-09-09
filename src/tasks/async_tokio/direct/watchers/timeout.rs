@@ -19,29 +19,36 @@ pub(crate) fn spawn_timeout_watcher(
 ) -> JoinHandle<()> {
     let handle = tokio::spawn(
         async move {
+            #[cfg(feature = "tracing")]
+            tracing::trace!(timeout_ms, "Starting timeout watcher");
             let sleep = tokio::time::sleep(Duration::from_millis(timeout_ms));
             tokio::pin!(sleep);
             loop {
                 tokio::select! {
                     _ = &mut sleep => {
+                        #[cfg(feature = "tracing")]
+                        tracing::info!("Task timeout reached, sending termination signal");
                         match terminate_tx.lock().await.take() {
                             Some(tx) => {
                                 if let Err(_) = tx.send(TaskTerminateReason::Timeout) {
-                                        #[cfg(feature = "tracing")]
-                                        tracing::warn!("Event channel closed while sending TaskEvent::Timeout");
+                                    #[cfg(feature = "tracing")]
+                                    tracing::warn!("Event channel closed while sending TaskEvent::Timeout");
                                 }
                             }
                             None => {
-                                    #[cfg(feature = "tracing")]
-                                    tracing::warn!("Terminate signal already sent or channel missing");
+                                #[cfg(feature = "tracing")]
+                                tracing::warn!("Terminate signal already sent or channel missing");
                             }
                         }
                         break;
                     }
                     _ = handle_terminator_rx.changed() => {
+                        #[cfg(feature = "tracing")]
+                        tracing::trace!("Task handle termination signal received");
+
                         if *handle_terminator_rx.borrow() {
-                                #[cfg(feature = "tracing")]
-                                tracing::debug!("Termination signal received, closing timeout watcher");
+                            #[cfg(feature = "tracing")]
+                            tracing::debug!("Termination signal received, closing timeout watcher");
                             break;
                         }
                     }

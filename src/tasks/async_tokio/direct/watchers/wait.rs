@@ -31,6 +31,8 @@ pub(crate) fn spawn_wait_watcher(
         async move {
             tokio::select! {
                 result = child.wait() => {
+                    #[cfg(feature = "tracing")]
+                    tracing::trace!("child process finished");
                     match result {
                         Ok(status) => {
                             let exit_code = status.code();
@@ -59,6 +61,9 @@ pub(crate) fn spawn_wait_watcher(
                     }
                 }
                 reason = terminate_rx => {
+                    #[cfg(feature = "tracing")]
+                    tracing::trace!("Termination signal received");
+
                     if let Err(e) = child.kill().await {
                         // Expected OS level error
                         if let Err(_) = result_tx.send((

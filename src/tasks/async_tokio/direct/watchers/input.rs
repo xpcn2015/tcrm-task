@@ -25,6 +25,10 @@ pub(crate) fn spawn_stdin_watcher(
                     maybe_line = stdin_rx.recv() => {
                         match maybe_line {
                             Some(mut line) => {
+
+                                #[cfg(feature = "tracing")]
+                                tracing::trace!(line, "Received line for stdin");
+
                                 if !line.ends_with('\n') {
                                     line.push('\n');
                                 }
@@ -35,6 +39,8 @@ pub(crate) fn spawn_stdin_watcher(
                                 }
                             }
                             None => {
+                                #[cfg(feature = "tracing")]
+                                tracing::trace!("Stdin channel closed");
                                 // Channel closed, stop watcher
                                 break;
                             }
@@ -43,7 +49,11 @@ pub(crate) fn spawn_stdin_watcher(
 
                     // Termination signal
                     _ = handle_terminator_rx.changed() => {
-                        if *handle_terminator_rx.borrow() {#[cfg(feature = "tracing")]
+                            #[cfg(feature = "tracing")]
+                            tracing::trace!("Task handle termination signal received");
+
+                        if *handle_terminator_rx.borrow() {
+                            #[cfg(feature = "tracing")]
                             tracing::debug!("Termination signal received, closing stdin watcher");
                             break;
                         }

@@ -122,6 +122,8 @@ where
                                     tracing::debug!(stream=?src, "Ready indicator found in output stream");
                                 }
 
+                                #[cfg(feature = "tracing")]
+                                tracing::debug!("Updating task state to Ready");
                                 *state.write().await = TaskState::Ready;
                                 if let Err(_) = event_tx
                                     .send(TaskEvent::Ready {
@@ -147,6 +149,8 @@ where
                         }
                     }
                     _ = handle_terminator_rx.changed() => {
+                        #[cfg(feature = "tracing")]
+                        tracing::trace!("Task handle termination signal received");
                         if *handle_terminator_rx.borrow() {
                                 #[cfg(feature = "tracing")]
                                 tracing::debug!("Termination signal received, closing output watcher");
