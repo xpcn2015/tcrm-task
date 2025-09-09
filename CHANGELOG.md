@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.2 (2025/09/09)
+### Added
+- New `update_state_to_ready` method for `TaskSpawner` to set state to `Ready`
+- Added unit test for `update_state_to_ready` method
+
 ## 0.2.1 (2025/09/08)
 ### Fixed
 - Correctly set `process_id` to `None` after task is stopped
