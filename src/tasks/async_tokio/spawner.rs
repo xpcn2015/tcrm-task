@@ -91,6 +91,12 @@ impl TaskSpawner {
         self.process_id.read().await.clone()
     }
 
+    /// Update the state of the task to Ready
+    pub async fn update_state_to_ready(&self) {
+        let mut state = self.state.write().await;
+        *state = TaskState::Ready;
+    }
+
     /// Update the state of the task
     pub(crate) async fn update_state(&self, new_state: TaskState) {
         let mut state = self.state.write().await;
