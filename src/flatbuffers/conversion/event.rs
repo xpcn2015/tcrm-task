@@ -4,7 +4,7 @@ use crate::{
 };
 
 impl TaskEvent {
-    pub fn to_flatbuffer<'a>(
+    pub fn to_flatbuffers<'a>(
         &self,
         builder: &mut flatbuffers::FlatBufferBuilder<'a>,
     ) -> (
@@ -64,7 +64,7 @@ impl TaskEvent {
                 reason,
             } => {
                 let task_name_offset = builder.create_string(task_name);
-                let (reason_type, reason) = reason.to_flatbuffer(builder);
+                let (reason_type, reason) = reason.to_flatbuffers(builder);
                 let ev = tcrm_task_generated::tcrm::task::StoppedEvent::create(
                     builder,
                     &tcrm_task_generated::tcrm::task::StoppedEventArgs {
@@ -81,7 +81,7 @@ impl TaskEvent {
             }
             TaskEvent::Error { task_name, error } => {
                 let task_name_offset = builder.create_string(task_name);
-                let error_fb = error.to_flatbuffer(builder);
+                let error_fb = error.to_flatbuffers(builder);
                 let ev = tcrm_task_generated::tcrm::task::ErrorEvent::create(
                     builder,
                     &tcrm_task_generated::tcrm::task::ErrorEventArgs {
@@ -99,7 +99,7 @@ impl TaskEvent {
 }
 
 impl TaskEventStopReason {
-    pub fn to_flatbuffer<'a>(
+    pub fn to_flatbuffers<'a>(
         &self,
         builder: &mut flatbuffers::FlatBufferBuilder<'a>,
     ) -> (
@@ -117,7 +117,7 @@ impl TaskEventStopReason {
                     r.as_union_value(),
                 )
             }
-            TaskEventStopReason::Terminated(reason) => reason.to_flatbuffer_terminated(builder),
+            TaskEventStopReason::Terminated(reason) => reason.to_flatbuffers_terminated(builder),
             TaskEventStopReason::Error(msg) => {
                 let msg_offset = builder.create_string(msg);
                 let r = tcrm_task_generated::tcrm::task::ErrorStopReason::create(
@@ -132,5 +132,196 @@ impl TaskEventStopReason {
                 )
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tasks::{
+        config::StreamSource,
+        error::TaskError,
+        event::{TaskEvent, TaskEventStopReason},
+        state::TaskTerminateReason,
+    };
+
+    #[test]
+    fn test_task_event_started() {
+        let mut builder = flatbuffers::FlatBufferBuilder::new();
+        let task_name = "test_task";
+        let event = TaskEvent::Started {
+            task_name: task_name.to_string(),
+        };
+
+        let (fb_event_type, _offset) = event.to_flatbuffers(&mut builder);
+        assert_eq!(
+            fb_event_type,
+            tcrm_task_generated::tcrm::task::TaskEvent::Started
+        );
+    }
+
+    #[test]
+    fn test_task_event_output() {
+        let mut builder = flatbuffers::FlatBufferBuilder::new();
+        let task_name = "test_task";
+        let line = "output line";
+        let src = StreamSource::Stdout;
+        let event = TaskEvent::Output {
+            task_name: task_name.to_string(),
+            line: line.to_string(),
+            src,
+        };
+
+        let (fb_event_type, _offset) = event.to_flatbuffers(&mut builder);
+        assert_eq!(
+            fb_event_type,
+            tcrm_task_generated::tcrm::task::TaskEvent::Output
+        );
+    }
+
+    #[test]
+    fn test_task_event_ready() {
+        let mut builder = flatbuffers::FlatBufferBuilder::new();
+        let task_name = "test_task";
+        let event = TaskEvent::Ready {
+            task_name: task_name.to_string(),
+        };
+
+        let (fb_event_type, _offset) = event.to_flatbuffers(&mut builder);
+        assert_eq!(
+            fb_event_type,
+            tcrm_task_generated::tcrm::task::TaskEvent::Ready
+        );
+    }
+
+    #[test]
+    fn test_task_event_stopped() {
+        let mut builder = flatbuffers::FlatBufferBuilder::new();
+        let task_name = "test_task";
+        let exit_code = Some(0);
+        let reason = TaskEventStopReason::Finished;
+        let event = TaskEvent::Stopped {
+            task_name: task_name.to_string(),
+            exit_code,
+            reason,
+        };
+
+        let (fb_event_type, _offset) = event.to_flatbuffers(&mut builder);
+        assert_eq!(
+            fb_event_type,
+            tcrm_task_generated::tcrm::task::TaskEvent::Stopped
+        );
+    }
+
+    #[test]
+    fn test_task_event_error() {
+        let mut builder = flatbuffers::FlatBufferBuilder::new();
+        let task_name = "test_task";
+        let error = TaskError::Custom("Test error".to_string());
+        let event = TaskEvent::Error {
+            task_name: task_name.to_string(),
+            error,
+        };
+
+        let (fb_event_type, _offset) = event.to_flatbuffers(&mut builder);
+        assert_eq!(
+            fb_event_type,
+            tcrm_task_generated::tcrm::task::TaskEvent::Error
+        );
+    }
+
+    #[test]
+    fn test_task_event_stop_reason_finished() {
+        let mut builder = flatbuffers::FlatBufferBuilder::new();
+        let reason = TaskEventStopReason::Finished;
+
+        let (fb_reason_type, _offset) = reason.to_flatbuffers(&mut builder);
+        assert_eq!(
+            fb_reason_type,
+            tcrm_task_generated::tcrm::task::TaskEventStopReason::Finished
+        );
+    }
+
+    #[test]
+    fn test_task_event_stop_reason_terminated() {
+        let mut builder = flatbuffers::FlatBufferBuilder::new();
+        let terminate_reason = TaskTerminateReason::Timeout;
+        let reason = TaskEventStopReason::Terminated(terminate_reason);
+
+        let (fb_reason_type, _offset) = reason.to_flatbuffers(&mut builder);
+        assert_eq!(
+            fb_reason_type,
+            tcrm_task_generated::tcrm::task::TaskEventStopReason::TerminatedTimeout
+        );
+    }
+
+    #[test]
+    fn test_task_event_stop_reason_error() {
+        let mut builder = flatbuffers::FlatBufferBuilder::new();
+        let error_msg = "Task failed";
+        let reason = TaskEventStopReason::Error(error_msg.to_string());
+
+        let (fb_reason_type, _offset) = reason.to_flatbuffers(&mut builder);
+        assert_eq!(
+            fb_reason_type,
+            tcrm_task_generated::tcrm::task::TaskEventStopReason::Error
+        );
+    }
+
+    #[test]
+    fn test_task_event_output_stderr() {
+        let mut builder = flatbuffers::FlatBufferBuilder::new();
+        let task_name = "test_task";
+        let line = "error output";
+        let src = StreamSource::Stderr;
+        let event = TaskEvent::Output {
+            task_name: task_name.to_string(),
+            line: line.to_string(),
+            src,
+        };
+
+        let (fb_event_type, _offset) = event.to_flatbuffers(&mut builder);
+        assert_eq!(
+            fb_event_type,
+            tcrm_task_generated::tcrm::task::TaskEvent::Output
+        );
+    }
+
+    #[test]
+    fn test_task_event_stopped_with_exit_code() {
+        let mut builder = flatbuffers::FlatBufferBuilder::new();
+        let task_name = "test_task";
+        let exit_code = Some(1);
+        let reason = TaskEventStopReason::Error("Process failed".to_string());
+        let event = TaskEvent::Stopped {
+            task_name: task_name.to_string(),
+            exit_code,
+            reason,
+        };
+
+        let (fb_event_type, _offset) = event.to_flatbuffers(&mut builder);
+        assert_eq!(
+            fb_event_type,
+            tcrm_task_generated::tcrm::task::TaskEvent::Stopped
+        );
+    }
+
+    #[test]
+    fn test_task_event_stopped_no_exit_code() {
+        let mut builder = flatbuffers::FlatBufferBuilder::new();
+        let task_name = "test_task";
+        let exit_code = None;
+        let reason = TaskEventStopReason::Terminated(TaskTerminateReason::Cleanup);
+        let event = TaskEvent::Stopped {
+            task_name: task_name.to_string(),
+            exit_code,
+            reason,
+        };
+
+        let (fb_event_type, _offset) = event.to_flatbuffers(&mut builder);
+        assert_eq!(
+            fb_event_type,
+            tcrm_task_generated::tcrm::task::TaskEvent::Stopped
+        );
     }
 }

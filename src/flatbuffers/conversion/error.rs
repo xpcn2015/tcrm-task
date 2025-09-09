@@ -42,7 +42,7 @@ impl std::fmt::Display for ConversionError {
 impl std::error::Error for ConversionError {}
 
 impl TaskError {
-    pub fn from_flatbuffer(
+    pub fn from_flatbuffers(
         fb_error: tcrm_task_generated::tcrm::task::TaskError,
     ) -> Result<Self, ConversionError> {
         let kind = fb_error.kind();
@@ -66,7 +66,7 @@ impl TaskError {
         }
     }
 
-    pub fn to_flatbuffer<'a>(
+    pub fn to_flatbuffers<'a>(
         &self,
         builder: &mut flatbuffers::FlatBufferBuilder<'a>,
     ) -> flatbuffers::WIPOffset<tcrm_task_generated::tcrm::task::TaskError<'a>> {
@@ -96,5 +96,72 @@ impl TaskError {
                 message: Some(msg_offset),
             },
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tasks::error::TaskError;
+
+    #[test]
+    fn test_task_error_roundtrip() {
+        let test_cases = vec![
+            TaskError::IO("io error message".to_string()),
+            TaskError::Handle("handle error message".to_string()),
+            TaskError::Channel("channel error message".to_string()),
+            TaskError::InvalidConfiguration("invalid config message".to_string()),
+            TaskError::Custom("custom error message".to_string()),
+        ];
+
+        for original_error in test_cases {
+            // Convert to FlatBuffer
+            let mut builder = flatbuffers::FlatBufferBuilder::new();
+            let fb_error = original_error.to_flatbuffers(&mut builder);
+            builder.finish(fb_error, None);
+
+            // Get bytes and create new FlatBuffer instance
+            let bytes = builder.finished_data();
+            let fb_error =
+                flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskError>(bytes).unwrap();
+
+            // Convert back to Rust
+            let converted_error = TaskError::from_flatbuffers(fb_error).unwrap();
+
+            // Verify roundtrip
+            match (&original_error, &converted_error) {
+                (TaskError::IO(orig), TaskError::IO(conv)) => assert_eq!(orig, conv),
+                (TaskError::Handle(orig), TaskError::Handle(conv)) => assert_eq!(orig, conv),
+                (TaskError::Channel(orig), TaskError::Channel(conv)) => assert_eq!(orig, conv),
+                (TaskError::InvalidConfiguration(orig), TaskError::InvalidConfiguration(conv)) => {
+                    assert_eq!(orig, conv)
+                }
+                (TaskError::Custom(orig), TaskError::Custom(conv)) => assert_eq!(orig, conv),
+                _ => panic!(
+                    "Error type mismatch: {:?} vs {:?}",
+                    original_error, converted_error
+                ),
+            }
+        }
+    }
+
+    #[test]
+    fn test_conversion_error_display() {
+        let errors = vec![
+            ConversionError::InvalidStreamSource(99),
+            ConversionError::InvalidTaskShell(88),
+            ConversionError::InvalidTaskState(77),
+            ConversionError::InvalidTaskTerminateReasonType(66),
+            ConversionError::InvalidTaskEventStopReasonType(55),
+            ConversionError::InvalidTaskEventType(44),
+            ConversionError::InvalidTaskErrorType(33),
+            ConversionError::MissingRequiredField("test_field"),
+        ];
+
+        for error in errors {
+            let display_str = format!("{}", error);
+            assert!(!display_str.is_empty());
+            assert!(display_str.contains("Invalid") || display_str.contains("Missing"));
+        }
     }
 }

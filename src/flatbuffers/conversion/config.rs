@@ -64,7 +64,7 @@ impl<'a> TryFrom<tcrm_task_generated::tcrm::task::TaskConfig<'a>> for TaskConfig
     }
 }
 impl TaskConfig {
-    pub fn to_flatbuffer<'a>(
+    pub fn to_flatbuffers<'a>(
         &self,
         builder: &mut flatbuffers::FlatBufferBuilder<'a>,
     ) -> flatbuffers::WIPOffset<tcrm_task_generated::tcrm::task::TaskConfig<'a>> {
@@ -120,5 +120,106 @@ impl TaskConfig {
                     .into(),
             },
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_stream_source_conversions() {
+        // Test FlatBuffer to Rust conversion
+        assert_eq!(
+            StreamSource::try_from(tcrm_task_generated::tcrm::task::StreamSource::Stdout).unwrap(),
+            StreamSource::Stdout
+        );
+        assert_eq!(
+            StreamSource::try_from(tcrm_task_generated::tcrm::task::StreamSource::Stderr).unwrap(),
+            StreamSource::Stderr
+        );
+
+        // Test Rust to FlatBuffer conversion
+        assert_eq!(
+            tcrm_task_generated::tcrm::task::StreamSource::from(StreamSource::Stdout),
+            tcrm_task_generated::tcrm::task::StreamSource::Stdout
+        );
+        assert_eq!(
+            tcrm_task_generated::tcrm::task::StreamSource::from(StreamSource::Stderr),
+            tcrm_task_generated::tcrm::task::StreamSource::Stderr
+        );
+    }
+
+    #[test]
+    fn test_task_config_roundtrip() {
+        let mut env = HashMap::new();
+        env.insert("KEY1".to_string(), "value1".to_string());
+        env.insert("KEY2".to_string(), "value2".to_string());
+
+        let original_config = TaskConfig {
+            command: "test_command".to_string(),
+            args: Some(vec!["arg1".to_string(), "arg2".to_string()]),
+            working_dir: Some("/tmp".to_string()),
+            env: Some(env),
+            timeout_ms: Some(5000),
+            enable_stdin: Some(true),
+            ready_indicator: Some("READY".to_string()),
+            ready_indicator_source: Some(StreamSource::Stderr),
+        };
+
+        // Convert to FlatBuffer
+        let mut builder = flatbuffers::FlatBufferBuilder::new();
+        let fb_config = original_config.to_flatbuffers(&mut builder);
+        builder.finish(fb_config, None);
+
+        // Get bytes and create new FlatBuffer instance
+        let bytes = builder.finished_data();
+        let fb_config = flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskConfig>(bytes).unwrap();
+
+        // Convert back to Rust
+        let converted_config = TaskConfig::try_from(fb_config).unwrap();
+
+        // Verify roundtrip
+        assert_eq!(original_config.command, converted_config.command);
+        assert_eq!(original_config.args, converted_config.args);
+        assert_eq!(original_config.working_dir, converted_config.working_dir);
+        assert_eq!(original_config.env, converted_config.env);
+        assert_eq!(original_config.timeout_ms, converted_config.timeout_ms);
+        assert_eq!(original_config.enable_stdin, converted_config.enable_stdin);
+        assert_eq!(original_config.ready_indicator, converted_config.ready_indicator);
+        assert_eq!(original_config.ready_indicator_source, converted_config.ready_indicator_source);
+    }
+
+    #[test]
+    fn test_task_config_minimal() {
+        let original_config = TaskConfig {
+            command: "minimal".to_string(),
+            args: None,
+            working_dir: None,
+            env: None,
+            timeout_ms: None,
+            enable_stdin: None,
+            ready_indicator: None,
+            ready_indicator_source: None,
+        };
+
+        // Convert to FlatBuffer and back
+        let mut builder = flatbuffers::FlatBufferBuilder::new();
+        let fb_config = original_config.to_flatbuffers(&mut builder);
+        builder.finish(fb_config, None);
+
+        let bytes = builder.finished_data();
+        let fb_config = flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskConfig>(bytes).unwrap();
+        let converted_config = TaskConfig::try_from(fb_config).unwrap();
+
+        assert_eq!(original_config.command, converted_config.command);
+        assert_eq!(original_config.args, converted_config.args);
+        assert_eq!(original_config.working_dir, converted_config.working_dir);
+        assert_eq!(original_config.env, converted_config.env);
+        assert_eq!(converted_config.timeout_ms, None); // 0 converts to None
+        assert_eq!(converted_config.enable_stdin, Some(false)); // default false
+        assert_eq!(original_config.ready_indicator, converted_config.ready_indicator);
+        assert_eq!(converted_config.ready_indicator_source, Some(StreamSource::Stdout)); // default
     }
 }
