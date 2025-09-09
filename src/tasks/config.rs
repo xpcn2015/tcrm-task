@@ -101,8 +101,8 @@ impl TaskConfig {
         self
     }
     /// Set the ready indicator for the task
-    pub fn ready_indicator(mut self, indicator: String) -> Self {
-        self.ready_indicator = Some(indicator);
+    pub fn ready_indicator(mut self, indicator: impl Into<String>) -> Self {
+        self.ready_indicator = Some(indicator.into());
         self
     }
 
