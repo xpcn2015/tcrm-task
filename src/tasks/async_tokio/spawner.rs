@@ -192,6 +192,24 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn task_spawner_update_state_to_ready_sets_ready() {
+        let config = TaskConfig::new("echo");
+        let spawner = TaskSpawner::new("ready_method_task".to_string(), config);
+        assert!(!spawner.is_ready().await, "Should not be ready initially");
+        spawner.update_state_to_ready().await;
+        assert!(
+            spawner.is_ready().await,
+            "Should be ready after update_state_to_ready()"
+        );
+        let state = spawner.get_state().await;
+        assert_eq!(
+            state,
+            TaskState::Ready,
+            "State should be Ready after update_state_to_ready()"
+        );
+    }
+
+    #[tokio::test]
     async fn task_spawner_is_ready_returns_true_when_state_ready() {
         let config = TaskConfig::new("echo");
         let spawner = TaskSpawner::new("ready_task".to_string(), config);
