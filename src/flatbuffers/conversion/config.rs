@@ -44,6 +44,8 @@ impl<'a> TryFrom<tcrm_task_generated::tcrm::task::TaskConfig<'a>> for TaskConfig
                 .filter_map(|entry| Some((entry.key().to_string(), entry.value().to_string())))
                 .collect::<HashMap<_, _>>()
         });
+        let ready_indicator = fb_config.ready_indicator().map(|s| s.to_string());
+        let ready_indicator_source = fb_config.ready_indicator_source().try_into().ok();
 
         Ok(TaskConfig {
             command,
@@ -56,6 +58,8 @@ impl<'a> TryFrom<tcrm_task_generated::tcrm::task::TaskConfig<'a>> for TaskConfig
                 Some(fb_config.timeout_ms())
             },
             enable_stdin: Some(fb_config.enable_stdin()),
+            ready_indicator,
+            ready_indicator_source,
         })
     }
 }
@@ -93,6 +97,11 @@ impl TaskConfig {
             builder.create_vector(&env_offsets)
         });
 
+        let ready_indicator_offset = self
+            .ready_indicator
+            .as_ref()
+            .map(|s| builder.create_string(s));
+
         // Build TaskConfig table
         tcrm_task_generated::tcrm::task::TaskConfig::create(
             builder,
@@ -103,6 +112,12 @@ impl TaskConfig {
                 env: env_vec,
                 timeout_ms: self.timeout_ms.unwrap_or_default(),
                 enable_stdin: self.enable_stdin.unwrap_or_default(),
+                ready_indicator: ready_indicator_offset,
+                ready_indicator_source: self
+                    .ready_indicator_source
+                    .clone()
+                    .unwrap_or_default()
+                    .into(),
             },
         )
     }

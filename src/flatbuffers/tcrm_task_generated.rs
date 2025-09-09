@@ -692,6 +692,8 @@ pub mod tcrm {
             pub const VT_ENV: flatbuffers::VOffsetT = 10;
             pub const VT_TIMEOUT_MS: flatbuffers::VOffsetT = 12;
             pub const VT_ENABLE_STDIN: flatbuffers::VOffsetT = 14;
+            pub const VT_READY_INDICATOR: flatbuffers::VOffsetT = 16;
+            pub const VT_READY_INDICATOR_SOURCE: flatbuffers::VOffsetT = 18;
 
             #[inline]
             pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -709,6 +711,9 @@ pub mod tcrm {
             ) -> flatbuffers::WIPOffset<TaskConfig<'bldr>> {
                 let mut builder = TaskConfigBuilder::new(_fbb);
                 builder.add_timeout_ms(args.timeout_ms);
+                if let Some(x) = args.ready_indicator {
+                    builder.add_ready_indicator(x);
+                }
                 if let Some(x) = args.env {
                     builder.add_env(x);
                 }
@@ -721,6 +726,7 @@ pub mod tcrm {
                 if let Some(x) = args.command {
                     builder.add_command(x);
                 }
+                builder.add_ready_indicator_source(args.ready_indicator_source);
                 builder.add_enable_stdin(args.enable_stdin);
                 builder.finish()
             }
@@ -796,6 +802,32 @@ pub mod tcrm {
                         .unwrap()
                 }
             }
+            #[inline]
+            pub fn ready_indicator(&self) -> Option<&'a str> {
+                // Safety:
+                // Created from valid Table for this object
+                // which contains a valid value in this slot
+                unsafe {
+                    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(
+                        TaskConfig::VT_READY_INDICATOR,
+                        None,
+                    )
+                }
+            }
+            #[inline]
+            pub fn ready_indicator_source(&self) -> StreamSource {
+                // Safety:
+                // Created from valid Table for this object
+                // which contains a valid value in this slot
+                unsafe {
+                    self._tab
+                        .get::<StreamSource>(
+                            TaskConfig::VT_READY_INDICATOR_SOURCE,
+                            Some(StreamSource::Stdout),
+                        )
+                        .unwrap()
+                }
+            }
         }
 
         impl flatbuffers::Verifiable for TaskConfig<'_> {
@@ -824,6 +856,16 @@ pub mod tcrm {
                     >>("env", Self::VT_ENV, false)?
                     .visit_field::<u64>("timeout_ms", Self::VT_TIMEOUT_MS, false)?
                     .visit_field::<bool>("enable_stdin", Self::VT_ENABLE_STDIN, false)?
+                    .visit_field::<flatbuffers::ForwardsUOffset<&str>>(
+                        "ready_indicator",
+                        Self::VT_READY_INDICATOR,
+                        false,
+                    )?
+                    .visit_field::<StreamSource>(
+                        "ready_indicator_source",
+                        Self::VT_READY_INDICATOR_SOURCE,
+                        false,
+                    )?
                     .finish();
                 Ok(())
             }
@@ -843,6 +885,8 @@ pub mod tcrm {
             >,
             pub timeout_ms: u64,
             pub enable_stdin: bool,
+            pub ready_indicator: Option<flatbuffers::WIPOffset<&'a str>>,
+            pub ready_indicator_source: StreamSource,
         }
         impl<'a> Default for TaskConfigArgs<'a> {
             #[inline]
@@ -854,6 +898,8 @@ pub mod tcrm {
                     env: None,
                     timeout_ms: 0,
                     enable_stdin: false,
+                    ready_indicator: None,
+                    ready_indicator_source: StreamSource::Stdout,
                 }
             }
         }
@@ -906,6 +952,24 @@ pub mod tcrm {
                     .push_slot::<bool>(TaskConfig::VT_ENABLE_STDIN, enable_stdin, false);
             }
             #[inline]
+            pub fn add_ready_indicator(
+                &mut self,
+                ready_indicator: flatbuffers::WIPOffset<&'b str>,
+            ) {
+                self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
+                    TaskConfig::VT_READY_INDICATOR,
+                    ready_indicator,
+                );
+            }
+            #[inline]
+            pub fn add_ready_indicator_source(&mut self, ready_indicator_source: StreamSource) {
+                self.fbb_.push_slot::<StreamSource>(
+                    TaskConfig::VT_READY_INDICATOR_SOURCE,
+                    ready_indicator_source,
+                    StreamSource::Stdout,
+                );
+            }
+            #[inline]
             pub fn new(
                 _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
             ) -> TaskConfigBuilder<'a, 'b, A> {
@@ -932,6 +996,8 @@ pub mod tcrm {
                 ds.field("env", &self.env());
                 ds.field("timeout_ms", &self.timeout_ms());
                 ds.field("enable_stdin", &self.enable_stdin());
+                ds.field("ready_indicator", &self.ready_indicator());
+                ds.field("ready_indicator_source", &self.ready_indicator_source());
                 ds.finish()
             }
         }

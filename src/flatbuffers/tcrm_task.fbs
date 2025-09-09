@@ -15,6 +15,9 @@ table TaskConfig {
   env: [EnvEntry];
   timeout_ms: ulong;
   enable_stdin: bool = false;
+  ready_indicator: string;
+  ready_indicator_source: StreamSource = Stdout;
+
 }
 
 table EnvEntry {

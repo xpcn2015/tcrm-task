@@ -23,6 +23,12 @@ pub struct TaskConfig {
 
     /// Allow providing input to the task via stdin
     pub enable_stdin: Option<bool>,
+
+    /// Optional string to indicate the task is ready (for long-running processes like servers)
+    pub ready_indicator: Option<String>,
+
+    /// Source of the ready indicator string (stdout/stderr)
+    pub ready_indicator_source: Option<StreamSource>,
 }
 
 pub type SharedTaskConfig = Arc<TaskConfig>;
@@ -35,6 +41,8 @@ impl Default for TaskConfig {
             env: None,
             timeout_ms: None,
             enable_stdin: Some(false),
+            ready_indicator: None,
+            ready_indicator_source: Some(StreamSource::Stdout),
         }
     }
 }
@@ -92,6 +100,17 @@ impl TaskConfig {
         self.enable_stdin = Some(b);
         self
     }
+    /// Set the ready indicator for the task
+    pub fn ready_indicator(mut self, indicator: String) -> Self {
+        self.ready_indicator = Some(indicator);
+        self
+    }
+
+    /// Set the source of the ready indicator
+    pub fn ready_indicator_source(mut self, source: StreamSource) -> Self {
+        self.ready_indicator_source = Some(source);
+        self
+    }
 
     /// Validate the configuration
     ///
@@ -130,6 +149,15 @@ impl TaskConfig {
             return Err(TaskError::InvalidConfiguration(
                 "Command length exceeds maximum allowed length".to_string(),
             ));
+        }
+
+        // Validate ready_indicator
+        if let Some(indicator) = &self.ready_indicator {
+            if indicator.is_empty() {
+                return Err(TaskError::InvalidConfiguration(
+                    "ready_indicator cannot be empty string".to_string(),
+                ));
+            }
         }
 
         // Validate arguments
@@ -395,8 +423,25 @@ mod tests {
         env.insert("KEY".to_string(), "some value".to_string());
         let config = TaskConfig::new("echo").env(env);
         assert!(config.validate().is_ok());
-    }
 
+        // ready_indicator: empty string should fail
+        let mut config = TaskConfig::new("echo");
+        config.ready_indicator = Some(String::new());
+        assert!(matches!(
+            config.validate(),
+            Err(TaskError::InvalidConfiguration(_))
+        ));
+
+        // ready_indicator: leading/trailing spaces should pass
+        let mut config = TaskConfig::new("echo");
+        config.ready_indicator = Some("  READY  ".to_string());
+        assert!(config.validate().is_ok());
+
+        // ready_indicator: normal string should pass
+        let mut config = TaskConfig::new("echo");
+        config.ready_indicator = Some("READY".to_string());
+        assert!(config.validate().is_ok());
+    }
     #[test]
     fn config_builder() {
         let config = TaskConfig::new("cargo")

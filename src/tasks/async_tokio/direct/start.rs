@@ -109,6 +109,8 @@ impl TaskSpawner {
             event_tx.clone(),
             &mut child,
             handle_terminator_rx.clone(),
+            self.config.ready_indicator.clone(),
+            self.config.ready_indicator_source.clone(),
         );
         task_handles.extend(handles);
 
@@ -155,6 +157,97 @@ impl TaskSpawner {
 
 #[cfg(test)]
 mod tests {
+    #[tokio::test]
+    async fn start_direct_ready_indicator_source_stdout() {
+        let (tx, mut rx) = mpsc::channel::<TaskEvent>(1024);
+        #[cfg(windows)]
+        let config = TaskConfig::new("powershell")
+            .args(["-Command", "Write-Output 'READY_INDICATOR'"])
+            .ready_indicator("READY_INDICATOR".to_string())
+            .ready_indicator_source(StreamSource::Stdout);
+        #[cfg(unix)]
+        let config = TaskConfig::new("bash")
+            .args(["-c", "echo READY_INDICATOR"])
+            .ready_indicator("READY_INDICATOR".to_string())
+            .ready_indicator_source(StreamSource::Stdout);
+
+        let mut spawner = TaskSpawner::new("ready_stdout_task".to_string(), config);
+        let result = spawner.start_direct(tx).await;
+        assert!(result.is_ok());
+
+        let mut ready_event = false;
+        while let Some(event) = rx.recv().await {
+            if let TaskEvent::Ready { task_name } = event {
+                assert_eq!(task_name, "ready_stdout_task");
+                ready_event = true;
+            }
+        }
+        assert!(
+            ready_event,
+            "Should emit Ready event when indicator is in stdout"
+        );
+    }
+
+    #[tokio::test]
+    async fn start_direct_ready_indicator_source_stderr() {
+        let (tx, mut rx) = mpsc::channel::<TaskEvent>(1024);
+        #[cfg(windows)]
+        let config = TaskConfig::new("powershell")
+            .args(["-Command", "Write-Error 'READY_INDICATOR'"])
+            .ready_indicator("READY_INDICATOR".to_string())
+            .ready_indicator_source(StreamSource::Stderr);
+        #[cfg(unix)]
+        let config = TaskConfig::new("bash")
+            .args(["-c", "echo READY_INDICATOR 1>&2"])
+            .ready_indicator("READY_INDICATOR".to_string())
+            .ready_indicator_source(StreamSource::Stderr);
+
+        let mut spawner = TaskSpawner::new("ready_stderr_task".to_string(), config);
+        let result = spawner.start_direct(tx).await;
+        assert!(result.is_ok());
+
+        let mut ready_event = false;
+        while let Some(event) = rx.recv().await {
+            if let TaskEvent::Ready { task_name } = event {
+                assert_eq!(task_name, "ready_stderr_task");
+                ready_event = true;
+            }
+        }
+        assert!(
+            ready_event,
+            "Should emit Ready event when indicator is in stderr"
+        );
+    }
+
+    #[tokio::test]
+    async fn start_direct_ready_indicator_source_mismatch() {
+        let (tx, mut rx) = mpsc::channel::<TaskEvent>(1024);
+        #[cfg(windows)]
+        let config = TaskConfig::new("powershell")
+            .args(["-Command", "Write-Output 'READY_INDICATOR'"])
+            .ready_indicator("READY_INDICATOR".to_string())
+            .ready_indicator_source(StreamSource::Stderr);
+        #[cfg(unix)]
+        let config = TaskConfig::new("bash")
+            .args(["-c", "echo READY_INDICATOR"])
+            .ready_indicator("READY_INDICATOR".to_string())
+            .ready_indicator_source(StreamSource::Stderr);
+
+        let mut spawner = TaskSpawner::new("ready_mismatch_task".to_string(), config);
+        let result = spawner.start_direct(tx).await;
+        assert!(result.is_ok());
+
+        let mut ready_event = false;
+        while let Some(event) = rx.recv().await {
+            if let TaskEvent::Ready { .. } = event {
+                ready_event = true;
+            }
+        }
+        assert!(
+            !ready_event,
+            "Should NOT emit Ready event if indicator is in wrong stream"
+        );
+    }
     use tokio::sync::mpsc;
 
     use crate::tasks::{

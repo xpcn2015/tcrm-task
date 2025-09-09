@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 (2025/09/09)
+### Added
+- Introduced `TaskConfig::ready_indicator` and `TaskConfig::ready_indicator_source` fields to support readiness detection from process output (stdout or stderr).
+- Integration and unit tests for ready indicator and source logic, ensuring `TaskEvent::Ready` is only emitted when the indicator appears in the configured stream.
+
+### Changed
+- Removed `TaskSpawner::update_state_to_ready`; task state transitions are now managed exclusively by the task internals.
+
 ## 0.2.3 (2025/09/09)
 ### Fixed
 - Ensure `TaskState` is set to `Finished` if an error occurs during `start_direct` (configuration, process spawn, or process id failure)
