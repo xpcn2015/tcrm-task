@@ -144,6 +144,17 @@ mod tests {
             }
         }
     }
+        #[test]
+        fn test_flatbuffer_direct_read() {
+            let error = TaskError::Channel("direct_channel_error".to_string());
+            let mut builder = flatbuffers::FlatBufferBuilder::new();
+            let fb_error = error.to_flatbuffers(&mut builder);
+            builder.finish(fb_error, None);
+            let bytes = builder.finished_data();
+            let fb = flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskError>(bytes).unwrap();
+            assert_eq!(fb.kind(), tcrm_task_generated::tcrm::task::TaskErrorType::Channel);
+            assert_eq!(fb.message().unwrap(), "direct_channel_error");
+        }
 
     #[test]
     fn test_conversion_error_display() {

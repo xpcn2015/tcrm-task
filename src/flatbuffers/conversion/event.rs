@@ -286,7 +286,23 @@ mod tests {
             tcrm_task_generated::tcrm::task::TaskEvent::Output
         );
     }
-
+    #[test]
+    fn test_flatbuffer_direct_read_started_event() {
+        let mut builder = flatbuffers::FlatBufferBuilder::new();
+        let event = TaskEvent::Started {
+            task_name: "direct_event_task".to_string(),
+        };
+        let (fb_event_type, offset) = event.to_flatbuffers(&mut builder);
+        builder.finish(offset, None);
+        let bytes = builder.finished_data();
+        assert_eq!(
+            fb_event_type,
+            tcrm_task_generated::tcrm::task::TaskEvent::Started
+        );
+        let started_event =
+            flatbuffers::root::<tcrm_task_generated::tcrm::task::StartedEvent>(bytes).unwrap();
+        assert_eq!(started_event.task_name(), "direct_event_task");
+    }
     #[test]
     fn test_task_event_stopped_with_exit_code() {
         let mut builder = flatbuffers::FlatBufferBuilder::new();

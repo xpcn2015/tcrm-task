@@ -175,7 +175,8 @@ mod tests {
 
         // Get bytes and create new FlatBuffer instance
         let bytes = builder.finished_data();
-        let fb_config = flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskConfig>(bytes).unwrap();
+        let fb_config =
+            flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskConfig>(bytes).unwrap();
 
         // Convert back to Rust
         let converted_config = TaskConfig::try_from(fb_config).unwrap();
@@ -187,8 +188,14 @@ mod tests {
         assert_eq!(original_config.env, converted_config.env);
         assert_eq!(original_config.timeout_ms, converted_config.timeout_ms);
         assert_eq!(original_config.enable_stdin, converted_config.enable_stdin);
-        assert_eq!(original_config.ready_indicator, converted_config.ready_indicator);
-        assert_eq!(original_config.ready_indicator_source, converted_config.ready_indicator_source);
+        assert_eq!(
+            original_config.ready_indicator,
+            converted_config.ready_indicator
+        );
+        assert_eq!(
+            original_config.ready_indicator_source,
+            converted_config.ready_indicator_source
+        );
     }
 
     #[test]
@@ -210,7 +217,8 @@ mod tests {
         builder.finish(fb_config, None);
 
         let bytes = builder.finished_data();
-        let fb_config = flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskConfig>(bytes).unwrap();
+        let fb_config =
+            flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskConfig>(bytes).unwrap();
         let converted_config = TaskConfig::try_from(fb_config).unwrap();
 
         assert_eq!(original_config.command, converted_config.command);
@@ -219,7 +227,13 @@ mod tests {
         assert_eq!(original_config.env, converted_config.env);
         assert_eq!(converted_config.timeout_ms, None); // 0 converts to None
         assert_eq!(converted_config.enable_stdin, Some(false)); // default false
-        assert_eq!(original_config.ready_indicator, converted_config.ready_indicator);
-        assert_eq!(converted_config.ready_indicator_source, Some(StreamSource::Stdout)); // default
+        assert_eq!(
+            original_config.ready_indicator,
+            converted_config.ready_indicator
+        );
+        assert_eq!(
+            converted_config.ready_indicator_source,
+            Some(StreamSource::Stdout)
+        ); // default
     }
 }
