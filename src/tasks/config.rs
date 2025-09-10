@@ -264,8 +264,8 @@ impl TaskConfig {
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
 #[derive(Debug, Clone, PartialEq)]
-#[serde(rename_all = "lowercase")]
 pub enum StreamSource {
     Stdout = 0,
     Stderr = 1,
