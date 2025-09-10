@@ -144,18 +144,122 @@ mod tests {
             }
         }
     }
-        #[test]
-        fn test_flatbuffer_direct_read() {
-            let error = TaskError::Channel("direct_channel_error".to_string());
+    #[test]
+    fn test_flatbuffer_direct_read() {
+        let error = TaskError::Channel("direct_channel_error".to_string());
+        let mut builder = flatbuffers::FlatBufferBuilder::new();
+        let fb_error = error.to_flatbuffers(&mut builder);
+        builder.finish(fb_error, None);
+        let bytes = builder.finished_data();
+        let fb = flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskError>(bytes).unwrap();
+        assert_eq!(
+            fb.kind(),
+            tcrm_task_generated::tcrm::task::TaskErrorType::Channel
+        );
+        assert_eq!(fb.message().unwrap(), "direct_channel_error");
+    }
+
+    #[test]
+    fn test_flatbuffer_direct_read_all_error_types() {
+        let errors = vec![
+            (
+                TaskError::IO("io test".to_string()),
+                tcrm_task_generated::tcrm::task::TaskErrorType::IO,
+            ),
+            (
+                TaskError::Handle("handle test".to_string()),
+                tcrm_task_generated::tcrm::task::TaskErrorType::Handle,
+            ),
+            (
+                TaskError::Channel("channel test".to_string()),
+                tcrm_task_generated::tcrm::task::TaskErrorType::Channel,
+            ),
+            (
+                TaskError::InvalidConfiguration("config test".to_string()),
+                tcrm_task_generated::tcrm::task::TaskErrorType::InvalidConfiguration,
+            ),
+            (
+                TaskError::Custom("custom test".to_string()),
+                tcrm_task_generated::tcrm::task::TaskErrorType::Custom,
+            ),
+        ];
+
+        for (error, expected_type) in errors {
             let mut builder = flatbuffers::FlatBufferBuilder::new();
             let fb_error = error.to_flatbuffers(&mut builder);
             builder.finish(fb_error, None);
             let bytes = builder.finished_data();
-            let fb = flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskError>(bytes).unwrap();
-            assert_eq!(fb.kind(), tcrm_task_generated::tcrm::task::TaskErrorType::Channel);
-            assert_eq!(fb.message().unwrap(), "direct_channel_error");
+            let fb =
+                flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskError>(bytes).unwrap();
+            assert_eq!(fb.kind(), expected_type);
+            assert!(fb.message().unwrap().contains("test"));
         }
+    }
 
+    #[test]
+    fn test_task_error_unicode_message() {
+        let error = TaskError::Custom("Unicode error: 测试错误 🚀".to_string());
+        let mut builder = flatbuffers::FlatBufferBuilder::new();
+        let fb_error = error.to_flatbuffers(&mut builder);
+        builder.finish(fb_error, None);
+        let bytes = builder.finished_data();
+        let fb = flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskError>(bytes).unwrap();
+
+        assert_eq!(fb.message().unwrap(), "Unicode error: 测试错误 🚀");
+
+        let converted = TaskError::from_flatbuffers(fb).unwrap();
+        if let TaskError::Custom(msg) = converted {
+            assert_eq!(msg, "Unicode error: 测试错误 🚀");
+        } else {
+            panic!("Expected Custom error");
+        }
+    }
+
+    #[test]
+    fn test_task_error_empty_message() {
+        let error = TaskError::Custom("".to_string());
+        let mut builder = flatbuffers::FlatBufferBuilder::new();
+        let fb_error = error.to_flatbuffers(&mut builder);
+        builder.finish(fb_error, None);
+        let bytes = builder.finished_data();
+        let fb = flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskError>(bytes).unwrap();
+
+        assert_eq!(fb.message().unwrap(), "");
+
+        let converted = TaskError::from_flatbuffers(fb).unwrap();
+        if let TaskError::Custom(msg) = converted {
+            assert_eq!(msg, "");
+        } else {
+            panic!("Expected Custom error");
+        }
+    }
+
+    #[test]
+    fn test_task_error_long_message() {
+        let long_msg = "a".repeat(10000);
+        let error = TaskError::IO(long_msg.clone());
+        let mut builder = flatbuffers::FlatBufferBuilder::new();
+        let fb_error = error.to_flatbuffers(&mut builder);
+        builder.finish(fb_error, None);
+        let bytes = builder.finished_data();
+        let fb = flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskError>(bytes).unwrap();
+
+        assert_eq!(fb.message().unwrap(), long_msg);
+
+        let converted = TaskError::from_flatbuffers(fb).unwrap();
+        if let TaskError::IO(msg) = converted {
+            assert_eq!(msg, long_msg);
+        } else {
+            panic!("Expected IO error");
+        }
+    }
+
+    #[test]
+    fn test_conversion_error_invalid_error_type() {
+        // Test the error display for invalid error types
+        let error = ConversionError::InvalidTaskErrorType(99);
+        assert_eq!(error.to_string(), "Invalid TaskErrorType value: 99");
+    }
     #[test]
     fn test_conversion_error_display() {
         let errors = vec![

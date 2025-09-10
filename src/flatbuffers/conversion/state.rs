@@ -271,4 +271,89 @@ mod tests {
             tcrm_task_generated::tcrm::task::TaskEventStopReason::TerminatedCustom
         );
     }
+
+    #[test]
+    fn test_flatbuffer_direct_read_all_states() {
+        let states = vec![
+            (TaskState::Pending, tcrm_task_generated::tcrm::task::TaskState::Pending),
+            (TaskState::Initiating, tcrm_task_generated::tcrm::task::TaskState::Initiating),
+            (TaskState::Running, tcrm_task_generated::tcrm::task::TaskState::Running),
+            (TaskState::Ready, tcrm_task_generated::tcrm::task::TaskState::Ready),
+            (TaskState::Finished, tcrm_task_generated::tcrm::task::TaskState::Finished),
+        ];
+
+        for (state, expected_fb_state) in states {
+            let fb_state: tcrm_task_generated::tcrm::task::TaskState = state.clone().into();
+            assert_eq!(fb_state, expected_fb_state);
+            assert_eq!(fb_state.0, expected_fb_state.0);
+            
+            let converted_back: TaskState = fb_state.try_into().unwrap();
+            assert_eq!(state, converted_back);
+        }
+    }
+
+    #[test]
+    fn test_task_terminate_reason_unicode_custom() {
+        let unicode_msg = "Unicode message: 终止原因 🛑";
+        let reason = TaskTerminateReason::Custom(unicode_msg.to_string());
+        
+        let mut builder = flatbuffers::FlatBufferBuilder::new();
+        let (fb_reason, _offset) = reason.to_flatbuffers(&mut builder);
+        
+        assert_eq!(fb_reason, tcrm_task_generated::tcrm::task::TaskTerminateReason::Custom);
+    }
+
+    #[test]
+    fn test_task_terminate_reason_empty_custom() {
+        let reason = TaskTerminateReason::Custom("".to_string());
+        
+        let mut builder = flatbuffers::FlatBufferBuilder::new();
+        let (fb_reason, _offset) = reason.to_flatbuffers(&mut builder);
+        
+        assert_eq!(fb_reason, tcrm_task_generated::tcrm::task::TaskTerminateReason::Custom);
+    }
+
+    #[test]
+    fn test_task_terminate_reason_large_custom() {
+        let large_msg = "a".repeat(10000);
+        let reason = TaskTerminateReason::Custom(large_msg.clone());
+        
+        let mut builder = flatbuffers::FlatBufferBuilder::new();
+        let (fb_reason, _offset) = reason.to_flatbuffers(&mut builder);
+        
+        assert_eq!(fb_reason, tcrm_task_generated::tcrm::task::TaskTerminateReason::Custom);
+    }
+
+    #[test]
+    fn test_multiple_state_conversions() {
+        for _ in 0..100 {
+            for state in &[
+                TaskState::Pending,
+                TaskState::Initiating,
+                TaskState::Running,
+                TaskState::Ready,
+                TaskState::Finished,
+            ] {
+                let fb_state: tcrm_task_generated::tcrm::task::TaskState = state.clone().into();
+                let converted_back: TaskState = fb_state.try_into().unwrap();
+                assert_eq!(state, &converted_back);
+            }
+        }
+    }
+
+    #[test]
+    fn test_all_terminate_reasons_to_flatbuffers_terminated() {
+        let reasons = vec![
+            (TaskTerminateReason::Timeout, tcrm_task_generated::tcrm::task::TaskEventStopReason::TerminatedTimeout),
+            (TaskTerminateReason::Cleanup, tcrm_task_generated::tcrm::task::TaskEventStopReason::TerminatedCleanup),
+            (TaskTerminateReason::DependenciesFinished, tcrm_task_generated::tcrm::task::TaskEventStopReason::TerminatedDependenciesFinished),
+            (TaskTerminateReason::Custom("test".to_string()), tcrm_task_generated::tcrm::task::TaskEventStopReason::TerminatedCustom),
+        ];
+
+        for (reason, expected_stop_reason) in reasons {
+            let mut builder = flatbuffers::FlatBufferBuilder::new();
+            let (stop_reason, _offset) = reason.to_flatbuffers_terminated(&mut builder);
+            assert_eq!(stop_reason, expected_stop_reason);
+        }
+    }
 }
