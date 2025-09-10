@@ -8,13 +8,22 @@ use crate::tasks::error::TaskError;
 use crate::tasks::state::TaskTerminateReason;
 use crate::tasks::{config::TaskConfig, state::TaskState};
 
+// TODO: Consider adding serde support for TaskInfo, not skipping Instant fields
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone)]
 pub struct TaskInfo {
     pub name: String,
     pub state: TaskState,
     pub uptime: Duration,
+    #[cfg_attr(feature = "serde", serde(skip, default = "default_instant"))]
     pub created_at: Instant,
+    #[cfg_attr(feature = "serde", serde(skip, default))]
     pub finished_at: Option<Instant>,
+}
+
+#[cfg(feature = "serde")]
+fn default_instant() -> Instant {
+    Instant::now()
 }
 /// Spawns and manages the lifecycle of a task
 #[derive(Debug)]
@@ -164,13 +173,14 @@ pub(crate) async fn join_all_handles(
 #[cfg(test)]
 mod tests {
     use std::time::Duration;
-
+    use tokio::sync::mpsc;
     use tokio::time::sleep;
 
     use crate::tasks::{
         async_tokio::spawner::{TaskInfo, TaskSpawner},
         config::TaskConfig,
-        state::TaskState,
+        error::TaskError,
+        state::{TaskState, TaskTerminateReason},
     };
 
     #[tokio::test]
@@ -233,5 +243,54 @@ mod tests {
         assert_eq!(info.name, "info_task");
         assert_eq!(info.state, TaskState::Pending);
         assert!(info.uptime >= Duration::ZERO);
+    }
+
+    #[tokio::test]
+    async fn task_spawner_process_id_initially_none() {
+        let config = TaskConfig::new("echo");
+        let spawner = TaskSpawner::new("process_id_task".to_string(), config);
+        assert_eq!(spawner.get_process_id().await, None);
+    }
+
+    #[tokio::test]
+    async fn task_spawner_stdin_disabled_ignores_channel() {
+        let config = TaskConfig::new("echo").enable_stdin(false);
+        let (_, rx) = mpsc::channel(100);
+
+        let spawner = TaskSpawner::new("no_stdin".to_string(), config).set_stdin(rx);
+        assert!(spawner.stdin_rx.is_none());
+    }
+
+    #[tokio::test]
+    async fn task_spawner_send_terminate_signal_no_channel() {
+        let config = TaskConfig::new("echo");
+        let spawner = TaskSpawner::new("no_channel".to_string(), config);
+
+        let result = spawner
+            .send_terminate_signal(TaskTerminateReason::Cleanup)
+            .await;
+        assert!(result.is_err());
+        if let Err(TaskError::Channel(msg)) = result {
+            assert_eq!(msg, "Terminate signal already sent or channel missing");
+        } else {
+            panic!("Expected Channel error");
+        }
+    }
+
+    // TODO: Consider adding serde support for TaskInfo, not skipping Instant fields
+    #[cfg(feature = "serde")]
+    #[tokio::test]
+    async fn task_info_serde() {
+        use serde_json;
+
+        let config = TaskConfig::new("echo");
+        let spawner = TaskSpawner::new("serde_task".to_string(), config);
+        let info = spawner.get_task_info().await;
+
+        // This should work even with Instant fields skipped
+        let serialized = serde_json::to_string(&info).unwrap();
+        println!("Serialized TaskInfo: {}", serialized);
+        assert!(serialized.contains("serde_task"));
+        assert!(serialized.contains("Pending"));
     }
 }
