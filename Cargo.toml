@@ -1,6 +1,6 @@
 [package]
 name = "tcrm-task"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2024"
 description = "Task execution unit for TCRM project"
 repository = "https://github.com/xpcn2015/tcrm-task"
@@ -14,6 +14,7 @@ exclude = [".vscode/*"]
 
 
 [dependencies]
+thiserror = "2.0"
 serde = { version = "1.0", features = ["derive"], optional = true }
 tokio = { version = "1.47", features = [
     "rt-multi-thread",
@@ -25,13 +26,12 @@ tokio = { version = "1.47", features = [
     "signal",
 ], optional = true }
 tracing = { version = "0.1", optional = true }
-thiserror = "2.0"
 flatbuffers = { version = "25.2", optional = true }
 
 [features]
 default = ["tokio"]
 tokio = ["dep:tokio"]
-flatbuffers = ["dep:flatbuffers", "serde"]
+flatbuffers = ["dep:flatbuffers"]
 serde = ["dep:serde"]
 tracing = ["dep:tracing"]
 tracing-release_max_level_off = ["tracing/release_max_level_off"]
