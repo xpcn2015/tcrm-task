@@ -1,10 +1,9 @@
-use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Arc};
 
 use crate::tasks::error::TaskError;
-
 /// Configuration for a task to be executed
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone)]
 pub struct TaskConfig {
     /// The command or executable to run
     pub command: String,
@@ -264,7 +263,8 @@ impl TaskConfig {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum StreamSource {
     Stdout = 0,

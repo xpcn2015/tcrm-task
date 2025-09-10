@@ -1,5 +1,5 @@
 use thiserror::Error;
-
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Error, Debug, Clone)]
 pub enum TaskError {
     #[error("IO error: {0}")]

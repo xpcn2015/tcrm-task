@@ -14,7 +14,7 @@ exclude = [".vscode/*"]
 
 
 [dependencies]
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"], optional = true }
 tokio = { version = "1.47", features = [
     "rt-multi-thread",
     "time",
@@ -31,7 +31,8 @@ flatbuffers = { version = "25.2", optional = true }
 [features]
 default = ["tokio"]
 tokio = ["dep:tokio"]
-flatbuffers = ["dep:flatbuffers"]
+flatbuffers = ["dep:flatbuffers", "serde"]
+serde = ["dep:serde"]
 tracing = ["dep:tracing"]
 tracing-release_max_level_off = ["tracing/release_max_level_off"]
 tracing-release_max_level_error = ["tracing/release_max_level_error"]

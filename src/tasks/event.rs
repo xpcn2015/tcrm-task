@@ -1,5 +1,5 @@
 use crate::tasks::{config::StreamSource, error::TaskError, state::TaskTerminateReason};
-
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone)]
 pub enum TaskEvent {
     Started {
@@ -23,6 +23,7 @@ pub enum TaskEvent {
         error: TaskError,
     },
 }
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq)]
 pub enum TaskEventStopReason {
     Finished,
