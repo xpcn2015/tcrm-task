@@ -49,7 +49,23 @@ tracing-max_level_trace = ["tracing/max_level_trace"]
 
 [dev-dependencies]
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
+criterion = { version = "0.7", features = ["html_reports"] }
+serde_json = "1.0"
 
 [[example]]
 name = "tracing_message"
 required-features = ["tracing"]
+
+[[bench]]
+name = "flatbuffers_conversion"
+harness = false
+required-features = ["flatbuffers"]
+
+[[bench]]
+name = "task_config"
+harness = false
+
+[[bench]]
+name = "task_spawner"
+harness = false
+required-features = ["tokio"]
