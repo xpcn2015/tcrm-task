@@ -1,7 +1,7 @@
 use crate::{flatbuffers::tcrm_task_generated, tasks::error::TaskError};
 
-#[derive(Debug)]
-
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone)]
 pub enum ConversionError {
     InvalidStreamSource(i8),
     InvalidTaskShell(i8),
