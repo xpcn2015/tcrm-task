@@ -8,7 +8,7 @@ readme = "README.md"
 license = "MIT OR Apache-2.0"
 documentation = "https://docs.rs/tcrm-task"
 homepage = "https://github.com/xpcn2015/tcrm-task"
-keywords = ["async", "task", "tokio", "process", "tcrm"]
+keywords = ["task", "process", "tcrm"]
 categories = ["asynchronous", "command-line-utilities", "concurrency"]
 exclude = [".vscode/*"]
 
