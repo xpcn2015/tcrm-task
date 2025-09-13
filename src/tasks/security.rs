@@ -127,6 +127,13 @@ impl SecurityValidator {
                 ));
             }
 
+            if key.contains(' ') {
+                return Err(TaskError::InvalidConfiguration(format!(
+                    "Environment variable key '{}' cannot contain spaces",
+                    key
+                )));
+            }
+
             if key.len() > MAX_ENV_KEY_LEN {
                 return Err(TaskError::InvalidConfiguration(format!(
                     "Environment variable key '{}' exceeds maximum length",
