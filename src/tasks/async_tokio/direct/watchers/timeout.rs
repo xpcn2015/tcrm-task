@@ -7,10 +7,19 @@ use tokio::{
 
 use crate::{helper::tracing::MaybeInstrument, tasks::state::TaskTerminateReason};
 
-/// Spawns a watcher that triggers a timeout after the specified duration
+/// Spawns a watcher that triggers a timeout after the specified duration.
 ///
-/// Sends a termination signal if the timeout elapses
-
+/// Sends a termination signal if the timeout elapses.
+///
+/// # Arguments
+///
+/// * `terminate_tx` - Sender for termination signals.
+/// * `timeout_ms` - Timeout duration in milliseconds.
+/// * `handle_terminator_rx` - Receiver to listen for termination signals.
+///
+/// # Returns
+///
+/// A `JoinHandle` for the spawned timeout watcher task.
 #[cfg_attr(feature = "tracing", tracing::instrument(skip(terminate_tx)))]
 pub(crate) fn spawn_timeout_watcher(
     terminate_tx: Arc<Mutex<Option<oneshot::Sender<TaskTerminateReason>>>>,

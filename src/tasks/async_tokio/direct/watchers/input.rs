@@ -11,6 +11,17 @@ use crate::helper::tracing::MaybeInstrument;
 /// Listens for lines from a channel and writes them to the child process's stdin
 ///
 /// Terminates when the channel is closed or a termination signal is received
+///
+/// # Arguments
+///
+/// * `stdin` - The stdin handle of the child process.
+/// * `stdin_rx` - Receiver channel for stdin input strings.
+/// * `handle_terminator_rx` - Receiver to listen for termination signals.
+///
+/// # Returns
+///
+/// A `JoinHandle` for the spawned stdin watcher task.
+/// ```
 #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
 pub(crate) fn spawn_stdin_watcher(
     mut stdin: ChildStdin,

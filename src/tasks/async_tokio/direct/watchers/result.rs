@@ -17,7 +17,20 @@ use crate::{
 
 /// Spawns a watcher that waits for the task result and updates state
 ///
-/// Joins all watcher handles and sends a `TaskEvent::Stopped` event
+/// Joins all watcher handles and sends a `TaskEvent::Stopped` event.
+///
+/// # Arguments
+///
+/// * `task_name` - Name of the task.
+/// * `state` - Shared state of the task.
+/// * `finished_arc` - Shared reference to the task's finished time.
+/// * `event_tx` - Sender for task events.
+/// * `result_rx` - Receiver for the process exit code and stop reason.
+/// * `task_handles` - Vector of watcher task handles to join.
+///
+/// # Returns
+///
+/// A `JoinHandle` for the spawned result watcher task.
 #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
 pub(crate) fn spawn_result_watcher(
     task_name: String,

@@ -12,9 +12,23 @@ use crate::{
     tasks::{config::StreamSource, event::TaskEvent, state::TaskState},
 };
 
-/// Spawns watchers for stdout and stderr of a child process
+/// Spawns watchers for stdout and stderr of a child process.
 ///
-/// Sends output lines as `TaskEvent::Output` events
+/// Sends output lines as `TaskEvent::Output` events.
+///
+/// # Arguments
+///
+/// * `task_name` - Name of the task.
+/// * `state` - Shared state of the task.
+/// * `event_tx` - Sender for task events.
+/// * `child` - The child process to monitor.
+/// * `handle_terminator_rx` - Receiver to listen for termination signals.
+/// * `ready_indicator` - Optional string indicating readiness.
+/// * `ready_indicator_source` - Optional source for the ready indicator (stdout or stderr).
+///
+/// # Returns
+///
+/// A vector of `JoinHandle` for the spawned watcher tasks.
 pub(crate) fn spawn_output_watchers(
     task_name: String,
     state: Arc<RwLock<TaskState>>,
@@ -58,9 +72,27 @@ pub(crate) fn spawn_output_watchers(
     handles
 }
 
-/// Spawns a watcher for a single output stream (stdout or stderr)
+/// Spawns a watcher for a single output stream (stdout or stderr).
 ///
-/// Each line is sent as a `TaskEvent::Output`
+/// Monitors the specified stream for output lines and ready indicators.
+/// Each line is sent as a `TaskEvent::Output` event. If a ready indicator
+/// is configured and matches the stream source, the task state is updated
+/// to `Ready` when the indicator text is found.
+///
+/// # Arguments
+///
+/// * `std` - The async readable stream to monitor.
+/// * `task_name` - Name of the task for event identification.
+/// * `state` - Shared task state for ready indicator updates.
+/// * `event_tx` - Channel sender for emitting task events.
+/// * `src` - Source stream type (stdout or stderr).
+/// * `handle_terminator_rx` - Receiver for termination signals.
+/// * `ready_indicator` - Optional text to watch for readiness.
+/// * `ready_indicator_source` - Stream source where ready indicator is expected.
+///
+/// # Returns
+///
+/// A `JoinHandle` for the spawned watcher task.
 #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, fields(stream = ?src)))]
 fn spawn_std_watcher<T>(
     std: T,

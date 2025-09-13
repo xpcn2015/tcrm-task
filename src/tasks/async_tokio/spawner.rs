@@ -45,6 +45,7 @@ pub struct TaskInfo {
 }
 
 #[cfg(feature = "serde")]
+/// Returns the current instant for serde default value.
 fn default_instant() -> Instant {
     Instant::now()
 }

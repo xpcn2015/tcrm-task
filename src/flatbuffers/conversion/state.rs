@@ -31,6 +31,18 @@ impl From<TaskState> for tcrm_task_generated::tcrm::task::TaskState {
 }
 
 impl TaskTerminateReason {
+    /// Converts the termination reason to FlatBuffers representation.
+    ///
+    /// Returns both the discriminant enum value and the associated union data
+    /// required for FlatBuffers union serialization.
+    ///
+    /// # Arguments
+    ///
+    /// * `builder` - FlatBuffers builder for creating the serialized data.
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing the discriminant enum and the union offset data.
     pub fn to_flatbuffers<'a>(
         &self,
         builder: &mut flatbuffers::FlatBufferBuilder<'a>,
@@ -85,6 +97,18 @@ impl TaskTerminateReason {
             }
         }
     }
+    /// Converts the termination reason to FlatBuffers terminated event representation.
+    ///
+    /// Similar to `to_flatbuffers` but creates the appropriate union data for
+    /// TaskEventStopReason when the task has been terminated.
+    ///
+    /// # Arguments
+    ///
+    /// * `builder` - FlatBuffers builder for creating the serialized data.
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing the stop reason discriminant and the union offset data.
     pub fn to_flatbuffers_terminated<'a>(
         &self,
         builder: &mut flatbuffers::FlatBufferBuilder<'a>,
@@ -275,18 +299,33 @@ mod tests {
     #[test]
     fn test_flatbuffer_direct_read_all_states() {
         let states = vec![
-            (TaskState::Pending, tcrm_task_generated::tcrm::task::TaskState::Pending),
-            (TaskState::Initiating, tcrm_task_generated::tcrm::task::TaskState::Initiating),
-            (TaskState::Running, tcrm_task_generated::tcrm::task::TaskState::Running),
-            (TaskState::Ready, tcrm_task_generated::tcrm::task::TaskState::Ready),
-            (TaskState::Finished, tcrm_task_generated::tcrm::task::TaskState::Finished),
+            (
+                TaskState::Pending,
+                tcrm_task_generated::tcrm::task::TaskState::Pending,
+            ),
+            (
+                TaskState::Initiating,
+                tcrm_task_generated::tcrm::task::TaskState::Initiating,
+            ),
+            (
+                TaskState::Running,
+                tcrm_task_generated::tcrm::task::TaskState::Running,
+            ),
+            (
+                TaskState::Ready,
+                tcrm_task_generated::tcrm::task::TaskState::Ready,
+            ),
+            (
+                TaskState::Finished,
+                tcrm_task_generated::tcrm::task::TaskState::Finished,
+            ),
         ];
 
         for (state, expected_fb_state) in states {
             let fb_state: tcrm_task_generated::tcrm::task::TaskState = state.clone().into();
             assert_eq!(fb_state, expected_fb_state);
             assert_eq!(fb_state.0, expected_fb_state.0);
-            
+
             let converted_back: TaskState = fb_state.try_into().unwrap();
             assert_eq!(state, converted_back);
         }
@@ -296,32 +335,41 @@ mod tests {
     fn test_task_terminate_reason_unicode_custom() {
         let unicode_msg = "Unicode message: 终止原因 🛑";
         let reason = TaskTerminateReason::Custom(unicode_msg.to_string());
-        
+
         let mut builder = flatbuffers::FlatBufferBuilder::new();
         let (fb_reason, _offset) = reason.to_flatbuffers(&mut builder);
-        
-        assert_eq!(fb_reason, tcrm_task_generated::tcrm::task::TaskTerminateReason::Custom);
+
+        assert_eq!(
+            fb_reason,
+            tcrm_task_generated::tcrm::task::TaskTerminateReason::Custom
+        );
     }
 
     #[test]
     fn test_task_terminate_reason_empty_custom() {
         let reason = TaskTerminateReason::Custom("".to_string());
-        
+
         let mut builder = flatbuffers::FlatBufferBuilder::new();
         let (fb_reason, _offset) = reason.to_flatbuffers(&mut builder);
-        
-        assert_eq!(fb_reason, tcrm_task_generated::tcrm::task::TaskTerminateReason::Custom);
+
+        assert_eq!(
+            fb_reason,
+            tcrm_task_generated::tcrm::task::TaskTerminateReason::Custom
+        );
     }
 
     #[test]
     fn test_task_terminate_reason_large_custom() {
         let large_msg = "a".repeat(10000);
         let reason = TaskTerminateReason::Custom(large_msg.clone());
-        
+
         let mut builder = flatbuffers::FlatBufferBuilder::new();
         let (fb_reason, _offset) = reason.to_flatbuffers(&mut builder);
-        
-        assert_eq!(fb_reason, tcrm_task_generated::tcrm::task::TaskTerminateReason::Custom);
+
+        assert_eq!(
+            fb_reason,
+            tcrm_task_generated::tcrm::task::TaskTerminateReason::Custom
+        );
     }
 
     #[test]

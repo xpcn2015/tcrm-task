@@ -14,9 +14,23 @@ use crate::{
     },
 };
 
-/// Spawns a watcher that waits for the child process to exit or be terminated
+/// Spawns a watcher that waits for the child process to exit or be terminated.
 ///
-/// Sends stop reason and signals other watchers to terminate
+/// Sends stop reason and signals other watchers to terminate.
+///
+/// # Arguments
+///
+/// * `task_name` - Name of the task.
+/// * `state` - Shared state of the task.
+/// * `child` - The child process to monitor.
+/// * `terminate_rx` - Receiver for termination signals.
+/// * `handle_terminator_tx` - Sender to signal other watchers to terminate.
+/// * `result_tx` - Sender for the process exit code and stop reason.
+/// * `process_id` - Shared process ID.
+///
+/// # Returns
+///
+/// A `JoinHandle` for the spawned watcher task.
 #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
 pub(crate) fn spawn_wait_watcher(
     task_name: String,

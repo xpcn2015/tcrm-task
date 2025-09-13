@@ -66,6 +66,18 @@ impl TaskError {
         }
     }
 
+    /// Converts the task error to FlatBuffers representation.
+    ///
+    /// Serializes both the error type discriminant and message content into
+    /// a FlatBuffers TaskError structure.
+    ///
+    /// # Arguments
+    ///
+    /// * `builder` - FlatBuffers builder for creating the serialized data.
+    ///
+    /// # Returns
+    ///
+    /// A FlatBuffers offset pointing to the serialized TaskError.
     pub fn to_flatbuffers<'a>(
         &self,
         builder: &mut flatbuffers::FlatBufferBuilder<'a>,

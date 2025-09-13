@@ -7,6 +7,11 @@ use crate::tasks::config::TaskConfig;
 /// Configures a `tokio::process::Command` based on the provided `TaskConfig`.
 ///
 /// Sets arguments, working directory, environment, and stdio options.
+///
+/// # Arguments
+///
+/// * `cmd` - The command to configure.
+/// * `config` - The task configuration to apply.
 pub(crate) fn setup_command(cmd: &mut Command, config: &TaskConfig) {
     // Setup additional arguments
     if let Some(args) = &config.args {

@@ -11,7 +11,27 @@ const MAX_ENV_VALUE_LEN: usize = 4096;
 pub struct SecurityValidator;
 
 impl SecurityValidator {
-    /// Validates command name
+    /// Validates command name for security and correctness.
+    ///
+    /// # Arguments
+    ///
+    /// * `command` - The command string to validate.
+    ///
+    /// # Returns
+    ///
+    /// - `Ok(())` if the command is valid.
+    /// - `Err(TaskError::InvalidConfiguration)` if the command is invalid.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tcrm_task::tasks::security::SecurityValidator;
+    ///
+    /// let valid_command = "echo Hello";
+    /// assert!(SecurityValidator::validate_command(valid_command).is_ok());
+    ///
+    /// let invalid_command = "\0";
+    /// assert!(SecurityValidator::validate_command(invalid_command).is_err());
+    /// ```
     pub fn validate_command(command: &str) -> Result<(), TaskError> {
         // Check for empty or whitespace-only commands
         if command.trim().is_empty() {
@@ -41,7 +61,27 @@ impl SecurityValidator {
         Ok(())
     }
 
-    /// Validates arguments for security issues
+    /// Validates arguments for security issues.
+    ///
+    /// # Arguments
+    ///
+    /// * `args` - A slice of argument strings to validate.
+    ///
+    /// # Returns
+    ///
+    /// - `Ok(())` if all arguments are valid.
+    /// - `Err(TaskError::InvalidConfiguration)` if any argument is invalid.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tcrm_task::tasks::security::SecurityValidator;
+    ///
+    /// let valid_args = vec!["arg1".to_string(), "arg2".to_string()];
+    /// assert!(SecurityValidator::validate_args(&valid_args).is_ok());
+    ///
+    /// let invalid_args = vec!["arg1".to_string(), "\0".to_string()];
+    /// assert!(SecurityValidator::validate_args(&invalid_args).is_err());
+    /// ```
     pub fn validate_args(args: &[String]) -> Result<(), TaskError> {
         for arg in args {
             // Only check for null bytes
@@ -71,7 +111,31 @@ impl SecurityValidator {
         Ok(())
     }
 
-    /// Validates working directory
+    /// Validates the working directory path.
+    ///
+    /// # Arguments
+    ///
+    /// * `dir` - The directory path to validate.
+    ///
+    /// # Returns
+    ///
+    /// - `Ok(())` if the directory is valid.
+    /// - `Err(TaskError::InvalidConfiguration)` if the directory is invalid.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tcrm_task::tasks::security::SecurityValidator;
+    /// use std::env;
+    ///
+    /// // Test with current directory (should exist)
+    /// let current_dir = env::current_dir().unwrap();
+    /// let valid_dir = current_dir.to_str().unwrap();
+    /// assert!(SecurityValidator::validate_working_dir(valid_dir).is_ok());
+    ///
+    /// // Test with nonexistent directory
+    /// let invalid_dir = "nonexistent_dir_12345";
+    /// assert!(SecurityValidator::validate_working_dir(invalid_dir).is_err());
+    /// ```
     pub fn validate_working_dir(dir: &str) -> Result<(), TaskError> {
         let path = Path::new(dir);
 
@@ -105,7 +169,30 @@ impl SecurityValidator {
         Ok(())
     }
 
-    /// Validates environment variables
+    /// Validates environment variables for security and correctness.
+    ///
+    /// # Arguments
+    ///
+    /// * `env` - A hashmap of environment variable key-value pairs to validate.
+    ///
+    /// # Returns
+    ///
+    /// - `Ok(())` if all environment variables are valid.
+    /// - `Err(TaskError::InvalidConfiguration)` if any environment variable is invalid.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tcrm_task::tasks::security::SecurityValidator;
+    /// use std::collections::HashMap;
+    ///
+    /// let mut valid_env = HashMap::new();
+    /// valid_env.insert("KEY".to_string(), "VALUE".to_string());
+    /// assert!(SecurityValidator::validate_env_vars(&valid_env).is_ok());
+    ///
+    /// let mut invalid_env = HashMap::new();
+    /// invalid_env.insert("KEY\0".to_string(), "VALUE".to_string());
+    /// assert!(SecurityValidator::validate_env_vars(&invalid_env).is_err());
+    /// ```
     pub fn validate_env_vars(env: &HashMap<String, String>) -> Result<(), TaskError> {
         for (key, value) in env {
             // Validate key
@@ -164,7 +251,19 @@ impl SecurityValidator {
         Ok(())
     }
 
-    /// Check for obvious injection attempts (but allow normal shell features)
+    /// Checks for obvious injection attempts while allowing normal shell features.
+    ///
+    /// This internal method identifies clearly malicious patterns without blocking
+    /// legitimate shell functionality. It focuses on patterns that are rarely used
+    /// in normal command execution.
+    ///
+    /// # Arguments
+    ///
+    /// * `input` - The command string to check for injection patterns.
+    ///
+    /// # Returns
+    ///
+    /// `true` if obvious injection patterns are detected, `false` otherwise.
     fn contains_obvious_injection(input: &str) -> bool {
         // Only block patterns that are clearly malicious, not functional shell features
         let obvious_injection_patterns = [
@@ -180,8 +279,32 @@ impl SecurityValidator {
             .any(|pattern| input.contains(pattern))
     }
 
-    /// Alternative: Strict validation for untrusted input sources
-    /// Use this when TaskConfig comes from external/untrusted sources
+    /// Validates command with strict security rules for untrusted input sources.
+    ///
+    /// This is an alternative to `validate_command` that blocks all shell features
+    /// and should be used when TaskConfig comes from external/untrusted sources.
+    ///
+    /// # Arguments
+    ///
+    /// * `command` - The command string to validate strictly.
+    ///
+    /// # Returns
+    ///
+    /// - `Ok(())` if the command passes strict validation.
+    /// - `Err(TaskError::InvalidConfiguration)` if the command contains potentially dangerous patterns.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tcrm_task::tasks::security::SecurityValidator;
+    ///
+    /// // Simple command should pass
+    /// let simple_command = "echo";
+    /// assert!(SecurityValidator::validate_command_strict(simple_command).is_ok());
+    ///
+    /// // Command with shell features should fail
+    /// let shell_command = "echo hello; rm -rf /";
+    /// assert!(SecurityValidator::validate_command_strict(shell_command).is_err());
+    /// ```
     #[allow(dead_code)]
     pub fn validate_command_strict(command: &str) -> Result<(), TaskError> {
         // Check for empty or whitespace-only commands

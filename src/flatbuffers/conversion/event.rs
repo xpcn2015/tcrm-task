@@ -4,6 +4,18 @@ use crate::{
 };
 
 impl TaskEvent {
+    /// Converts the task event to FlatBuffers representation.
+    ///
+    /// Returns both the discriminant enum value and the associated union data
+    /// required for FlatBuffers union serialization.
+    ///
+    /// # Arguments
+    ///
+    /// * `builder` - FlatBuffers builder for creating the serialized data.
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing the event discriminant and the union offset data.
     pub fn to_flatbuffers<'a>(
         &self,
         builder: &mut flatbuffers::FlatBufferBuilder<'a>,
@@ -99,6 +111,18 @@ impl TaskEvent {
 }
 
 impl TaskEventStopReason {
+    /// Converts the stop reason to FlatBuffers representation.
+    ///
+    /// Returns both the discriminant enum value and the associated union data
+    /// required for FlatBuffers union serialization.
+    ///
+    /// # Arguments
+    ///
+    /// * `builder` - FlatBuffers builder for creating the serialized data.
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing the stop reason discriminant and the union offset data.
     pub fn to_flatbuffers<'a>(
         &self,
         builder: &mut flatbuffers::FlatBufferBuilder<'a>,
