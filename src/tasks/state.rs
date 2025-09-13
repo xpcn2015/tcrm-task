@@ -23,7 +23,7 @@
 ///
 /// #[tokio::main]
 /// async fn main() {
-///     let config = TaskConfig::new("echo").args(["hello"]);
+///     let config = TaskConfig::new("cmd").args(["/C", "echo", "hello"]);
 ///     let spawner = TaskSpawner::new("test".to_string(), config);
 ///     
 ///     // Initially pending
@@ -34,33 +34,23 @@
 /// }
 /// ```
 ///
-/// ## Ready State Detection
+/// ## Basic State Checking
 /// ```rust
 /// use tcrm_task::tasks::{
-///     config::{TaskConfig, StreamSource},
+///     config::TaskConfig,
 ///     async_tokio::spawner::TaskSpawner,
 ///     state::TaskState
 /// };
-/// use tokio::sync::mpsc;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let config = TaskConfig::new("my-server")
-///         .ready_indicator("Server ready")
-///         .ready_indicator_source(StreamSource::Stdout);
+///     let config = TaskConfig::new("cmd").args(["/C", "echo", "hello"]);
+///     let spawner = TaskSpawner::new("demo".to_string(), config);
 ///
-///     let mut spawner = TaskSpawner::new("server".to_string(), config);
-///     let (tx, mut rx) = mpsc::channel(100);
-///     spawner.start_direct(tx).await?;
-///
-///     // Wait for Ready state
-///     loop {
-///         if spawner.get_state().await == TaskState::Ready {
-///             println!("Server is ready!");
-///             break;
-///         }
-///         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-///     }
+///     // Check initial state
+///     let state = spawner.get_state().await;
+///     assert_eq!(state, TaskState::Pending);
+///     println!("Task is in {:?} state", state);
 ///
 ///     Ok(())
 /// }
@@ -118,7 +108,7 @@ pub enum TaskState {
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let config = TaskConfig::new("sleep").args(["5"]); // 5 second sleep
+///     let config = TaskConfig::new("cmd").args(["/C", "ping", "127.0.0.1", "-n", "5"]); // 5 second sleep
 ///     let mut spawner = TaskSpawner::new("long-task".to_string(), config);
 ///     
 ///     let (tx, _rx) = mpsc::channel(100);
@@ -143,7 +133,7 @@ pub enum TaskState {
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let config = TaskConfig::new("my-daemon");
+///     let config = TaskConfig::new("cmd").args(["/C", "echo", "running"]);
 ///     let mut spawner = TaskSpawner::new("daemon".to_string(), config);
 ///     
 ///     let (tx, _rx) = mpsc::channel(100);

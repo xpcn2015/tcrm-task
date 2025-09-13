@@ -53,7 +53,7 @@ impl TaskSpawner {
     ///
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    ///     let config = TaskConfig::new("echo").args(["Hello, World!"]);
+    ///     let config = TaskConfig::new("cmd").args(["/C", "echo", "Hello, World!"]);
     ///     let mut spawner = TaskSpawner::new("greeting".to_string(), config);
     ///     
     ///     let (tx, mut rx) = mpsc::channel(100);
@@ -89,8 +89,8 @@ impl TaskSpawner {
     ///
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    ///     let config = TaskConfig::new("my-web-server")
-    ///         .args(["--port", "8080"])
+    ///     let config = TaskConfig::new("cmd")
+    ///         .args(["/C", "echo", "Server listening on"])
     ///         .ready_indicator("Server listening on")
     ///         .ready_indicator_source(StreamSource::Stdout)
     ///         .timeout_ms(30000); // 30 second timeout

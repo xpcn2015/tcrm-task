@@ -20,7 +20,7 @@ use crate::tasks::{config::TaskConfig, state::TaskState};
 ///
 /// #[tokio::main]
 /// async fn main() {
-///     let config = TaskConfig::new("echo").args(["hello"]);
+///     let config = TaskConfig::new("cmd").args(["/C", "echo", "hello"]);
 ///     let spawner = TaskSpawner::new("test".to_string(), config);
 ///     
 ///     let info: TaskInfo = spawner.get_task_info().await;
@@ -73,8 +73,8 @@ fn default_instant() -> Instant {
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let config = TaskConfig::new("echo")
-///         .args(["Hello World"]);
+///     let config = TaskConfig::new("cmd")
+///         .args(["/C", "echo", "Hello World"]);
 ///
 ///     let (tx, mut rx) = mpsc::channel(100);
 ///     let mut spawner = TaskSpawner::new("hello".to_string(), config);
@@ -100,7 +100,8 @@ fn default_instant() -> Instant {
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let config = TaskConfig::new("my-server")
+///     let config = TaskConfig::new("cmd")
+///         .args(["/C", "echo", "Server listening"])
 ///         .ready_indicator("Server listening")
 ///         .ready_indicator_source(StreamSource::Stdout)
 ///         .timeout_ms(30000);
@@ -130,16 +131,16 @@ fn default_instant() -> Instant {
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let config = TaskConfig::new("python")
-///         .args(["-i"])
+///     let config = TaskConfig::new("cmd")
+///         .args(["/C", "echo", "Hello"])
 ///         .enable_stdin(true);
 ///
 ///     let (tx, mut rx) = mpsc::channel(100);
 ///     let (stdin_tx, stdin_rx) = mpsc::channel(10);
-///     let mut spawner = TaskSpawner::new("python".to_string(), config);
+///     let mut spawner = TaskSpawner::new("cmd".to_string(), config);
 ///     
-///     // Set up stdin channel
-///     spawner.set_stdin(stdin_rx);
+///     // Set up stdin channel - note: set_stdin consumes self and returns Self
+///     spawner = spawner.set_stdin(stdin_rx);
 ///     
 ///     spawner.start_direct(tx).await?;
 ///
@@ -363,7 +364,7 @@ impl TaskSpawner {
     ///
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    ///     let config = TaskConfig::new("sleep").args(["1"]);
+    ///     let config = TaskConfig::new("cmd").args(["/C", "ping", "127.0.0.1", "-n", "2"]);
     ///     let mut spawner = TaskSpawner::new("pid-test".to_string(), config);
     ///     
     ///     assert_eq!(spawner.get_process_id().await, None); // Not started yet
@@ -415,7 +416,7 @@ impl TaskSpawner {
     ///
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    ///     let config = TaskConfig::new("sleep").args(["10"]); // Long-running task
+    ///     let config = TaskConfig::new("cmd").args(["/C", "ping", "127.0.0.1", "-n", "10"]); // Long-running task
     ///     let mut spawner = TaskSpawner::new("terminate-test".to_string(), config);
     ///     
     ///     let (tx, mut rx) = mpsc::channel(100);

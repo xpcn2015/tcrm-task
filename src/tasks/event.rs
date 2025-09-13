@@ -24,7 +24,7 @@ use crate::tasks::{config::StreamSource, error::TaskError, state::TaskTerminateR
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let config = TaskConfig::new("echo").args(["hello", "world"]);
+///     let config = TaskConfig::new("cmd").args(["/C", "echo", "hello", "world"]);
 ///     let mut spawner = TaskSpawner::new("demo".to_string(), config);
 ///     
 ///     let (tx, mut rx) = mpsc::channel(100);
@@ -65,7 +65,8 @@ use crate::tasks::{config::StreamSource, error::TaskError, state::TaskTerminateR
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let config = TaskConfig::new("my-server")
+///     let config = TaskConfig::new("cmd")
+///         .args(["/C", "echo", "Server listening"])
 ///         .ready_indicator("Server listening")
 ///         .ready_indicator_source(StreamSource::Stdout);
 ///
