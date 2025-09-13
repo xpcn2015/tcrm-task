@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use crate::tasks::error::TaskError;
+use crate::tasks::{error::TaskError, security::SecurityValidator};
 /// Configuration for a task to be executed
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone)]
@@ -127,28 +127,8 @@ impl TaskConfig {
     /// assert!(config.validate().is_err());
     /// ```
     pub fn validate(&self) -> Result<(), TaskError> {
-        const MAX_COMMAND_LEN: usize = 4096;
-        const MAX_ARG_LEN: usize = 4096;
-        const MAX_WORKING_DIR_LEN: usize = 4096;
-        const MAX_ENV_KEY_LEN: usize = 1024;
-        const MAX_ENV_VALUE_LEN: usize = 4096;
-
         // Validate command
-        if self.command.is_empty() {
-            return Err(TaskError::InvalidConfiguration(
-                "Command cannot be empty".to_string(),
-            ));
-        }
-        if self.command.trim() != self.command {
-            return Err(TaskError::InvalidConfiguration(
-                "Command cannot have leading or trailing whitespace".to_string(),
-            ));
-        }
-        if self.command.len() > MAX_COMMAND_LEN {
-            return Err(TaskError::InvalidConfiguration(
-                "Command length exceeds maximum allowed length".to_string(),
-            ));
-        }
+        SecurityValidator::validate_command(&self.command)?;
 
         // Validate ready_indicator
         if let Some(indicator) = &self.ready_indicator {
@@ -161,93 +141,17 @@ impl TaskConfig {
 
         // Validate arguments
         if let Some(args) = &self.args {
-            for arg in args {
-                if arg.is_empty() {
-                    return Err(TaskError::InvalidConfiguration(
-                        "Arguments cannot be empty".to_string(),
-                    ));
-                }
-                if arg.trim() != arg {
-                    return Err(TaskError::InvalidConfiguration(format!(
-                        "Argument '{}' cannot have leading/trailing whitespace",
-                        arg
-                    )));
-                }
-                if arg.len() > MAX_ARG_LEN {
-                    return Err(TaskError::InvalidConfiguration(format!(
-                        "Argument '{}' exceeds maximum length",
-                        arg
-                    )));
-                }
-            }
+            SecurityValidator::validate_args(args)?;
         }
 
         // Validate working directory
         if let Some(dir) = &self.working_dir {
-            let path = std::path::Path::new(dir);
-            if !path.exists() {
-                return Err(TaskError::InvalidConfiguration(format!(
-                    "Working directory '{}' does not exist",
-                    dir
-                )));
-            }
-            if !path.is_dir() {
-                return Err(TaskError::InvalidConfiguration(format!(
-                    "Working directory '{}' is not a directory",
-                    dir
-                )));
-            }
-            if dir.trim() != dir {
-                return Err(TaskError::InvalidConfiguration(
-                    "Working directory cannot have leading/trailing whitespace".to_string(),
-                ));
-            }
-            if dir.len() > MAX_WORKING_DIR_LEN {
-                return Err(TaskError::InvalidConfiguration(
-                    "Working directory path exceeds maximum length".to_string(),
-                ));
-            }
+            SecurityValidator::validate_working_dir(dir)?;
         }
 
         // Validate environment variables
         if let Some(env) = &self.env {
-            for (k, v) in env {
-                if k.is_empty() {
-                    return Err(TaskError::InvalidConfiguration(
-                        "Environment variable key cannot be empty".to_string(),
-                    ));
-                }
-                if k.contains('=') {
-                    return Err(TaskError::InvalidConfiguration(format!(
-                        "Environment variable key '{}' cannot contain '='",
-                        k
-                    )));
-                }
-                if k.contains(' ') {
-                    return Err(TaskError::InvalidConfiguration(format!(
-                        "Environment variable key '{}' cannot contain spaces",
-                        k
-                    )));
-                }
-                if k.len() > MAX_ENV_KEY_LEN {
-                    return Err(TaskError::InvalidConfiguration(format!(
-                        "Environment variable key '{}' exceeds maximum length",
-                        k
-                    )));
-                }
-                if v.trim() != v {
-                    return Err(TaskError::InvalidConfiguration(format!(
-                        "Environment variable '{}' value cannot have leading/trailing whitespace",
-                        k
-                    )));
-                }
-                if v.len() > MAX_ENV_VALUE_LEN {
-                    return Err(TaskError::InvalidConfiguration(format!(
-                        "Environment variable '{}' value exceeds maximum length",
-                        k
-                    )));
-                }
-            }
+            SecurityValidator::validate_env_vars(env)?;
         }
 
         // Validate timeout
