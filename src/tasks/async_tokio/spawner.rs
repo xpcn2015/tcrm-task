@@ -8,15 +8,38 @@ use crate::tasks::error::TaskError;
 use crate::tasks::state::TaskTerminateReason;
 use crate::tasks::{config::TaskConfig, state::TaskState};
 
-// TODO: Consider adding serde support for TaskInfo, not skipping Instant fields
+/// Information about a running or completed task
+///
+/// Provides metadata about the task execution including timing, state, and lifecycle information.
+///
+/// # Examples
+///
+/// ```rust
+/// use tcrm_task::tasks::async_tokio::spawner::{TaskSpawner, TaskInfo};
+/// use tcrm_task::tasks::config::TaskConfig;
+///
+/// #[tokio::main]
+/// async fn main() {
+///     let config = TaskConfig::new("echo").args(["hello"]);
+///     let spawner = TaskSpawner::new("test".to_string(), config);
+///     
+///     let info: TaskInfo = spawner.get_task_info().await;
+///     println!("Task {} is in state {:?}", info.name, info.state);
+/// }
+/// ```
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone)]
 pub struct TaskInfo {
+    /// Name of the task
     pub name: String,
+    /// Current execution state
     pub state: TaskState,
+    /// How long the task has been running
     pub uptime: Duration,
+    /// When the task was created
     #[cfg_attr(feature = "serde", serde(skip, default = "default_instant"))]
     pub created_at: Instant,
+    /// When the task finished (if completed)
     #[cfg_attr(feature = "serde", serde(skip, default))]
     pub finished_at: Option<Instant>,
 }
@@ -25,7 +48,119 @@ pub struct TaskInfo {
 fn default_instant() -> Instant {
     Instant::now()
 }
+
 /// Spawns and manages the lifecycle of a task
+///
+/// TaskSpawner handles the execution of system processes with comprehensive
+/// monitoring, state management, and event emission. It provides both
+/// synchronous and asynchronous interfaces for process management.
+///
+/// # Features
+///
+/// - **State Management**: Track task execution through Pending, Running, Ready, and Finished states
+/// - **Event Emission**: Real-time events for output, state changes, and lifecycle events
+/// - **Timeout Handling**: Automatic termination when tasks exceed configured timeouts
+/// - **Stdin Support**: Send input to running processes when enabled
+/// - **Ready Detection**: Automatic detection when long-running processes are ready
+/// - **Process Control**: Start, stop, and terminate processes with proper cleanup
+///
+/// # Examples
+///
+/// ## Simple Command Execution
+/// ```rust
+/// use tcrm_task::tasks::{config::TaskConfig, async_tokio::spawner::TaskSpawner};
+/// use tokio::sync::mpsc;
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let config = TaskConfig::new("echo")
+///         .args(["Hello World"]);
+///
+///     let (tx, mut rx) = mpsc::channel(100);
+///     let mut spawner = TaskSpawner::new("hello".to_string(), config);
+///     
+///     spawner.start_direct(tx).await?;
+///
+///     // Process events
+///     while let Some(event) = rx.recv().await {
+///         println!("Event: {:?}", event);
+///         if matches!(event, tcrm_task::tasks::event::TaskEvent::Stopped { .. }) {
+///             break;
+///         }
+///     }
+///
+///     Ok(())
+/// }
+/// ```
+///
+/// ## Long-running Process with Ready Detection
+/// ```rust
+/// use tcrm_task::tasks::{config::{TaskConfig, StreamSource}, async_tokio::spawner::TaskSpawner};
+/// use tokio::sync::mpsc;
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let config = TaskConfig::new("my-server")
+///         .ready_indicator("Server listening")
+///         .ready_indicator_source(StreamSource::Stdout)
+///         .timeout_ms(30000);
+///
+///     let (tx, mut rx) = mpsc::channel(100);
+///     let mut spawner = TaskSpawner::new("server".to_string(), config);
+///     
+///     spawner.start_direct(tx).await?;
+///
+///     // Wait for ready event
+///     while let Some(event) = rx.recv().await {
+///         if matches!(event, tcrm_task::tasks::event::TaskEvent::Ready { .. }) {
+///             println!("Server is ready to accept requests!");
+///             // Server is now ready, can start sending requests
+///             break;
+///         }
+///     }
+///
+///     Ok(())
+/// }
+/// ```
+///
+/// ## Interactive Process with Stdin
+/// ```rust
+/// use tcrm_task::tasks::{config::TaskConfig, async_tokio::spawner::TaskSpawner};
+/// use tokio::sync::mpsc;
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let config = TaskConfig::new("python")
+///         .args(["-i"])
+///         .enable_stdin(true);
+///
+///     let (tx, mut rx) = mpsc::channel(100);
+///     let (stdin_tx, stdin_rx) = mpsc::channel(10);
+///     let mut spawner = TaskSpawner::new("python".to_string(), config);
+///     
+///     // Set up stdin channel
+///     spawner.set_stdin(stdin_rx);
+///     
+///     spawner.start_direct(tx).await?;
+///
+///     // Send input to the process
+///     stdin_tx.send("print('Hello from stdin!')".to_string()).await?;
+///     stdin_tx.send("exit()".to_string()).await?;
+///
+///     // Process events
+///     while let Some(event) = rx.recv().await {
+///         match event {
+///             tcrm_task::tasks::event::TaskEvent::Output { line, .. } => {
+///                 println!("Output: {}", line);
+///             }
+///             tcrm_task::tasks::event::TaskEvent::Stopped { .. } => break,
+///             _ => {}
+///         }
+///     }
+///
+///     Ok(())
+/// }
+/// ```
 #[derive(Debug)]
 pub struct TaskSpawner {
     pub(crate) config: TaskConfig,
@@ -40,6 +175,22 @@ pub struct TaskSpawner {
 
 impl TaskSpawner {
     /// Create a new task spawner for the given task name and configuration
+    ///
+    /// Creates a new TaskSpawner instance in the Pending state. The configuration
+    /// is not validated until `start_direct` is called.
+    ///
+    /// # Arguments
+    ///
+    /// * `task_name` - Unique identifier for this task instance
+    /// * `config` - Task configuration defining command, arguments, environment, etc.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tcrm_task::tasks::{config::TaskConfig, async_tokio::spawner::TaskSpawner};
+    ///
+    /// let config = TaskConfig::new("echo").args(["hello"]);
+    /// let spawner = TaskSpawner::new("my-task".to_string(), config);
+    /// ```
     pub fn new(task_name: String, config: TaskConfig) -> Self {
         Self {
             task_name,
@@ -55,7 +206,26 @@ impl TaskSpawner {
 
     /// Set the stdin receiver for the task, enabling asynchronous input
     ///
-    /// Has no effect if `enable_stdin` is false in the configuration
+    /// Configures a channel for sending input to the process stdin. This method
+    /// has no effect if `enable_stdin` is false in the task configuration.
+    ///
+    /// # Arguments
+    ///
+    /// * `stdin_rx` - Receiver channel for stdin input strings
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tcrm_task::tasks::{config::TaskConfig, async_tokio::spawner::TaskSpawner};
+    /// use tokio::sync::mpsc;
+    ///
+    /// let config = TaskConfig::new("python")
+    ///     .args(["-i"])
+    ///     .enable_stdin(true);
+    ///
+    /// let (stdin_tx, stdin_rx) = mpsc::channel(10);
+    /// let spawner = TaskSpawner::new("interactive".to_string(), config)
+    ///     .set_stdin(stdin_rx);
+    /// ```
     pub fn set_stdin(mut self, stdin_rx: mpsc::Receiver<String>) -> Self {
         if self.config.enable_stdin.unwrap_or_default() {
             self.stdin_rx = Some(stdin_rx);
@@ -64,27 +234,113 @@ impl TaskSpawner {
     }
 
     /// Get the current state of the task
+    ///
+    /// Returns the current execution state of the task. States progress through:
+    /// Pending → Initiating → Running → (Ready) → Finished
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tcrm_task::tasks::{config::TaskConfig, async_tokio::spawner::TaskSpawner, state::TaskState};
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let config = TaskConfig::new("echo");
+    ///     let spawner = TaskSpawner::new("test".to_string(), config);
+    ///     
+    ///     assert_eq!(spawner.get_state().await, TaskState::Pending);
+    /// }
+    /// ```
     pub async fn get_state(&self) -> TaskState {
         self.state.read().await.clone()
     }
 
     /// Check if the task is currently running
+    ///
+    /// Returns true if the task state is Running, false otherwise.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tcrm_task::tasks::{config::TaskConfig, async_tokio::spawner::TaskSpawner};
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let config = TaskConfig::new("echo");
+    ///     let spawner = TaskSpawner::new("test".to_string(), config);
+    ///     
+    ///     assert!(!spawner.is_running().await); // Not running initially
+    /// }
+    /// ```
     pub async fn is_running(&self) -> bool {
         let state = self.state.read().await.clone();
         state == TaskState::Running
     }
+
     /// Check if the task is currently ready
+    ///
+    /// Returns true if the task state is Ready, false otherwise.
+    /// The Ready state indicates a long-running process has signaled it's
+    /// ready to accept requests (via the ready indicator).
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tcrm_task::tasks::{config::{TaskConfig, StreamSource}, async_tokio::spawner::TaskSpawner};
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let config = TaskConfig::new("my-server")
+    ///         .ready_indicator("Server ready")
+    ///         .ready_indicator_source(StreamSource::Stdout);
+    ///     let spawner = TaskSpawner::new("server".to_string(), config);
+    ///     
+    ///     assert!(!spawner.is_ready().await); // Not ready initially
+    /// }
+    /// ```
     pub async fn is_ready(&self) -> bool {
         let state = self.state.read().await.clone();
         state == TaskState::Ready
     }
 
     /// Get the uptime of the task since creation
+    ///
+    /// Returns the duration since the TaskSpawner was created, regardless
+    /// of the current execution state.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tcrm_task::tasks::{config::TaskConfig, async_tokio::spawner::TaskSpawner};
+    /// use std::time::Duration;
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let config = TaskConfig::new("echo");
+    ///     let spawner = TaskSpawner::new("test".to_string(), config);
+    ///     
+    ///     let uptime = spawner.uptime();
+    ///     assert!(uptime < Duration::from_secs(1)); // Just created
+    /// }
+    /// ```
     pub fn uptime(&self) -> Duration {
         self.created_at.elapsed()
     }
 
-    /// Get information about the task, including name, state, and uptime
+    /// Get comprehensive information about the task
+    ///
+    /// Returns a TaskInfo struct containing the task name, current state,
+    /// uptime, creation time, and completion time (if finished).
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tcrm_task::tasks::{config::TaskConfig, async_tokio::spawner::TaskSpawner};
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let config = TaskConfig::new("echo").args(["hello"]);
+    ///     let spawner = TaskSpawner::new("info-test".to_string(), config);
+    ///     
+    ///     let info = spawner.get_task_info().await;
+    ///     println!("Task '{}' has been running for {:?}", info.name, info.uptime);
+    /// }
+    /// ```
     pub async fn get_task_info(&self) -> TaskInfo {
         TaskInfo {
             name: self.task_name.clone(),
@@ -96,11 +352,39 @@ impl TaskSpawner {
     }
 
     /// Get the process ID of the running task (if any)
+    ///
+    /// Returns the system process ID if the task is currently running,
+    /// or None if the task hasn't started or has finished.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tcrm_task::tasks::{config::TaskConfig, async_tokio::spawner::TaskSpawner};
+    /// use tokio::sync::mpsc;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let config = TaskConfig::new("sleep").args(["1"]);
+    ///     let mut spawner = TaskSpawner::new("pid-test".to_string(), config);
+    ///     
+    ///     assert_eq!(spawner.get_process_id().await, None); // Not started yet
+    ///     
+    ///     let (tx, _rx) = mpsc::channel(100);
+    ///     spawner.start_direct(tx).await?;
+    ///     
+    ///     // Now should have a process ID
+    ///     let pid = spawner.get_process_id().await;
+    ///     assert!(pid.is_some());
+    ///     
+    ///     Ok(())
+    /// }
+    /// ```
     pub async fn get_process_id(&self) -> Option<u32> {
         self.process_id.read().await.clone()
     }
 
     /// Update the state of the task
+    ///
+    /// Internal method used by the spawner to update task state during execution.
     pub(crate) async fn update_state(&self, new_state: TaskState) {
         let mut state = self.state.write().await;
         *state = new_state;
@@ -108,7 +392,49 @@ impl TaskSpawner {
 
     /// Send a termination signal to the running task
     ///
-    /// Returns an error if the signal cannot be sent
+    /// Requests graceful termination of the running process with the specified reason.
+    /// The process may take some time to respond to the termination signal.
+    ///
+    /// # Arguments
+    ///
+    /// * `reason` - The reason for termination (Timeout, Cleanup, etc.)
+    ///
+    /// # Returns
+    ///
+    /// - `Ok(())` if the termination signal was sent successfully
+    /// - `Err(TaskError::Channel)` if the signal could not be sent
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tcrm_task::tasks::{
+    ///     config::TaskConfig,
+    ///     async_tokio::spawner::TaskSpawner,
+    ///     state::TaskTerminateReason
+    /// };
+    /// use tokio::sync::mpsc;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let config = TaskConfig::new("sleep").args(["10"]); // Long-running task
+    ///     let mut spawner = TaskSpawner::new("terminate-test".to_string(), config);
+    ///     
+    ///     let (tx, mut rx) = mpsc::channel(100);
+    ///     spawner.start_direct(tx).await?;
+    ///     
+    ///     // Wait a bit, then terminate
+    ///     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    ///     spawner.send_terminate_signal(TaskTerminateReason::Cleanup).await?;
+    ///     
+    ///     // Process events until stopped
+    ///     while let Some(event) = rx.recv().await {
+    ///         if matches!(event, tcrm_task::tasks::event::TaskEvent::Stopped { .. }) {
+    ///             break;
+    ///         }
+    ///     }
+    ///     
+    ///     Ok(())
+    /// }
+    /// ```
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub async fn send_terminate_signal(
         &self,

@@ -13,6 +13,172 @@ use crate::tasks::event::{TaskEvent, TaskEventStopReason};
 use crate::tasks::state::{TaskState, TaskTerminateReason};
 
 impl TaskSpawner {
+    /// Start the task and execute it directly with real-time event monitoring
+    ///
+    /// Validates the configuration, spawns the process, and sets up comprehensive monitoring
+    /// including output capture, timeout handling, stdin support, and ready detection.
+    /// Events are sent through the provided channel as the task executes.
+    ///
+    /// # Process Lifecycle
+    ///
+    /// 1. **Validation**: Configuration is validated for security and correctness
+    /// 2. **Process Spawn**: System process is created with configured parameters
+    /// 3. **Monitoring Setup**: Watchers are spawned for stdout/stderr, stdin, timeouts, and process completion
+    /// 4. **Event Emission**: Real-time events are sent as the process executes
+    /// 5. **Cleanup**: Process and resources are cleaned up when execution completes
+    ///
+    /// # Arguments
+    ///
+    /// * `event_tx` - Channel sender for receiving task events in real-time
+    ///
+    /// # Returns
+    ///
+    /// - `Ok(process_id)` - The system process ID if the task was started successfully
+    /// - `Err(TaskError)` - Configuration validation error, spawn failure, or other issues
+    ///
+    /// # Events Emitted
+    ///
+    /// - `TaskEvent::Started` - Process has been spawned and is running
+    /// - `TaskEvent::Output` - Output line received from stdout/stderr
+    /// - `TaskEvent::Ready` - Ready indicator detected (for long-running processes)
+    /// - `TaskEvent::Stopped` - Process has completed with exit code and reason
+    /// - `TaskEvent::Error` - An error occurred during execution
+    ///
+    /// # Examples
+    ///
+    /// ## Simple Command
+    /// ```rust
+    /// use tcrm_task::tasks::{config::TaskConfig, async_tokio::spawner::TaskSpawner};
+    /// use tokio::sync::mpsc;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let config = TaskConfig::new("echo").args(["Hello, World!"]);
+    ///     let mut spawner = TaskSpawner::new("greeting".to_string(), config);
+    ///     
+    ///     let (tx, mut rx) = mpsc::channel(100);
+    ///     let process_id = spawner.start_direct(tx).await?;
+    ///     println!("Started process with ID: {}", process_id);
+    ///
+    ///     // Process all events until completion
+    ///     while let Some(event) = rx.recv().await {
+    ///         match event {
+    ///             tcrm_task::tasks::event::TaskEvent::Output { line, .. } => {
+    ///                 println!("Output: {}", line);
+    ///             }
+    ///             tcrm_task::tasks::event::TaskEvent::Stopped { exit_code, .. } => {
+    ///                 println!("Process finished with exit code: {:?}", exit_code);
+    ///                 break;
+    ///             }
+    ///             _ => {}
+    ///         }
+    ///     }
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// ## Long-running Process with Ready Detection
+    /// ```rust
+    /// use tcrm_task::tasks::{
+    ///     config::{TaskConfig, StreamSource},
+    ///     async_tokio::spawner::TaskSpawner,
+    ///     event::TaskEvent
+    /// };
+    /// use tokio::sync::mpsc;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let config = TaskConfig::new("my-web-server")
+    ///         .args(["--port", "8080"])
+    ///         .ready_indicator("Server listening on")
+    ///         .ready_indicator_source(StreamSource::Stdout)
+    ///         .timeout_ms(30000); // 30 second timeout
+    ///
+    ///     let mut spawner = TaskSpawner::new("web-server".to_string(), config);
+    ///     let (tx, mut rx) = mpsc::channel(100);
+    ///     
+    ///     spawner.start_direct(tx).await?;
+    ///
+    ///     // Wait for the server to be ready
+    ///     while let Some(event) = rx.recv().await {
+    ///         match event {
+    ///             TaskEvent::Ready { task_name } => {
+    ///                 println!("Server '{}' is ready to accept requests!", task_name);
+    ///                 // Now you can start sending requests to the server
+    ///                 break;
+    ///             }
+    ///             TaskEvent::Error { error, .. } => {
+    ///                 eprintln!("Server failed to start: {}", error);
+    ///                 return Err(error.into());
+    ///             }
+    ///             TaskEvent::Output { line, .. } => {
+    ///                 println!("Server log: {}", line);
+    ///             }
+    ///             _ => {}
+    ///         }
+    ///     }
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// ## Interactive Process with Stdin
+    /// ```rust
+    /// use tcrm_task::tasks::{config::TaskConfig, async_tokio::spawner::TaskSpawner};
+    /// use tokio::sync::mpsc;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let config = TaskConfig::new("python")
+    ///         .args(["-i"])  // Interactive mode
+    ///         .enable_stdin(true);
+    ///
+    ///     let (stdin_tx, stdin_rx) = mpsc::channel(10);
+    ///     let mut spawner = TaskSpawner::new("python-repl".to_string(), config)
+    ///         .set_stdin(stdin_rx);
+    ///     
+    ///     let (tx, mut rx) = mpsc::channel(100);
+    ///     spawner.start_direct(tx).await?;
+    ///
+    ///     // Send some Python commands
+    ///     stdin_tx.send("print('Hello from Python!')".to_string()).await?;
+    ///     stdin_tx.send("2 + 2".to_string()).await?;
+    ///     stdin_tx.send("exit()".to_string()).await?;
+    ///
+    ///     // Process output
+    ///     while let Some(event) = rx.recv().await {
+    ///         match event {
+    ///             tcrm_task::tasks::event::TaskEvent::Output { line, .. } => {
+    ///                 println!("Python: {}", line);
+    ///             }
+    ///             tcrm_task::tasks::event::TaskEvent::Stopped { .. } => break,
+    ///             _ => {}
+    ///         }
+    ///     }
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// # Security
+    ///
+    /// This method validates the configuration before execution to prevent:
+    /// - Command injection attacks
+    /// - Path traversal vulnerabilities
+    /// - Invalid environment variables
+    /// - Dangerous process parameters
+    ///
+    /// # Performance
+    ///
+    /// The method spawns multiple async watchers for different aspects of process monitoring:
+    /// - Output watchers (stdout/stderr)
+    /// - Stdin watcher (if enabled)
+    /// - Timeout watcher (if configured)
+    /// - Process completion watcher
+    /// - Result aggregation watcher
+    ///
+    /// All watchers run concurrently for optimal performance and responsiveness.
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self, event_tx), fields(task_name = %self.task_name)))]
     pub async fn start_direct(
         &mut self,
