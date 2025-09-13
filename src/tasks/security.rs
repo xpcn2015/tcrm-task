@@ -333,8 +333,16 @@ mod tests {
     }
 
     #[test]
-    fn validate_env_vars_accepts_spaces_in_keys() {
-        // For developer tools, we're more lenient with env vars
+    fn validate_env_vars_rejects_spaces_in_keys() {
+        // Environment variable keys should not contain spaces
+        let mut env = HashMap::new();
+        env.insert("KEY WITH SPACE".to_string(), "value".to_string());
+        assert!(SecurityValidator::validate_env_vars(&env).is_err());
+    }
+
+    #[test]
+    fn validate_env_vars_accepts_normal_vars() {
+        // Normal environment variables should be accepted
         let mut env = HashMap::new();
         env.insert("PATH".to_string(), "/usr/bin:/bin".to_string());
         env.insert(
