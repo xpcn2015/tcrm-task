@@ -323,12 +323,12 @@ impl TaskConfig {
         SecurityValidator::validate_command(&self.command)?;
 
         // Validate ready_indicator
-        if let Some(indicator) = &self.ready_indicator {
-            if indicator.is_empty() {
-                return Err(TaskError::InvalidConfiguration(
-                    "ready_indicator cannot be empty string".to_string(),
-                ));
-            }
+        if let Some(indicator) = &self.ready_indicator
+            && indicator.is_empty()
+        {
+            return Err(TaskError::InvalidConfiguration(
+                "ready_indicator cannot be empty string".to_string(),
+            ));
         }
 
         // Validate arguments
@@ -347,12 +347,12 @@ impl TaskConfig {
         }
 
         // Validate timeout
-        if let Some(timeout) = self.timeout_ms {
-            if timeout == 0 {
-                return Err(TaskError::InvalidConfiguration(
-                    "Timeout must be greater than 0".to_string(),
-                ));
-            }
+        if let Some(timeout) = self.timeout_ms
+            && timeout == 0
+        {
+            return Err(TaskError::InvalidConfiguration(
+                "Timeout must be greater than 0".to_string(),
+            ));
         }
 
         Ok(())
