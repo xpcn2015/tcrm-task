@@ -102,15 +102,13 @@
 //! }
 //! ```
 //!
-//! ## Security
+//! ## Validation
 //!
-//! This library includes comprehensive security validation to prevent:
-//! - Command injection attacks
-//! - Path traversal vulnerabilities  
-//! - Environment variable injection
-//! - Null byte injection
+//! This library includes validation to prevent:
+//! - Path traversal  
+//! - Null byte
 //!
-//! All configurations are validated before execution using the built-in security validator.
+//! All configurations are validated before execution using the built-in validator.
 //!
 //! ## Optional Features
 //!

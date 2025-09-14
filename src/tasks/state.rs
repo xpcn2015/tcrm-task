@@ -8,8 +8,8 @@
 ///
 /// ```text
 /// Pending → Initiating → Running → [Ready] → Finished
-///                   ↘             ↗
-///                    → Finished ←
+///                             ↘
+///                               → Finished
 /// ```
 ///
 /// The Ready state is optional and only occurs for long-running processes
