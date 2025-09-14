@@ -349,7 +349,7 @@ impl TaskSpawner {
             state: self.get_state().await,
             uptime: self.uptime(),
             created_at: self.created_at,
-            finished_at: self.finished_at.read().await.clone(),
+            finished_at: *self.finished_at.read().await,
         }
     }
 
@@ -381,7 +381,7 @@ impl TaskSpawner {
     /// }
     /// ```
     pub async fn get_process_id(&self) -> Option<u32> {
-        self.process_id.read().await.clone()
+        *self.process_id.read().await
     }
 
     /// Update the state of the task
@@ -473,7 +473,7 @@ pub(crate) async fn join_all_handles(
     let handles = std::mem::take(task_handles);
     let mut errors = Vec::new();
 
-    for (_index, mut handle) in handles.into_iter().enumerate() {
+    for mut handle in handles.into_iter() {
         match timeout(Duration::from_secs(5), &mut handle).await {
             Ok(Ok(())) => {}
             Ok(Err(join_err)) => {
