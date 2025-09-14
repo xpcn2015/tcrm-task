@@ -1,6 +1,6 @@
 # TCRM Task
 
-Task execution unit for the TCRM project
+A powerful, async task execution unit for the TCRM project
 
 ## Features
 
@@ -15,8 +15,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tcrm-task = { version = "0.1.0" }
-
+tcrm-task = { version = "0.3.2" }
 ```
 
 ## Quick Start
