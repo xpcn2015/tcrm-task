@@ -4,6 +4,13 @@
 
 #![allow(clippy::extra_unused_lifetimes)]
 #![allow(clippy::missing_safety_doc)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::used_underscore_binding)]
+#![allow(clippy::pub_underscore_fields)]
+#![allow(clippy::elidable_lifetime_names)]
+#![allow(clippy::doc_markdown)]
 
 use core::cmp::Ordering;
 use core::mem;

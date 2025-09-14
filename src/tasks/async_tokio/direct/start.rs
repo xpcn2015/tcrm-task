@@ -179,7 +179,15 @@ impl TaskSpawner {
     /// - Result aggregation watcher
     ///
     /// All watchers run concurrently for optimal performance and responsiveness.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`TaskError`] if:
+    /// - Task configuration validation fails
+    /// - Process fails to start due to invalid command or working directory
+    /// - Unable to obtain process ID from started child process
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self, event_tx), fields(task_name = %self.task_name)))]
+    #[allow(clippy::too_many_lines)]
     pub async fn start_direct(
         &mut self,
         event_tx: mpsc::Sender<TaskEvent>,
@@ -230,7 +238,7 @@ impl TaskSpawner {
                 return Err(TaskError::IO(e.to_string()));
             }
         };
-        let child_id = if let Some(id) = child.id() { id } else {
+        let Some(child_id) = child.id() else {
             let msg = "Failed to get process id";
 
             #[cfg(feature = "tracing")]

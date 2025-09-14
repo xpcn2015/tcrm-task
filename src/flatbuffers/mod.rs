@@ -1,10 +1,10 @@
-//! FlatBuffers serialization support for high-performance scenarios
+//! `FlatBuffers` serialization support for high-performance scenarios
 //!
-//! This module provides FlatBuffers serialization and deserialization for all
+//! This module provides `FlatBuffers` serialization and deserialization for all
 //! task-related types, enabling efficient data transfer and persistence in
 //! performance-critical applications.
 //!
-//! FlatBuffers offers several advantages over JSON and other serialization formats:
+//! `FlatBuffers` offers several advantages over JSON and other serialization formats:
 //! - Zero-copy deserialization for optimal performance
 //! - Compact binary format reducing storage and bandwidth requirements
 //! - Schema evolution support for backwards/forwards compatibility

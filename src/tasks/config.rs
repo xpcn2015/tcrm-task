@@ -123,6 +123,7 @@ impl TaskConfig {
     /// let config2 = TaskConfig::new("cargo")
     ///     .args(vec!["build", "--release"]);
     /// ```
+    #[must_use]
     pub fn args<I, S>(mut self, args: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -150,6 +151,7 @@ impl TaskConfig {
     /// let config2 = TaskConfig::new("cargo")
     ///     .working_dir("/path/to/project");
     /// ```
+    #[must_use]
     pub fn working_dir(mut self, dir: impl Into<String>) -> Self {
         self.working_dir = Some(dir.into());
         self
@@ -176,6 +178,7 @@ impl TaskConfig {
     /// let config2 = TaskConfig::new("cargo")
     ///     .env(env);
     /// ```
+    #[must_use]
     pub fn env<K, V, I>(mut self, env: I) -> Self
     where
         K: Into<String>,
@@ -206,7 +209,8 @@ impl TaskConfig {
     /// let config2 = TaskConfig::new("build-script")
     ///     .timeout_ms(300000);
     /// ```
-    #[must_use] pub fn timeout_ms(mut self, timeout: u64) -> Self {
+    #[must_use]
+    pub fn timeout_ms(mut self, timeout: u64) -> Self {
         self.timeout_ms = Some(timeout);
         self
     }
@@ -228,7 +232,8 @@ impl TaskConfig {
     ///     .args(["-i"])
     ///     .enable_stdin(true);
     /// ```
-    #[must_use] pub fn enable_stdin(mut self, b: bool) -> Self {
+    #[must_use]
+    pub fn enable_stdin(mut self, b: bool) -> Self {
         self.enable_stdin = Some(b);
         self
     }
@@ -253,6 +258,7 @@ impl TaskConfig {
     /// let config2 = TaskConfig::new("database")
     ///     .ready_indicator("Database ready for connections");
     /// ```
+    #[must_use]
     pub fn ready_indicator(mut self, indicator: impl Into<String>) -> Self {
         self.ready_indicator = Some(indicator.into());
         self
@@ -274,7 +280,8 @@ impl TaskConfig {
     ///     .ready_indicator("Ready")
     ///     .ready_indicator_source(StreamSource::Stderr);
     /// ```
-    #[must_use] pub fn ready_indicator_source(mut self, source: StreamSource) -> Self {
+    #[must_use]
+    pub fn ready_indicator_source(mut self, source: StreamSource) -> Self {
         self.ready_indicator_source = Some(source);
         self
     }
@@ -298,6 +305,13 @@ impl TaskConfig {
     ///
     /// - `Ok(())` if the configuration is valid
     /// - `Err(TaskError::InvalidConfiguration)` with details if validation fails
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`TaskError`] if any validation check fails:
+    /// - [`TaskError::InvalidConfiguration`] for configuration errors
+    /// - [`TaskError::Security`] for security validation failures
+    /// - [`TaskError::IO`] for working directory validation failures
     ///
     /// # Examples
     ///

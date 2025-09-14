@@ -155,10 +155,7 @@ where
                                 if ready_indicator_source != src || ready_found {
                                     continue;
                                 }
-                                let ready_indicator = match &ready_indicator {
-                                    Some(i) => i,
-                                    None => continue,
-                                };
+                                let Some(ready_indicator) = &ready_indicator else { continue };
 
                                 if line_for_ready.contains(ready_indicator) {
                                     ready_found = true;
@@ -185,9 +182,9 @@ where
                                 // EOF
                                 break;
                             }
-                            Err(_e) => {
+                            Err(e) => {
                                     #[cfg(feature = "tracing")]
-                                    tracing::warn!(error=%_e, "Error reading line from output stream");
+                                    tracing::warn!(error=%e, "Error reading line from output stream");
                                 break;
                             }
                         }

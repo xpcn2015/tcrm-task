@@ -17,24 +17,24 @@ impl std::fmt::Display for ConversionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ConversionError::InvalidStreamSource(val) => {
-                write!(f, "Invalid StreamSource value: {}", val)
+                write!(f, "Invalid StreamSource value: {val}")
             }
-            ConversionError::InvalidTaskShell(val) => write!(f, "Invalid TaskShell value: {}", val),
-            ConversionError::InvalidTaskState(val) => write!(f, "Invalid TaskState value: {}", val),
+            ConversionError::InvalidTaskShell(val) => write!(f, "Invalid TaskShell value: {val}"),
+            ConversionError::InvalidTaskState(val) => write!(f, "Invalid TaskState value: {val}"),
             ConversionError::InvalidTaskTerminateReasonType(val) => {
-                write!(f, "Invalid TaskTerminateReasonType value: {}", val)
+                write!(f, "Invalid TaskTerminateReasonType value: {val}")
             }
             ConversionError::InvalidTaskEventStopReasonType(val) => {
-                write!(f, "Invalid TaskEventStopReasonType value: {}", val)
+                write!(f, "Invalid TaskEventStopReasonType value: {val}")
             }
             ConversionError::InvalidTaskEventType(val) => {
-                write!(f, "Invalid TaskEventType value: {}", val)
+                write!(f, "Invalid TaskEventType value: {val}")
             }
             ConversionError::InvalidTaskErrorType(val) => {
-                write!(f, "Invalid TaskErrorType value: {}", val)
+                write!(f, "Invalid TaskErrorType value: {val}")
             }
             ConversionError::MissingRequiredField(field) => {
-                write!(f, "Missing required field: {}", field)
+                write!(f, "Missing required field: {field}")
             }
         }
     }
@@ -42,6 +42,11 @@ impl std::fmt::Display for ConversionError {
 impl std::error::Error for ConversionError {}
 
 impl TaskError {
+    /// Converts from `FlatBuffers` representation to `TaskError`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ConversionError::InvalidTaskErrorType`] if the error type is not recognized.
     pub fn from_flatbuffers(
         fb_error: tcrm_task_generated::tcrm::task::TaskError,
     ) -> Result<Self, ConversionError> {
@@ -66,28 +71,28 @@ impl TaskError {
         }
     }
 
-    /// Converts the task error to FlatBuffers representation.
+    /// Converts the task error to `FlatBuffers` representation.
     ///
     /// Serializes both the error type discriminant and message content into
-    /// a FlatBuffers TaskError structure.
+    /// a `FlatBuffers` `TaskError` structure.
     ///
     /// # Arguments
     ///
-    /// * `builder` - FlatBuffers builder for creating the serialized data.
+    /// * `builder` - `FlatBuffers` builder for creating the serialized data.
     ///
     /// # Returns
     ///
-    /// A FlatBuffers offset pointing to the serialized TaskError.
+    /// A `FlatBuffers` offset pointing to the serialized `TaskError`.
     pub fn to_flatbuffers<'a>(
         &self,
         builder: &mut flatbuffers::FlatBufferBuilder<'a>,
     ) -> flatbuffers::WIPOffset<tcrm_task_generated::tcrm::task::TaskError<'a>> {
         let message = match self {
-            TaskError::IO(msg) => msg,
-            TaskError::Handle(msg) => msg,
-            TaskError::Channel(msg) => msg,
-            TaskError::InvalidConfiguration(msg) => msg,
-            TaskError::Custom(msg) => msg,
+            TaskError::IO(msg)
+            | TaskError::Handle(msg)
+            | TaskError::Channel(msg)
+            | TaskError::InvalidConfiguration(msg)
+            | TaskError::Custom(msg) => msg,
         };
         let msg_offset = builder.create_string(message);
 

@@ -34,27 +34,24 @@ pub(crate) fn spawn_stdin_watcher(
                 tokio::select! {
                     // New line from stdin channel
                     maybe_line = stdin_rx.recv() => {
-                        match maybe_line {
-                            Some(mut line) => {
+                        if let Some(mut line) = maybe_line {
 
-                                #[cfg(feature = "tracing")]
-                                tracing::trace!(line, "Received line for stdin");
+                            #[cfg(feature = "tracing")]
+                            tracing::trace!(line, "Received line for stdin");
 
-                                if !line.ends_with('\n') {
-                                    line.push('\n');
-                                }
-                                if let Err(_e) = stdin.write_all(line.as_bytes()).await {
-                                        #[cfg(feature = "tracing")]
-                                        tracing::warn!(error=%_e, "Failed to write to child stdin");
-                                    break;
-                                }
+                            if !line.ends_with('\n') {
+                                line.push('\n');
                             }
-                            None => {
-                                #[cfg(feature = "tracing")]
-                                tracing::trace!("Stdin channel closed");
-                                // Channel closed, stop watcher
+                            if let Err(e) = stdin.write_all(line.as_bytes()).await {
+                                    #[cfg(feature = "tracing")]
+                                    tracing::warn!(error=%e, "Failed to write to child stdin");
                                 break;
                             }
+                        } else {
+                            #[cfg(feature = "tracing")]
+                            tracing::trace!("Stdin channel closed");
+                            // Channel closed, stop watcher
+                            break;
                         }
                     }
 
@@ -73,9 +70,9 @@ pub(crate) fn spawn_stdin_watcher(
             }
 
             // Close stdin when channel is closed
-            if let Err(_e) = stdin.shutdown().await {
+            if let Err(e) = stdin.shutdown().await {
                 #[cfg(feature = "tracing")]
-                tracing::warn!(error=%_e, "Failed to shutdown child stdin");
+                tracing::warn!(error=%e, "Failed to shutdown child stdin");
             }
             #[cfg(feature = "tracing")]
             tracing::debug!("Watcher finished");

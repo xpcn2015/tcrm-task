@@ -4,21 +4,21 @@ use crate::{
 };
 
 impl TaskEvent {
-    /// Converts the task event to FlatBuffers representation.
+    /// Converts the task event to `FlatBuffers` representation.
     ///
     /// Returns both the discriminant enum value and the associated union data
-    /// required for FlatBuffers union serialization.
+    /// required for `FlatBuffers` union serialization.
     ///
     /// # Arguments
     ///
-    /// * `builder` - FlatBuffers builder for creating the serialized data.
+    /// * `builder` - `FlatBuffers` builder for creating the serialized data.
     ///
     /// # Returns
     ///
     /// A tuple containing the event discriminant and the union offset data.
-    pub fn to_flatbuffers<'a>(
+    pub fn to_flatbuffers(
         &self,
-        builder: &mut flatbuffers::FlatBufferBuilder<'a>,
+        builder: &mut flatbuffers::FlatBufferBuilder<'_>,
     ) -> (
         tcrm_task_generated::tcrm::task::TaskEvent,
         flatbuffers::WIPOffset<flatbuffers::UnionWIPOffset>,
@@ -111,21 +111,21 @@ impl TaskEvent {
 }
 
 impl TaskEventStopReason {
-    /// Converts the stop reason to FlatBuffers representation.
+    /// Converts the stop reason to `FlatBuffers` representation.
     ///
     /// Returns both the discriminant enum value and the associated union data
-    /// required for FlatBuffers union serialization.
+    /// required for `FlatBuffers` union serialization.
     ///
     /// # Arguments
     ///
-    /// * `builder` - FlatBuffers builder for creating the serialized data.
+    /// * `builder` - `FlatBuffers` builder for creating the serialized data.
     ///
     /// # Returns
     ///
     /// A tuple containing the stop reason discriminant and the union offset data.
-    pub fn to_flatbuffers<'a>(
+    pub fn to_flatbuffers(
         &self,
-        builder: &mut flatbuffers::FlatBufferBuilder<'a>,
+        builder: &mut flatbuffers::FlatBufferBuilder<'_>,
     ) -> (
         tcrm_task_generated::tcrm::task::TaskEventStopReason,
         flatbuffers::WIPOffset<flatbuffers::UnionWIPOffset>,

@@ -22,6 +22,12 @@ impl SecurityValidator {
     /// - `Ok(())` if the command is valid.
     /// - `Err(TaskError::InvalidConfiguration)` if the command is invalid.
     ///
+    /// # Errors
+    ///
+    /// Returns a [`TaskError::InvalidConfiguration`] if:
+    /// - Command is empty or contains only whitespace
+    /// - Command contains null bytes or obvious injection patterns
+    ///
     /// # Examples
     /// ```rust
     /// use tcrm_task::tasks::security::SecurityValidator;
@@ -72,6 +78,10 @@ impl SecurityValidator {
     /// - `Ok(())` if all arguments are valid.
     /// - `Err(TaskError::InvalidConfiguration)` if any argument is invalid.
     ///
+    /// # Errors
+    ///
+    /// Returns a [`TaskError::InvalidConfiguration`] if any argument contains null bytes.
+    ///
     /// # Examples
     /// ```rust
     /// use tcrm_task::tasks::security::SecurityValidator;
@@ -119,6 +129,12 @@ impl SecurityValidator {
     ///
     /// - `Ok(())` if the directory is valid.
     /// - `Err(TaskError::InvalidConfiguration)` if the directory is invalid.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`TaskError::InvalidConfiguration`] if:
+    /// - Directory does not exist
+    /// - Path exists but is not a directory
     ///
     /// # Examples
     /// ```rust
@@ -175,6 +191,12 @@ impl SecurityValidator {
     ///
     /// - `Ok(())` if all environment variables are valid.
     /// - `Err(TaskError::InvalidConfiguration)` if any environment variable is invalid.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`TaskError::InvalidConfiguration`] if:
+    /// - Any environment variable key contains spaces, '=', or null bytes
+    /// - Any environment variable value contains null bytes
     ///
     /// # Examples
     /// ```rust
@@ -277,6 +299,12 @@ impl SecurityValidator {
     ///
     /// - `Ok(())` if the command passes strict validation.
     /// - `Err(TaskError::InvalidConfiguration)` if the command contains potentially dangerous patterns.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`TaskError::InvalidConfiguration`] if:
+    /// - Command is empty or contains only whitespace
+    /// - Command contains shell metacharacters or redirection operators
     ///
     /// # Examples
     /// ```rust

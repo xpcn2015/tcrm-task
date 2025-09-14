@@ -193,7 +193,8 @@ impl TaskSpawner {
     /// let config = TaskConfig::new("echo").args(["hello"]);
     /// let spawner = TaskSpawner::new("my-task".to_string(), config);
     /// ```
-    #[must_use] pub fn new(task_name: String, config: TaskConfig) -> Self {
+    #[must_use]
+    pub fn new(task_name: String, config: TaskConfig) -> Self {
         Self {
             task_name,
             config,
@@ -228,7 +229,8 @@ impl TaskSpawner {
     /// let spawner = TaskSpawner::new("interactive".to_string(), config)
     ///     .set_stdin(stdin_rx);
     /// ```
-    #[must_use] pub fn set_stdin(mut self, stdin_rx: mpsc::Receiver<String>) -> Self {
+    #[must_use]
+    pub fn set_stdin(mut self, stdin_rx: mpsc::Receiver<String>) -> Self {
         if self.config.enable_stdin.unwrap_or_default() {
             self.stdin_rx = Some(stdin_rx);
         }
@@ -321,7 +323,8 @@ impl TaskSpawner {
     ///     assert!(uptime < Duration::from_secs(1)); // Just created
     /// }
     /// ```
-    #[must_use] pub fn uptime(&self) -> Duration {
+    #[must_use]
+    pub fn uptime(&self) -> Duration {
         self.created_at.elapsed()
     }
 
@@ -405,6 +408,11 @@ impl TaskSpawner {
     ///
     /// - `Ok(())` if the termination signal was sent successfully
     /// - `Err(TaskError::Channel)` if the signal could not be sent
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`TaskError::Channel`] if the internal termination channel
+    /// has been closed and the signal cannot be delivered to the task.
     ///
     /// # Examples
     /// ```rust

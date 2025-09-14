@@ -35,22 +35,29 @@ impl<'a> TryFrom<tcrm_task_generated::tcrm::task::TaskConfig<'a>> for TaskConfig
     ) -> Result<Self, Self::Error> {
         let command = fb_config.command().to_string();
 
-        let args = fb_config
-            .args()
-            .map(|args_vec| args_vec.iter().map(|s| s.to_string()).collect());
+        let args = fb_config.args().map(|args_vec| {
+            args_vec
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect()
+        });
 
         let env = fb_config.env().map(|vec| {
             vec.iter()
                 .map(|entry| (entry.key().to_string(), entry.value().to_string()))
                 .collect::<HashMap<_, _>>()
         });
-        let ready_indicator = fb_config.ready_indicator().map(|s| s.to_string());
+        let ready_indicator = fb_config
+            .ready_indicator()
+            .map(std::string::ToString::to_string);
         let ready_indicator_source = fb_config.ready_indicator_source().try_into().ok();
 
         Ok(TaskConfig {
             command,
             args,
-            working_dir: fb_config.working_dir().map(|s| s.to_string()),
+            working_dir: fb_config
+                .working_dir()
+                .map(std::string::ToString::to_string),
             env,
             timeout_ms: if fb_config.timeout_ms() == 0 {
                 None

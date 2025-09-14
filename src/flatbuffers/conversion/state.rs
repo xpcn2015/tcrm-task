@@ -31,21 +31,21 @@ impl From<TaskState> for tcrm_task_generated::tcrm::task::TaskState {
 }
 
 impl TaskTerminateReason {
-    /// Converts the termination reason to FlatBuffers representation.
+    /// Converts the termination reason to `FlatBuffers` representation.
     ///
     /// Returns both the discriminant enum value and the associated union data
-    /// required for FlatBuffers union serialization.
+    /// required for `FlatBuffers` union serialization.
     ///
     /// # Arguments
     ///
-    /// * `builder` - FlatBuffers builder for creating the serialized data.
+    /// * `builder` - `FlatBuffers` builder for creating the serialized data.
     ///
     /// # Returns
     ///
     /// A tuple containing the discriminant enum and the union offset data.
-    pub fn to_flatbuffers<'a>(
+    pub fn to_flatbuffers(
         &self,
-        builder: &mut flatbuffers::FlatBufferBuilder<'a>,
+        builder: &mut flatbuffers::FlatBufferBuilder<'_>,
     ) -> (
         tcrm_task_generated::tcrm::task::TaskTerminateReason,
         flatbuffers::WIPOffset<flatbuffers::UnionWIPOffset>,
@@ -97,21 +97,21 @@ impl TaskTerminateReason {
             }
         }
     }
-    /// Converts the termination reason to FlatBuffers terminated event representation.
+    /// Converts the termination reason to `FlatBuffers` terminated event representation.
     ///
     /// Similar to `to_flatbuffers` but creates the appropriate union data for
-    /// TaskEventStopReason when the task has been terminated.
+    /// `TaskEventStopReason` when the task has been terminated.
     ///
     /// # Arguments
     ///
-    /// * `builder` - FlatBuffers builder for creating the serialized data.
+    /// * `builder` - `FlatBuffers` builder for creating the serialized data.
     ///
     /// # Returns
     ///
     /// A tuple containing the stop reason discriminant and the union offset data.
-    pub fn to_flatbuffers_terminated<'a>(
+    pub fn to_flatbuffers_terminated(
         &self,
-        builder: &mut flatbuffers::FlatBufferBuilder<'a>,
+        builder: &mut flatbuffers::FlatBufferBuilder<'_>,
     ) -> (
         tcrm_task_generated::tcrm::task::TaskEventStopReason,
         flatbuffers::WIPOffset<flatbuffers::UnionWIPOffset>,

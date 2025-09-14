@@ -1,19 +1,19 @@
-//! Conversion traits and implementations for FlatBuffers serialization
+//! Conversion traits and implementations for `FlatBuffers` serialization
 //!
 //! This module provides traits and implementations for converting between
-//! Rust types and FlatBuffers representation. Each module corresponds to
+//! Rust types and `FlatBuffers` representation. Each module corresponds to
 //! a major type family in the task execution system.
 //!
 //! # Available Conversions
 //!
-//! - **config**: TaskConfig and related configuration types
-//! - **error**: TaskError and error handling types  
-//! - **event**: TaskEvent and all event variants
-//! - **state**: TaskState and TaskTerminateReason types
+//! - **config**: `TaskConfig` and related configuration types
+//! - **error**: `TaskError` and error handling types  
+//! - **event**: `TaskEvent` and all event variants
+//! - **state**: `TaskState` and `TaskTerminateReason` types
 //!
 //! # Conversion Pattern
 //!
-//! All types implement a consistent pattern for FlatBuffers conversion:
+//! All types implement a consistent pattern for `FlatBuffers` conversion:
 //!
 //! ```rust
 //! use tcrm_task::tasks::config::TaskConfig;
