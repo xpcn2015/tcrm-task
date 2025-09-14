@@ -201,13 +201,6 @@ impl SecurityValidator {
                     "Environment variable key cannot be empty".to_string(),
                 ));
             }
-            if key.contains('=') {
-                return Err(TaskError::InvalidConfiguration(format!(
-                    "Environment variable key '{}' cannot contain '='",
-                    key
-                )));
-            }
-
             if key.contains('=') || key.contains('\0') {
                 return Err(TaskError::InvalidConfiguration(
                     "Environment variable key contains invalid characters".to_string(),
