@@ -12,6 +12,18 @@ use crate::{
     tasks::{config::StreamSource, event::TaskEvent, state::TaskState},
 };
 
+/// Configuration for spawning output watchers
+#[derive(Debug)]
+struct OutputWatcherConfig {
+    task_name: String,
+    state: Arc<RwLock<TaskState>>,
+    event_tx: mpsc::Sender<TaskEvent>,
+    src: StreamSource,
+    handle_terminator_rx: tokio::sync::watch::Receiver<bool>,
+    ready_indicator: Option<String>,
+    ready_indicator_source: StreamSource,
+}
+
 /// Spawns watchers for stdout and stderr of a child process.
 ///
 /// Sends output lines as `TaskEvent::Output` events.
@@ -41,31 +53,31 @@ pub(crate) fn spawn_output_watchers(
     let mut handles: Vec<JoinHandle<()>> = vec![];
     // Spawn stdout watcher
     if let Some(stdout) = child.stdout.take() {
-        let handle = spawn_std_watcher(
-            stdout,
-            task_name.clone(),
-            state.clone(),
-            event_tx.clone(),
-            StreamSource::Stdout,
-            handle_terminator_rx.clone(),
-            ready_indicator.clone(),
-            ready_indicator_source.clone().unwrap_or_default(),
-        );
+        let config = OutputWatcherConfig {
+            task_name: task_name.clone(),
+            state: state.clone(),
+            event_tx: event_tx.clone(),
+            src: StreamSource::Stdout,
+            handle_terminator_rx: handle_terminator_rx.clone(),
+            ready_indicator: ready_indicator.clone(),
+            ready_indicator_source: ready_indicator_source.clone().unwrap_or_default(),
+        };
+        let handle = spawn_std_watcher(stdout, config);
         handles.push(handle);
     }
 
     // Spawn stderr watcher
     if let Some(stderr) = child.stderr.take() {
-        let handle = spawn_std_watcher(
-            stderr,
+        let config = OutputWatcherConfig {
             task_name,
             state,
             event_tx,
-            StreamSource::Stderr,
+            src: StreamSource::Stderr,
             handle_terminator_rx,
             ready_indicator,
-            ready_indicator_source.unwrap_or_default(),
-        );
+            ready_indicator_source: ready_indicator_source.unwrap_or_default(),
+        };
+        let handle = spawn_std_watcher(stderr, config);
         handles.push(handle);
     }
 
@@ -93,20 +105,20 @@ pub(crate) fn spawn_output_watchers(
 /// # Returns
 ///
 /// A `JoinHandle` for the spawned watcher task.
-#[cfg_attr(feature = "tracing", tracing::instrument(skip_all, fields(stream = ?src)))]
-fn spawn_std_watcher<T>(
-    std: T,
-    task_name: String,
-    state: Arc<RwLock<TaskState>>,
-    event_tx: mpsc::Sender<TaskEvent>,
-    src: StreamSource,
-    mut handle_terminator_rx: tokio::sync::watch::Receiver<bool>,
-    ready_indicator: Option<String>,
-    ready_indicator_source: StreamSource,
-) -> JoinHandle<()>
+#[cfg_attr(feature = "tracing", tracing::instrument(skip_all, fields(stream = ?config.src)))]
+fn spawn_std_watcher<T>(std: T, config: OutputWatcherConfig) -> JoinHandle<()>
 where
     T: tokio::io::AsyncRead + Unpin + Send + 'static,
 {
+    let OutputWatcherConfig {
+        task_name,
+        state,
+        event_tx,
+        src,
+        mut handle_terminator_rx,
+        ready_indicator,
+        ready_indicator_source,
+    } = config;
     let handle = tokio::spawn(
         async move {
             let reader = BufReader::new(std);
@@ -126,13 +138,13 @@ where
                                     "".to_string()
                                 };
 
-                                if let Err(_) = event_tx
+                                if (event_tx
                                     .send(TaskEvent::Output {
                                         task_name: task_name.clone(),
-                                        line: line,
+                                        line,
                                         src: src.clone(),
                                     })
-                                    .await
+                                    .await).is_err()
                                 {
                                     #[cfg(feature = "tracing")]
                                     tracing::warn!("Event channel closed while sending TaskEvent::Output");
@@ -157,11 +169,11 @@ where
                                 #[cfg(feature = "tracing")]
                                 tracing::debug!("Updating task state to Ready");
                                 *state.write().await = TaskState::Ready;
-                                if let Err(_) = event_tx
+                                if (event_tx
                                     .send(TaskEvent::Ready {
                                         task_name: task_name.clone(),
                                     })
-                                    .await
+                                    .await).is_err()
                                 {
                                     #[cfg(feature = "tracing")]
                                     tracing::warn!("Event channel closed while sending TaskEvent::Ready");
@@ -216,16 +228,16 @@ mod tests {
         let state = Arc::new(RwLock::new(TaskState::Running));
 
         // src is Stdout, ready_indicator_source is Stderr (should NOT emit Ready)
-        let handle = spawn_std_watcher(
-            cursor,
-            task_name.clone(),
-            state.clone(),
-            tx,
-            StreamSource::Stdout,
-            term_rx,
-            ready_indicator.clone(),
-            StreamSource::Stderr,
-        );
+        let config = OutputWatcherConfig {
+            task_name: task_name.clone(),
+            state: state.clone(),
+            event_tx: tx,
+            src: StreamSource::Stdout,
+            handle_terminator_rx: term_rx,
+            ready_indicator: ready_indicator.clone(),
+            ready_indicator_source: StreamSource::Stderr,
+        };
+        let handle = spawn_std_watcher(cursor, config);
 
         let mut ready_event = false;
         while let Some(event) = rx.recv().await {
@@ -262,16 +274,16 @@ mod tests {
         let task_name = "test_task".to_string();
         let state = Arc::new(RwLock::new(TaskState::Running));
 
-        let handle = spawn_std_watcher(
-            cursor,
-            task_name.clone(),
-            state.clone(),
-            tx,
-            StreamSource::Stdout,
-            term_rx,
-            ready_indicator.clone(),
-            StreamSource::Stdout,
-        );
+        let config = OutputWatcherConfig {
+            task_name: task_name.clone(),
+            state: state.clone(),
+            event_tx: tx,
+            src: StreamSource::Stdout,
+            handle_terminator_rx: term_rx,
+            ready_indicator: ready_indicator.clone(),
+            ready_indicator_source: StreamSource::Stdout,
+        };
+        let handle = spawn_std_watcher(cursor, config);
 
         let mut output_lines = vec![];
         let mut ready_event = false;
