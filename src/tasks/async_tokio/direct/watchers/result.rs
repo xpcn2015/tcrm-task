@@ -63,13 +63,14 @@ pub(crate) fn spawn_result_watcher(
                 tracing::warn!(error = %_e, "One or more task handles failed to join cleanly");
             }
 
-            if let Err(_) = event_tx
+            if (event_tx
                 .send(TaskEvent::Stopped {
                     task_name: task_name.clone(),
                     exit_code,
                     reason: stop_reason.clone(),
                 })
-                .await
+                .await)
+                .is_err()
             {
                 #[cfg(feature = "tracing")]
                 tracing::warn!("Event channel closed while sending TaskEvent::Stopped");

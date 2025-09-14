@@ -41,7 +41,7 @@ impl<'a> TryFrom<tcrm_task_generated::tcrm::task::TaskConfig<'a>> for TaskConfig
 
         let env = fb_config.env().map(|vec| {
             vec.iter()
-                .filter_map(|entry| Some((entry.key().to_string(), entry.value().to_string())))
+                .map(|entry| (entry.key().to_string(), entry.value().to_string()))
                 .collect::<HashMap<_, _>>()
         });
         let ready_indicator = fb_config.ready_indicator().map(|s| s.to_string());
@@ -254,9 +254,10 @@ mod tests {
         let fb_config = config.to_flatbuffers(&mut builder);
         builder.finish(fb_config, None);
         let bytes = builder.finished_data();
-        let fb_config = flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskConfig>(bytes).unwrap();
+        let fb_config =
+            flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskConfig>(bytes).unwrap();
         let converted = TaskConfig::try_from(fb_config).unwrap();
-        
+
         assert_eq!(converted.args, Some(vec![]));
     }
 
@@ -277,9 +278,10 @@ mod tests {
         let fb_config = config.to_flatbuffers(&mut builder);
         builder.finish(fb_config, None);
         let bytes = builder.finished_data();
-        let fb_config = flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskConfig>(bytes).unwrap();
+        let fb_config =
+            flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskConfig>(bytes).unwrap();
         let converted = TaskConfig::try_from(fb_config).unwrap();
-        
+
         assert_eq!(converted.env, Some(HashMap::new()));
     }
 
@@ -300,9 +302,10 @@ mod tests {
         let fb_config = config.to_flatbuffers(&mut builder);
         builder.finish(fb_config, None);
         let bytes = builder.finished_data();
-        let fb_config = flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskConfig>(bytes).unwrap();
+        let fb_config =
+            flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskConfig>(bytes).unwrap();
         let converted = TaskConfig::try_from(fb_config).unwrap();
-        
+
         assert_eq!(converted.timeout_ms, Some(u64::MAX));
     }
 
@@ -323,9 +326,10 @@ mod tests {
         let fb_config = config.to_flatbuffers(&mut builder);
         builder.finish(fb_config, None);
         let bytes = builder.finished_data();
-        let fb_config = flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskConfig>(bytes).unwrap();
+        let fb_config =
+            flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskConfig>(bytes).unwrap();
         let converted = TaskConfig::try_from(fb_config).unwrap();
-        
+
         assert_eq!(converted.command, "测试命令");
         let args = converted.args.unwrap();
         assert_eq!(args[0], "参数1");
@@ -339,7 +343,7 @@ mod tests {
         let invalid_source = tcrm_task_generated::tcrm::task::StreamSource(99);
         let result = StreamSource::try_from(invalid_source);
         assert!(result.is_err());
-        
+
         if let Err(ConversionError::InvalidStreamSource(val)) = result {
             assert_eq!(val, 99);
         } else {
@@ -375,9 +379,10 @@ mod tests {
         let fb_config = config.to_flatbuffers(&mut builder);
         builder.finish(fb_config, None);
         let bytes = builder.finished_data();
-        let fb_config = flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskConfig>(bytes).unwrap();
+        let fb_config =
+            flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskConfig>(bytes).unwrap();
         let converted = TaskConfig::try_from(fb_config).unwrap();
-        
+
         assert_eq!(converted.env.unwrap().len(), 100);
         assert_eq!(converted.args.unwrap().len(), 50);
         assert_eq!(converted.command, "stress_test_command");

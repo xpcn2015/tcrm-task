@@ -198,7 +198,7 @@ impl TaskSpawner {
                     error: e.clone(),
                 };
 
-                if let Err(_) = event_tx.send(error_event).await {
+                if (event_tx.send(error_event).await).is_err() {
                     #[cfg(feature = "tracing")]
                     tracing::warn!("Event channel closed while sending TaskEvent::Error");
                 };
@@ -207,9 +207,9 @@ impl TaskSpawner {
         }
 
         let mut cmd = Command::new(&self.config.command);
-        let mut cmd = cmd.kill_on_drop(true);
+        let cmd = cmd.kill_on_drop(true);
 
-        setup_command(&mut cmd, &self.config);
+        setup_command(cmd, &self.config);
         let mut child = match cmd.spawn() {
             Ok(c) => c,
             Err(e) => {
@@ -222,7 +222,7 @@ impl TaskSpawner {
                     error: TaskError::IO(e.to_string()),
                 };
 
-                if let Err(_) = event_tx.send(error_event).await {
+                if (event_tx.send(error_event).await).is_err() {
                     #[cfg(feature = "tracing")]
                     tracing::warn!("Event channel closed while sending TaskEvent::Error");
                 };
@@ -244,7 +244,7 @@ impl TaskSpawner {
                     error: TaskError::IO(msg.to_string()),
                 };
 
-                if let Err(_) = event_tx.send(error_event).await {
+                if (event_tx.send(error_event).await).is_err() {
                     #[cfg(feature = "tracing")]
                     tracing::warn!("Event channel closed while sending TaskEvent::Error");
                 };
@@ -255,11 +255,12 @@ impl TaskSpawner {
         *self.process_id.write().await = Some(child_id);
         let mut task_handles = vec![];
         self.update_state(TaskState::Running).await;
-        if let Err(_) = event_tx
+        if (event_tx
             .send(TaskEvent::Started {
                 task_name: self.task_name.clone(),
             })
-            .await
+            .await)
+            .is_err()
         {
             #[cfg(feature = "tracing")]
             tracing::warn!("Event channel closed while sending TaskEvent::Started");

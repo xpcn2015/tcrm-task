@@ -50,10 +50,10 @@ pub(crate) fn spawn_wait_watcher(
                     match result {
                         Ok(status) => {
                             let exit_code = status.code();
-                            if let Err(_) = result_tx.send((
+                            if result_tx.send((
                                 exit_code,
                                 TaskEventStopReason::Finished,
-                            )) {
+                            )).is_err() {
                                     #[cfg(feature = "tracing")]
                                     tracing::warn!(exit_code, "Result channel closed while sending TaskEventStopReason::Finished");
                             };
@@ -62,10 +62,10 @@ pub(crate) fn spawn_wait_watcher(
                         }
                         Err(e) => {
                             // Expected OS level error
-                            if let Err(_) = result_tx.send((
+                            if result_tx.send((
                                 None,
                                 TaskEventStopReason::Error(e.to_string()),
-                            )) {
+                            )).is_err() {
                                     #[cfg(feature = "tracing")]
                                     tracing::warn!(error = %e, "Result channel closed while sending TaskEventStopReason::Error");
                             };
@@ -80,13 +80,13 @@ pub(crate) fn spawn_wait_watcher(
 
                     if let Err(e) = child.kill().await {
                         // Expected OS level error
-                        if let Err(_) = result_tx.send((
+                        if result_tx.send((
                             None,
                             TaskEventStopReason::Error(format!(
                                 "Failed to terminate task {}: {}",
                                 task_name, e
                             )),
-                        )) {
+                        )).is_err() {
                                 #[cfg(feature = "tracing")]
                                 tracing::warn!(error = %e, "Result channel closed while sending TaskEventStopReason::Error");
                         };
@@ -99,10 +99,10 @@ pub(crate) fn spawn_wait_watcher(
                     let reason = reason.unwrap_or(TaskTerminateReason::Custom(
                             "Terminate rx channel closed".to_string(),
                     ));
-                    if let Err(_) = result_tx.send((
+                    if result_tx.send((
                         None,
                         TaskEventStopReason::Terminated(reason.clone()),
-                    )) {
+                    )).is_err() {
                             #[cfg(feature = "tracing")]
                             tracing::warn!(reason = ?reason, "Result channel closed while sending TaskEventStopReason::Terminated");
                     };
@@ -111,7 +111,7 @@ pub(crate) fn spawn_wait_watcher(
                 }
             }
             // Task finished, send handle terminate signal
-            if let Err(_) = handle_terminator_tx.send(true){
+            if handle_terminator_tx.send(true).is_err() {
                     #[cfg(feature = "tracing")]
                     tracing::warn!("Handle terminate channels closed while sending signal");
             };

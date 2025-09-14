@@ -37,18 +37,11 @@ pub(crate) fn spawn_timeout_watcher(
                     _ = &mut sleep => {
                         #[cfg(feature = "tracing")]
                         tracing::info!("Task timeout reached, sending termination signal");
-                        match terminate_tx.lock().await.take() {
-                            Some(tx) => {
-                                if let Err(_) = tx.send(TaskTerminateReason::Timeout) {
-                                    #[cfg(feature = "tracing")]
-                                    tracing::warn!("Event channel closed while sending TaskEvent::Timeout");
-                                }
-                            }
-                            None => {
+                        if let Some(tx) = terminate_tx.lock().await.take()
+                            && tx.send(TaskTerminateReason::Timeout).is_err() {
                                 #[cfg(feature = "tracing")]
-                                tracing::warn!("Terminate signal already sent or channel missing");
+                                tracing::warn!("Event channel closed while sending TaskEvent::Timeout");
                             }
-                        }
                         break;
                     }
                     _ = handle_terminator_rx.changed() => {
