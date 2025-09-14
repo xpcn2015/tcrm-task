@@ -1,6 +1,6 @@
 /// Execution state of a task throughout its lifecycle
 ///
-/// TaskState tracks the progression of a task from creation through completion.
+/// `TaskState` tracks the progression of a task from creation through completion.
 /// States transition in a defined order, enabling predictable state management
 /// and event-driven programming.
 ///
@@ -60,13 +60,13 @@
 pub enum TaskState {
     /// Task has been created but not yet started
     ///
-    /// Initial state when TaskSpawner is created. The task configuration
+    /// Initial state when `TaskSpawner` is created. The task configuration
     /// exists but no process has been spawned yet.
     Pending,
 
     /// Task is being initialized and validated
     ///
-    /// Transitional state during start_direct() when configuration is being
+    /// Transitional state during `start_direct()` when configuration is being
     /// validated and the process is being prepared for spawning.
     Initiating,
 
@@ -151,7 +151,7 @@ pub enum TaskState {
 pub enum TaskTerminateReason {
     /// Task exceeded its configured timeout
     ///
-    /// The process ran longer than the timeout_ms specified in TaskConfig
+    /// The process ran longer than the `timeout_ms` specified in `TaskConfig`
     /// and was terminated to prevent runaway processes.
     Timeout,
 

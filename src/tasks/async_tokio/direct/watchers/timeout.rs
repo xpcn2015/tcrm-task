@@ -34,7 +34,7 @@ pub(crate) fn spawn_timeout_watcher(
             tokio::pin!(sleep);
             loop {
                 tokio::select! {
-                    _ = &mut sleep => {
+                    () = &mut sleep => {
                         #[cfg(feature = "tracing")]
                         tracing::info!("Task timeout reached, sending termination signal");
                         if let Some(tx) = terminate_tx.lock().await.take()

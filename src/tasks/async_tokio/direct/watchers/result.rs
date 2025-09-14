@@ -42,15 +42,12 @@ pub(crate) fn spawn_result_watcher(
 ) -> JoinHandle<()> {
     let handle = tokio::spawn(
         async move {
-            let (exit_code, stop_reason) = match result_rx.await {
-                Ok(result) => result,
-                Err(_) => {
-                    // Somehow, all tx has been dropped, this is unexpected
-                    let msg = "All result senders dropped unexpectedly";
-                    #[cfg(feature = "tracing")]
-                    tracing::warn!(msg);
-                    (None, TaskEventStopReason::Error(msg.to_string()))
-                }
+            let (exit_code, stop_reason) = if let Ok(result) = result_rx.await { result } else {
+                // Somehow, all tx has been dropped, this is unexpected
+                let msg = "All result senders dropped unexpectedly";
+                #[cfg(feature = "tracing")]
+                tracing::warn!(msg);
+                (None, TaskEventStopReason::Error(msg.to_string()))
             };
             #[cfg(feature = "tracing")]
             tracing::info!(

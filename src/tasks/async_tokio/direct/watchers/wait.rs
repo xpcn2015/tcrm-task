@@ -56,7 +56,7 @@ pub(crate) fn spawn_wait_watcher(
                             )).is_err() {
                                     #[cfg(feature = "tracing")]
                                     tracing::warn!(exit_code, "Result channel closed while sending TaskEventStopReason::Finished");
-                            };
+                            }
                                 #[cfg(feature = "tracing")]
                                 tracing::debug!(exit_code = ?exit_code, "Child process finished normally");
                         }
@@ -68,7 +68,7 @@ pub(crate) fn spawn_wait_watcher(
                             )).is_err() {
                                     #[cfg(feature = "tracing")]
                                     tracing::warn!(error = %e, "Result channel closed while sending TaskEventStopReason::Error");
-                            };
+                            }
                                 #[cfg(feature = "tracing")]
                                 tracing::error!(error = %e, "Child process wait failed");
                         }
@@ -83,13 +83,12 @@ pub(crate) fn spawn_wait_watcher(
                         if result_tx.send((
                             None,
                             TaskEventStopReason::Error(format!(
-                                "Failed to terminate task {}: {}",
-                                task_name, e
+                                "Failed to terminate task {task_name}: {e}"
                             )),
                         )).is_err() {
                                 #[cfg(feature = "tracing")]
                                 tracing::warn!(error = %e, "Result channel closed while sending TaskEventStopReason::Error");
-                        };
+                        }
                             #[cfg(feature = "tracing")]
                             tracing::error!(error = %e, "Failed to kill child process");
                         return;
@@ -105,7 +104,7 @@ pub(crate) fn spawn_wait_watcher(
                     )).is_err() {
                             #[cfg(feature = "tracing")]
                             tracing::warn!(reason = ?reason, "Result channel closed while sending TaskEventStopReason::Terminated");
-                    };
+                    }
                         #[cfg(feature = "tracing")]
                         tracing::debug!(reason = ?reason, "Child process terminated via watcher");
                 }
@@ -114,7 +113,7 @@ pub(crate) fn spawn_wait_watcher(
             if handle_terminator_tx.send(true).is_err() {
                     #[cfg(feature = "tracing")]
                     tracing::warn!("Handle terminate channels closed while sending signal");
-            };
+            }
                 process_id.write().await.take();
 
                 #[cfg(feature = "tracing")]

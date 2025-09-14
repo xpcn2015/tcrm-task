@@ -4,7 +4,7 @@ use crate::tasks::{error::TaskError, security::SecurityValidator};
 
 /// Configuration for a task to be executed.
 ///
-/// TaskConfig defines all parameters needed to execute a system process securely.
+/// `TaskConfig` defines all parameters needed to execute a system process securely.
 /// It includes the command, arguments, environment setup, timeouts, and monitoring options.
 ///
 /// # Security
@@ -206,7 +206,7 @@ impl TaskConfig {
     /// let config2 = TaskConfig::new("build-script")
     ///     .timeout_ms(300000);
     /// ```
-    pub fn timeout_ms(mut self, timeout: u64) -> Self {
+    #[must_use] pub fn timeout_ms(mut self, timeout: u64) -> Self {
         self.timeout_ms = Some(timeout);
         self
     }
@@ -228,7 +228,7 @@ impl TaskConfig {
     ///     .args(["-i"])
     ///     .enable_stdin(true);
     /// ```
-    pub fn enable_stdin(mut self, b: bool) -> Self {
+    #[must_use] pub fn enable_stdin(mut self, b: bool) -> Self {
         self.enable_stdin = Some(b);
         self
     }
@@ -274,7 +274,7 @@ impl TaskConfig {
     ///     .ready_indicator("Ready")
     ///     .ready_indicator_source(StreamSource::Stderr);
     /// ```
-    pub fn ready_indicator_source(mut self, source: StreamSource) -> Self {
+    #[must_use] pub fn ready_indicator_source(mut self, source: StreamSource) -> Self {
         self.ready_indicator_source = Some(source);
         self
     }

@@ -2,7 +2,7 @@ use crate::tasks::{config::StreamSource, error::TaskError, state::TaskTerminateR
 
 /// Events emitted during task execution lifecycle
 ///
-/// TaskEvent represents all significant events that occur during task execution,
+/// `TaskEvent` represents all significant events that occur during task execution,
 /// from process start to completion. These events enable real-time monitoring
 /// and reactive programming patterns.
 ///

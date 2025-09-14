@@ -187,7 +187,7 @@ impl TaskSpawner {
         self.update_state(TaskState::Initiating).await;
 
         match self.config.validate() {
-            Ok(_) => {}
+            Ok(()) => {}
             Err(e) => {
                 #[cfg(feature = "tracing")]
                 tracing::error!(error = %e, "Invalid task configuration");
@@ -201,7 +201,7 @@ impl TaskSpawner {
                 if (event_tx.send(error_event).await).is_err() {
                     #[cfg(feature = "tracing")]
                     tracing::warn!("Event channel closed while sending TaskEvent::Error");
-                };
+                }
                 return Err(e);
             }
         }
@@ -225,32 +225,29 @@ impl TaskSpawner {
                 if (event_tx.send(error_event).await).is_err() {
                     #[cfg(feature = "tracing")]
                     tracing::warn!("Event channel closed while sending TaskEvent::Error");
-                };
+                }
 
                 return Err(TaskError::IO(e.to_string()));
             }
         };
-        let child_id = match child.id() {
-            Some(id) => id,
-            None => {
-                let msg = "Failed to get process id";
+        let child_id = if let Some(id) = child.id() { id } else {
+            let msg = "Failed to get process id";
 
+            #[cfg(feature = "tracing")]
+            tracing::error!(msg);
+
+            self.update_state(TaskState::Finished).await;
+            let error_event = TaskEvent::Error {
+                task_name: self.task_name.clone(),
+                error: TaskError::IO(msg.to_string()),
+            };
+
+            if (event_tx.send(error_event).await).is_err() {
                 #[cfg(feature = "tracing")]
-                tracing::error!(msg);
-
-                self.update_state(TaskState::Finished).await;
-                let error_event = TaskEvent::Error {
-                    task_name: self.task_name.clone(),
-                    error: TaskError::IO(msg.to_string()),
-                };
-
-                if (event_tx.send(error_event).await).is_err() {
-                    #[cfg(feature = "tracing")]
-                    tracing::warn!("Event channel closed while sending TaskEvent::Error");
-                };
-
-                return Err(TaskError::IO(msg.to_string()));
+                tracing::warn!("Event channel closed while sending TaskEvent::Error");
             }
+
+            return Err(TaskError::IO(msg.to_string()));
         };
         *self.process_id.write().await = Some(child_id);
         let mut task_handles = vec![];

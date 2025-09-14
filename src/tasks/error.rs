@@ -2,7 +2,7 @@ use thiserror::Error;
 
 /// Errors that can occur during task configuration and execution
 ///
-/// TaskError represents all error conditions that can arise when configuring,
+/// `TaskError` represents all error conditions that can arise when configuring,
 /// validating, or executing tasks. Each variant provides specific context
 /// about the failure to enable proper error handling and debugging.
 ///

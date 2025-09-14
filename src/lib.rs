@@ -115,7 +115,7 @@
 //! ## Optional Features
 //!
 //! - `serde`: Enable serialization support for all types
-//! - `flatbuffers`: Enable FlatBuffers serialization for high-performance scenarios
+//! - `flatbuffers`: Enable `FlatBuffers` serialization for high-performance scenarios
 //! - `tracing`: Enable structured logging integration
 
 #[cfg(feature = "flatbuffers")]

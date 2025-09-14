@@ -52,7 +52,7 @@ fn default_instant() -> Instant {
 
 /// Spawns and manages the lifecycle of a task
 ///
-/// TaskSpawner handles the execution of system processes with comprehensive
+/// `TaskSpawner` handles the execution of system processes with comprehensive
 /// monitoring, state management, and event emission. It provides both
 /// synchronous and asynchronous interfaces for process management.
 ///
@@ -178,7 +178,7 @@ pub struct TaskSpawner {
 impl TaskSpawner {
     /// Create a new task spawner for the given task name and configuration
     ///
-    /// Creates a new TaskSpawner instance in the Pending state. The configuration
+    /// Creates a new `TaskSpawner` instance in the Pending state. The configuration
     /// is not validated until `start_direct` is called.
     ///
     /// # Arguments
@@ -193,7 +193,7 @@ impl TaskSpawner {
     /// let config = TaskConfig::new("echo").args(["hello"]);
     /// let spawner = TaskSpawner::new("my-task".to_string(), config);
     /// ```
-    pub fn new(task_name: String, config: TaskConfig) -> Self {
+    #[must_use] pub fn new(task_name: String, config: TaskConfig) -> Self {
         Self {
             task_name,
             config,
@@ -228,7 +228,7 @@ impl TaskSpawner {
     /// let spawner = TaskSpawner::new("interactive".to_string(), config)
     ///     .set_stdin(stdin_rx);
     /// ```
-    pub fn set_stdin(mut self, stdin_rx: mpsc::Receiver<String>) -> Self {
+    #[must_use] pub fn set_stdin(mut self, stdin_rx: mpsc::Receiver<String>) -> Self {
         if self.config.enable_stdin.unwrap_or_default() {
             self.stdin_rx = Some(stdin_rx);
         }
@@ -304,7 +304,7 @@ impl TaskSpawner {
 
     /// Get the uptime of the task since creation
     ///
-    /// Returns the duration since the TaskSpawner was created, regardless
+    /// Returns the duration since the `TaskSpawner` was created, regardless
     /// of the current execution state.
     ///
     /// # Examples
@@ -321,13 +321,13 @@ impl TaskSpawner {
     ///     assert!(uptime < Duration::from_secs(1)); // Just created
     /// }
     /// ```
-    pub fn uptime(&self) -> Duration {
+    #[must_use] pub fn uptime(&self) -> Duration {
         self.created_at.elapsed()
     }
 
     /// Get comprehensive information about the task
     ///
-    /// Returns a TaskInfo struct containing the task name, current state,
+    /// Returns a `TaskInfo` struct containing the task name, current state,
     /// uptime, creation time, and completion time (if finished).
     ///
     /// # Examples
@@ -473,7 +473,7 @@ pub(crate) async fn join_all_handles(
     let handles = std::mem::take(task_handles);
     let mut errors = Vec::new();
 
-    for mut handle in handles.into_iter() {
+    for mut handle in handles {
         match timeout(Duration::from_secs(5), &mut handle).await {
             Ok(Ok(())) => {}
             Ok(Err(join_err)) => {

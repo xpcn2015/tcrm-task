@@ -135,7 +135,7 @@ where
                                 let line_for_ready = if ready_indicator_source == src && !ready_found {
                                     line.clone()
                                 } else {
-                                    "".to_string()
+                                    String::new()
                                 };
 
                                 if (event_tx

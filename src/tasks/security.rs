@@ -97,14 +97,12 @@ impl SecurityValidator {
             }
             if arg.trim() != arg {
                 return Err(TaskError::InvalidConfiguration(format!(
-                    "Argument '{}' cannot have leading/trailing whitespace",
-                    arg
+                    "Argument '{arg}' cannot have leading/trailing whitespace"
                 )));
             }
             if arg.len() > MAX_ARG_LEN {
                 return Err(TaskError::InvalidConfiguration(format!(
-                    "Argument '{}' exceeds maximum length",
-                    arg
+                    "Argument '{arg}' exceeds maximum length"
                 )));
             }
         }
@@ -142,16 +140,14 @@ impl SecurityValidator {
         // Check if path exists
         if !path.exists() {
             return Err(TaskError::InvalidConfiguration(format!(
-                "Working directory does not exist: {}",
-                dir
+                "Working directory does not exist: {dir}"
             )));
         }
 
         // Check if it's actually a directory
         if !path.is_dir() {
             return Err(TaskError::InvalidConfiguration(format!(
-                "Working directory is not a directory: {}",
-                dir
+                "Working directory is not a directory: {dir}"
             )));
         }
 
@@ -209,15 +205,13 @@ impl SecurityValidator {
 
             if key.contains(' ') {
                 return Err(TaskError::InvalidConfiguration(format!(
-                    "Environment variable key '{}' cannot contain spaces",
-                    key
+                    "Environment variable key '{key}' cannot contain spaces"
                 )));
             }
 
             if key.len() > MAX_ENV_KEY_LEN {
                 return Err(TaskError::InvalidConfiguration(format!(
-                    "Environment variable key '{}' exceeds maximum length",
-                    key
+                    "Environment variable key '{key}' exceeds maximum length"
                 )));
             }
 
@@ -230,14 +224,12 @@ impl SecurityValidator {
 
             if value.trim() != value {
                 return Err(TaskError::InvalidConfiguration(format!(
-                    "Environment variable '{}' value cannot have leading/trailing whitespace",
-                    key
+                    "Environment variable '{key}' value cannot have leading/trailing whitespace"
                 )));
             }
             if value.len() > MAX_ENV_VALUE_LEN {
                 return Err(TaskError::InvalidConfiguration(format!(
-                    "Environment variable '{}' value exceeds maximum length",
-                    key
+                    "Environment variable '{key}' value exceeds maximum length"
                 )));
             }
         }
@@ -275,7 +267,7 @@ impl SecurityValidator {
     /// Validates command with strict security rules for untrusted input sources.
     ///
     /// This is an alternative to `validate_command` that blocks all shell features
-    /// and should be used when TaskConfig comes from external/untrusted sources.
+    /// and should be used when `TaskConfig` comes from external/untrusted sources.
     ///
     /// # Arguments
     ///
