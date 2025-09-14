@@ -1,13 +1,11 @@
 //! # tcrm-task
 //!
-//! A secure, async-first Rust library for executing and managing system processes.
-//! Built for developers who need reliable process execution with comprehensive
-//! security validation and real-time event monitoring.
+//! A Rust library for executing and managing system processes.
+//! Built for developers who need process execution with
+//! validation and real-time event monitoring.
 //!
 //! ## Features
 //!
-//! - **Async Process Execution**: Built on Tokio for high-performance async operations
-//! - **Security Validation**: Prevents command injection and validates all inputs
 //! - **Real-time Events**: Monitor process output, state changes, and lifecycle events
 //! - **Timeout Management**: Configurable timeouts for process execution
 //! - **Stdin Support**: Send input to running processes
