@@ -3,6 +3,13 @@
 
 ## 0.3
 
+### 0.3.2 (2025/09/14)
+#### Fixed
+- Update `serde` dependencies
+- Add Documents
+- Fixed redundant pattern matching using `.is_err()` instead of `if let Err(_)`
+- Refactored `spawn_std_watcher` function to use structured `OutputWatcherConfig` parameter instead of 8 individual parameters
+  
 ### 0.3.1 (2025/09/10)
 #### Fixed
 - `TaskConfig::ready_indicator` setter now accepts `impl Into<String>` for flexibility.
