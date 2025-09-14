@@ -2,6 +2,9 @@
 
 // @generated
 
+#![allow(clippy::extra_unused_lifetimes)]
+#![allow(clippy::missing_safety_doc)]
+
 use core::cmp::Ordering;
 use core::mem;
 
