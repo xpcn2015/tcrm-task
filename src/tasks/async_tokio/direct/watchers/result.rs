@@ -57,9 +57,10 @@ pub(crate) fn spawn_result_watcher(
                 stop_reason = ?stop_reason,
                 "Task stopped"
             );
-            if let Err(e) = join_all_handles(&mut task_handles).await {
+            #[allow(clippy::used_underscore_binding)]
+            if let Err(_e) = join_all_handles(&mut task_handles).await {
                 #[cfg(feature = "tracing")]
-                tracing::warn!(error = %e, "One or more task handles failed to join cleanly");
+                tracing::warn!(error = %_e, "One or more task handles failed to join cleanly");
             }
 
             if (event_tx

@@ -35,6 +35,7 @@ pub trait MaybeInstrument: Future + Sized {
     ///
     /// The original future unchanged.
     #[cfg(not(feature = "tracing"))]
+    #[must_use]
     fn maybe_instrument(self, _name: &'static str) -> Self {
         self
     }

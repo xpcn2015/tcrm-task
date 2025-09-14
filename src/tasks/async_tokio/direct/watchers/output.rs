@@ -182,9 +182,10 @@ where
                                 // EOF
                                 break;
                             }
-                            Err(e) => {
+                            #[allow(clippy::used_underscore_binding)]
+                            Err(_e) => {
                                     #[cfg(feature = "tracing")]
-                                    tracing::warn!(error=%e, "Error reading line from output stream");
+                                    tracing::warn!(error=%_e, "Error reading line from output stream");
                                 break;
                             }
                         }

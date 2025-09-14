@@ -42,9 +42,10 @@ pub(crate) fn spawn_stdin_watcher(
                             if !line.ends_with('\n') {
                                 line.push('\n');
                             }
-                            if let Err(e) = stdin.write_all(line.as_bytes()).await {
+                            #[allow(clippy::used_underscore_binding)]
+                            if let Err(_e) = stdin.write_all(line.as_bytes()).await {
                                     #[cfg(feature = "tracing")]
-                                    tracing::warn!(error=%e, "Failed to write to child stdin");
+                                    tracing::warn!(error=%_e, "Failed to write to child stdin");
                                 break;
                             }
                         } else {
@@ -70,9 +71,10 @@ pub(crate) fn spawn_stdin_watcher(
             }
 
             // Close stdin when channel is closed
-            if let Err(e) = stdin.shutdown().await {
+            #[allow(clippy::used_underscore_binding)]
+            if let Err(_e) = stdin.shutdown().await {
                 #[cfg(feature = "tracing")]
-                tracing::warn!(error=%e, "Failed to shutdown child stdin");
+                tracing::warn!(error=%_e, "Failed to shutdown child stdin");
             }
             #[cfg(feature = "tracing")]
             tracing::debug!("Watcher finished");
