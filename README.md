@@ -1,6 +1,6 @@
 # TCRM Task
 
-A powerful, async task execution unit for the TCRM project
+Async task execution unit for the TCRM project
 
 ## Features
 
