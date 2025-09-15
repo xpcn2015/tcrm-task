@@ -1,7 +1,14 @@
-
 # Changelog
 
 ## 0.3
+
+### 0.3.3 (2025/09/15)
+#### Added
+- Implemented FlatBuffers conversion.
+#### Fixed
+- Correct handling of optional exit codes in FlatBuffers using `-1` as sentinel value.
+#### Changed
+- Added `PartialEq` to `TaskError` and `TaskEvent`.
 
 ### 0.3.2 (2025/09/14)
 #### Fixed
