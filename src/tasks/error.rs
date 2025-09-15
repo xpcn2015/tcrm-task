@@ -55,7 +55,7 @@ use thiserror::Error;
 /// }
 /// ```
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Error, Debug, Clone)]
+#[derive(Error, Debug, Clone, PartialEq)]
 pub enum TaskError {
     /// Input/Output operation failed
     ///

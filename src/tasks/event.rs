@@ -92,7 +92,7 @@ use crate::tasks::{config::StreamSource, error::TaskError, state::TaskTerminateR
 /// }
 /// ```
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TaskEvent {
     /// Process has been successfully spawned and is running
     ///
