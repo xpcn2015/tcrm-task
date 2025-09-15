@@ -297,6 +297,61 @@ impl TaskEventStopReason {
     }
 }
 
+/// High-level wrapper conversions for TaskEventWrapper root type.
+///
+/// TaskEventWrapper is the root type in the FlatBuffers schema and provides
+/// convenient methods for complete serialization/deserialization.
+impl TaskEvent {
+    /// Converts a TaskEvent to a complete FlatBuffers byte buffer.
+    ///
+    /// This creates a complete, self-contained FlatBuffers buffer that can be
+    /// stored or transmitted and later deserialized with `from_flatbuffers_bytes`.
+    ///
+    /// # Arguments
+    ///
+    /// * `builder` - Optional FlatBuffers builder to reuse. If None, creates a new one.
+    ///
+    /// # Returns
+    ///
+    /// A byte vector containing the complete FlatBuffers data.
+    pub fn to_flatbuffers_bytes(&self) -> Vec<u8> {
+        let mut builder = flatbuffers::FlatBufferBuilder::new();
+        let (event_type, event_offset) = self.to_flatbuffers(&mut builder);
+
+        let wrapper = tcrm_task_generated::tcrm::task::TaskEventWrapper::create(
+            &mut builder,
+            &tcrm_task_generated::tcrm::task::TaskEventWrapperArgs {
+                event_type,
+                event: Some(event_offset),
+            },
+        );
+
+        builder.finish(wrapper, None);
+        builder.finished_data().to_vec()
+    }
+
+    /// Converts a FlatBuffers byte buffer to a TaskEvent.
+    ///
+    /// This is a convenience method that handles the complete deserialization
+    /// process from a byte buffer created with `to_flatbuffers_bytes`.
+    ///
+    /// # Arguments
+    ///
+    /// * `bytes` - The FlatBuffers byte buffer containing TaskEventWrapper data.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ConversionError`] if:
+    /// - The byte buffer is invalid or corrupted
+    /// - The FlatBuffers data doesn't contain a valid TaskEventWrapper
+    /// - Any nested conversion errors occur
+    pub fn from_flatbuffers_bytes(bytes: &[u8]) -> Result<Self, ConversionError> {
+        let wrapper = flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskEventWrapper>(bytes)
+            .map_err(|e| ConversionError::FlatBuffersError(e.to_string()))?;
+        Self::from_flatbuffers(wrapper)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -794,6 +849,63 @@ mod tests {
         match result.unwrap_err() {
             ConversionError::InvalidTaskEventStopReasonType(_) => {}
             _ => panic!("Expected InvalidTaskEventStopReasonType error"),
+        }
+    }
+
+    #[test]
+    fn test_task_event_wrapper_convenience_bytes_roundtrip() {
+        let original_event = TaskEvent::Started {
+            task_name: "wrapper_convenience_task".to_string(),
+        };
+
+        // Test bytes roundtrip
+        let bytes = original_event.to_flatbuffers_bytes();
+        let converted_event = TaskEvent::from_flatbuffers_bytes(&bytes).unwrap();
+
+        assert_eq!(original_event, converted_event);
+    }
+
+    #[test]
+    fn test_task_event_wrapper_convenience_bytes_all_variants() {
+        let test_events = vec![
+            TaskEvent::Started {
+                task_name: "test_started".to_string(),
+            },
+            TaskEvent::Output {
+                task_name: "test_output".to_string(),
+                line: "test line".to_string(),
+                src: StreamSource::Stdout,
+            },
+            TaskEvent::Ready {
+                task_name: "test_ready".to_string(),
+            },
+            TaskEvent::Stopped {
+                task_name: "test_stopped".to_string(),
+                exit_code: Some(0),
+                reason: TaskEventStopReason::Finished,
+            },
+            TaskEvent::Error {
+                task_name: "test_error".to_string(),
+                error: TaskError::Custom("test error".to_string()),
+            },
+        ];
+
+        for original_event in test_events {
+            let bytes = original_event.to_flatbuffers_bytes();
+            let converted_event = TaskEvent::from_flatbuffers_bytes(&bytes).unwrap();
+            assert_eq!(original_event, converted_event);
+        }
+    }
+
+    #[test]
+    fn test_task_event_wrapper_invalid_bytes() {
+        let invalid_bytes = vec![0xde, 0xad, 0xbe, 0xef];
+        let result = TaskEvent::from_flatbuffers_bytes(&invalid_bytes);
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            ConversionError::FlatBuffersError(_) => {}
+            _ => panic!("Expected FlatBuffersError"),
         }
     }
 }

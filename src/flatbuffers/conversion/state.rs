@@ -163,6 +163,76 @@ impl TaskTerminateReason {
             }
         }
     }
+
+    /// Converts from `FlatBuffers` representation to `TaskTerminateReason`.
+    ///
+    /// # Arguments
+    ///
+    /// * `reason_type` - The discriminant enum indicating which variant is stored
+    /// * `reason_data` - The FlatBuffers table containing the variant data
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ConversionError`] if:
+    /// - The reason type is not recognized
+    /// - Required fields are missing
+    pub fn from_flatbuffers_with_type(
+        reason_type: tcrm_task_generated::tcrm::task::TaskTerminateReason,
+        reason_data: flatbuffers::Table<'_>,
+    ) -> Result<Self, ConversionError> {
+        match reason_type {
+            tcrm_task_generated::tcrm::task::TaskTerminateReason::Timeout => {
+                Ok(TaskTerminateReason::Timeout)
+            }
+            tcrm_task_generated::tcrm::task::TaskTerminateReason::Cleanup => {
+                Ok(TaskTerminateReason::Cleanup)
+            }
+            tcrm_task_generated::tcrm::task::TaskTerminateReason::DependenciesFinished => {
+                Ok(TaskTerminateReason::DependenciesFinished)
+            }
+            tcrm_task_generated::tcrm::task::TaskTerminateReason::Custom => {
+                let custom_reason = unsafe {
+                    tcrm_task_generated::tcrm::task::CustomReason::init_from_table(reason_data)
+                };
+                Ok(TaskTerminateReason::Custom(
+                    custom_reason.message().to_string(),
+                ))
+            }
+            _ => Err(ConversionError::InvalidTaskTerminateReasonType(
+                reason_type.0 as i8,
+            )),
+        }
+    }
+}
+
+// Individual reason type conversions for standalone usage
+
+impl tcrm_task_generated::tcrm::task::TimeoutReason<'_> {
+    /// Converts from `FlatBuffers` TimeoutReason to `TaskTerminateReason::Timeout`.
+    pub fn to_task_terminate_reason(&self) -> TaskTerminateReason {
+        TaskTerminateReason::Timeout
+    }
+}
+
+impl tcrm_task_generated::tcrm::task::CleanupReason<'_> {
+    /// Converts from `FlatBuffers` CleanupReason to `TaskTerminateReason::Cleanup`.
+    pub fn to_task_terminate_reason(&self) -> TaskTerminateReason {
+        TaskTerminateReason::Cleanup
+    }
+}
+
+impl tcrm_task_generated::tcrm::task::DependenciesFinishedReason<'_> {
+    /// Converts from `FlatBuffers` DependenciesFinishedReason to `TaskTerminateReason::DependenciesFinished`.
+    pub fn to_task_terminate_reason(&self) -> TaskTerminateReason {
+        TaskTerminateReason::DependenciesFinished
+    }
+}
+
+impl tcrm_task_generated::tcrm::task::CustomReason<'_> {
+    /// Converts from `FlatBuffers` CustomReason to `TaskTerminateReason::Custom`.
+    pub fn to_task_terminate_reason(&self) -> TaskTerminateReason {
+        TaskTerminateReason::Custom(self.message().to_string())
+    }
 }
 
 #[cfg(test)]
@@ -402,6 +472,85 @@ mod tests {
             let mut builder = flatbuffers::FlatBufferBuilder::new();
             let (stop_reason, _offset) = reason.to_flatbuffers_terminated(&mut builder);
             assert_eq!(stop_reason, expected_stop_reason);
+        }
+    }
+
+    #[test]
+    fn test_task_terminate_reason_roundtrip() {
+        let test_cases = vec![
+            TaskTerminateReason::Timeout,
+            TaskTerminateReason::Cleanup,
+            TaskTerminateReason::DependenciesFinished,
+            TaskTerminateReason::Custom("Custom termination message".to_string()),
+            TaskTerminateReason::Custom("".to_string()),
+            TaskTerminateReason::Custom("Unicode: 终止原因 🛑".to_string()),
+        ];
+
+        for original_reason in test_cases {
+            // Use the proper roundtrip approach with specific table types
+            match &original_reason {
+                TaskTerminateReason::Timeout => {
+                    let mut builder = flatbuffers::FlatBufferBuilder::new();
+                    let timeout_reason = tcrm_task_generated::tcrm::task::TimeoutReason::create(
+                        &mut builder,
+                        &tcrm_task_generated::tcrm::task::TimeoutReasonArgs {},
+                    );
+                    builder.finish(timeout_reason, None);
+                    let bytes = builder.finished_data();
+                    let fb_reason =
+                        flatbuffers::root::<tcrm_task_generated::tcrm::task::TimeoutReason>(bytes)
+                            .unwrap();
+                    let converted = fb_reason.to_task_terminate_reason();
+                    assert_eq!(original_reason, converted);
+                }
+                TaskTerminateReason::Cleanup => {
+                    let mut builder = flatbuffers::FlatBufferBuilder::new();
+                    let cleanup_reason = tcrm_task_generated::tcrm::task::CleanupReason::create(
+                        &mut builder,
+                        &tcrm_task_generated::tcrm::task::CleanupReasonArgs {},
+                    );
+                    builder.finish(cleanup_reason, None);
+                    let bytes = builder.finished_data();
+                    let fb_reason =
+                        flatbuffers::root::<tcrm_task_generated::tcrm::task::CleanupReason>(bytes)
+                            .unwrap();
+                    let converted = fb_reason.to_task_terminate_reason();
+                    assert_eq!(original_reason, converted);
+                }
+                TaskTerminateReason::DependenciesFinished => {
+                    let mut builder = flatbuffers::FlatBufferBuilder::new();
+                    let deps_reason =
+                        tcrm_task_generated::tcrm::task::DependenciesFinishedReason::create(
+                            &mut builder,
+                            &tcrm_task_generated::tcrm::task::DependenciesFinishedReasonArgs {},
+                        );
+                    builder.finish(deps_reason, None);
+                    let bytes = builder.finished_data();
+                    let fb_reason = flatbuffers::root::<
+                        tcrm_task_generated::tcrm::task::DependenciesFinishedReason,
+                    >(bytes)
+                    .unwrap();
+                    let converted = fb_reason.to_task_terminate_reason();
+                    assert_eq!(original_reason, converted);
+                }
+                TaskTerminateReason::Custom(msg) => {
+                    let mut builder = flatbuffers::FlatBufferBuilder::new();
+                    let msg_offset = builder.create_string(msg);
+                    let custom_reason = tcrm_task_generated::tcrm::task::CustomReason::create(
+                        &mut builder,
+                        &tcrm_task_generated::tcrm::task::CustomReasonArgs {
+                            message: Some(msg_offset),
+                        },
+                    );
+                    builder.finish(custom_reason, None);
+                    let bytes = builder.finished_data();
+                    let fb_reason =
+                        flatbuffers::root::<tcrm_task_generated::tcrm::task::CustomReason>(bytes)
+                            .unwrap();
+                    let converted = fb_reason.to_task_terminate_reason();
+                    assert_eq!(original_reason, converted);
+                }
+            }
         }
     }
 }

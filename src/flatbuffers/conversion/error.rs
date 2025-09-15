@@ -11,6 +11,7 @@ pub enum ConversionError {
     InvalidTaskEventType(i8),
     InvalidTaskErrorType(i8),
     MissingRequiredField(&'static str),
+    FlatBuffersError(String),
 }
 
 impl std::fmt::Display for ConversionError {
@@ -35,6 +36,9 @@ impl std::fmt::Display for ConversionError {
             }
             ConversionError::MissingRequiredField(field) => {
                 write!(f, "Missing required field: {field}")
+            }
+            ConversionError::FlatBuffersError(msg) => {
+                write!(f, "FlatBuffers error: {msg}")
             }
         }
     }
