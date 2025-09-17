@@ -2682,7 +2682,9 @@ pub mod tcrm {
         /// catch every error, or be maximally performant. For the
         /// previous, unchecked, behavior use
         /// `root_as_task_event_unchecked`.
-        pub fn root_as_task_event(buf: &[u8]) -> Result<TaskEvent, flatbuffers::InvalidFlatbuffer> {
+        pub fn root_as_task_event(
+            buf: &'_ [u8],
+        ) -> Result<TaskEvent<'_>, flatbuffers::InvalidFlatbuffer> {
             flatbuffers::root::<TaskEvent>(buf)
         }
         #[inline]
@@ -2693,8 +2695,8 @@ pub mod tcrm {
         /// previous, unchecked, behavior use
         /// `size_prefixed_root_as_task_event_unchecked`.
         pub fn size_prefixed_root_as_task_event(
-            buf: &[u8],
-        ) -> Result<TaskEvent, flatbuffers::InvalidFlatbuffer> {
+            buf: &'_ [u8],
+        ) -> Result<TaskEvent<'_>, flatbuffers::InvalidFlatbuffer> {
             flatbuffers::size_prefixed_root::<TaskEvent>(buf)
         }
         #[inline]
@@ -2727,14 +2729,14 @@ pub mod tcrm {
         /// Assumes, without verification, that a buffer of bytes contains a TaskEvent and returns it.
         /// # Safety
         /// Callers must trust the given bytes do indeed contain a valid `TaskEvent`.
-        pub unsafe fn root_as_task_event_unchecked(buf: &[u8]) -> TaskEvent {
+        pub unsafe fn root_as_task_event_unchecked(buf: &'_ [u8]) -> TaskEvent<'_> {
             unsafe { flatbuffers::root_unchecked::<TaskEvent>(buf) }
         }
         #[inline]
         /// Assumes, without verification, that a buffer of bytes contains a size prefixed TaskEvent and returns it.
         /// # Safety
         /// Callers must trust the given bytes do indeed contain a valid size prefixed `TaskEvent`.
-        pub unsafe fn size_prefixed_root_as_task_event_unchecked(buf: &[u8]) -> TaskEvent {
+        pub unsafe fn size_prefixed_root_as_task_event_unchecked(buf: &'_ [u8]) -> TaskEvent<'_> {
             unsafe { flatbuffers::size_prefixed_root_unchecked::<TaskEvent>(buf) }
         }
         #[inline]
