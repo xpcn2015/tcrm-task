@@ -43,7 +43,7 @@
 //! ```rust
 //! # #[cfg(feature = "flatbuffers")]
 //! # {
-//! use tcrm_task::tasks::state::TaskTerminateReason;
+//! use tcrm_task::tasks::event::TaskTerminateReason;
 //! use flatbuffers::FlatBufferBuilder;
 //!
 //! let reason = TaskTerminateReason::Timeout;
