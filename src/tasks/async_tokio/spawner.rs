@@ -5,7 +5,7 @@ use tokio::task::JoinHandle;
 use tokio::time::{Instant, timeout};
 
 use crate::tasks::error::TaskError;
-use crate::tasks::state::TaskTerminateReason;
+use crate::tasks::event::TaskTerminateReason;
 use crate::tasks::{config::TaskConfig, state::TaskState};
 
 /// Information about a running or completed task
@@ -516,7 +516,8 @@ mod tests {
         async_tokio::spawner::{TaskInfo, TaskSpawner},
         config::TaskConfig,
         error::TaskError,
-        state::{TaskState, TaskTerminateReason},
+        event::TaskTerminateReason,
+        state::TaskState,
     };
 
     #[tokio::test]

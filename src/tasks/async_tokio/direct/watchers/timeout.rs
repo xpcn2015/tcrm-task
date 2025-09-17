@@ -5,7 +5,7 @@ use tokio::{
     task::JoinHandle,
 };
 
-use crate::{helper::tracing::MaybeInstrument, tasks::state::TaskTerminateReason};
+use crate::{helper::tracing::MaybeInstrument, tasks::event::TaskTerminateReason};
 
 /// Spawns a watcher that triggers a timeout after the specified duration.
 ///

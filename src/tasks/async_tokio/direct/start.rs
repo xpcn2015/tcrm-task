@@ -9,8 +9,8 @@ use crate::tasks::async_tokio::direct::watchers::timeout::spawn_timeout_watcher;
 use crate::tasks::async_tokio::direct::watchers::wait::spawn_wait_watcher;
 use crate::tasks::async_tokio::spawner::TaskSpawner;
 use crate::tasks::error::TaskError;
-use crate::tasks::event::{TaskEvent, TaskEventStopReason};
-use crate::tasks::state::{TaskState, TaskTerminateReason};
+use crate::tasks::event::{TaskEvent, TaskEventStopReason, TaskTerminateReason};
+use crate::tasks::state::TaskState;
 
 impl TaskSpawner {
     /// Start the task and execute it directly with real-time event monitoring
@@ -427,8 +427,7 @@ mod tests {
         async_tokio::spawner::TaskSpawner,
         config::{StreamSource, TaskConfig},
         error::TaskError,
-        event::{TaskEvent, TaskEventStopReason},
-        state::TaskTerminateReason,
+        event::{TaskEvent, TaskEventStopReason, TaskTerminateReason},
     };
     #[tokio::test]
     async fn start_direct_fn_echo_command() {

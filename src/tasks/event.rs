@@ -1,4 +1,4 @@
-use crate::tasks::{config::StreamSource, error::TaskError, state::TaskTerminateReason};
+use crate::tasks::{config::StreamSource, error::TaskError};
 
 /// Events emitted during task execution lifecycle
 ///
@@ -180,4 +180,82 @@ pub enum TaskEventStopReason {
 
     /// Process stopped due to an error
     Error(String),
+}
+
+/// Reason for terminating a running task
+///
+/// Provides context about why a task termination was requested,
+/// enabling appropriate cleanup and response handling.
+///
+/// # Examples
+///
+/// ## Timeout Termination
+/// ```rust
+/// use tcrm_task::tasks::{
+///     config::TaskConfig,
+///     async_tokio::spawner::TaskSpawner,
+///     state::TaskTerminateReason
+/// };
+/// use tokio::sync::mpsc;
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let config = TaskConfig::new("cmd").args(["/C", "ping", "127.0.0.1", "-n", "5"]); // 5 second sleep
+///     let mut spawner = TaskSpawner::new("long-task".to_string(), config);
+///     
+///     let (tx, _rx) = mpsc::channel(100);
+///     spawner.start_direct(tx).await?;
+///     
+///     // Terminate after 1 second
+///     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+///     spawner.send_terminate_signal(TaskTerminateReason::Timeout).await?;
+///     
+///     Ok(())
+/// }
+/// ```
+///
+/// ## Custom Termination
+/// ```rust
+/// use tcrm_task::tasks::{
+///     config::TaskConfig,
+///     async_tokio::spawner::TaskSpawner,
+///     state::TaskTerminateReason
+/// };
+/// use tokio::sync::mpsc;
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let config = TaskConfig::new("cmd").args(["/C", "echo", "running"]);
+///     let mut spawner = TaskSpawner::new("daemon".to_string(), config);
+///     
+///     let (tx, _rx) = mpsc::channel(100);
+///     spawner.start_direct(tx).await?;
+///     
+///     // Custom shutdown reason
+///     let reason = TaskTerminateReason::Custom("User requested shutdown".to_string());
+///     spawner.send_terminate_signal(reason).await?;
+///     
+///     Ok(())
+/// }
+/// ```
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq)]
+pub enum TaskTerminateReason {
+    /// Task exceeded its configured timeout
+    ///
+    /// The process ran longer than the `timeout_ms` specified in `TaskConfig`
+    /// and was terminated to prevent runaway processes.
+    Timeout,
+
+    /// Task was terminated during cleanup operations
+    ///
+    /// Used when terminating tasks as part of application shutdown,
+    /// resource cleanup, or dependency management.
+    Cleanup,
+
+    /// Task was terminated because its dependencies finished
+    ///
+    /// Used in task orchestration scenarios where tasks depend on
+    /// other tasks and should be terminated when dependencies complete.
+    DependenciesFinished,
 }

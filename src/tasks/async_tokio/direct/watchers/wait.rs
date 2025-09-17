@@ -9,8 +9,8 @@ use tokio::{
 use crate::{
     helper::tracing::MaybeInstrument,
     tasks::{
-        event::TaskEventStopReason,
-        state::{TaskState, TaskTerminateReason},
+        event::{TaskEventStopReason, TaskTerminateReason},
+        state::TaskState,
     },
 };
 
@@ -95,9 +95,7 @@ pub(crate) fn spawn_wait_watcher(
                     }
 
                     *state.write().await = TaskState::Finished;
-                    let reason = reason.unwrap_or(TaskTerminateReason::Custom(
-                            "Terminate rx channel closed".to_string(),
-                    ));
+                    let reason = reason.unwrap_or(TaskTerminateReason::Cleanup);
                     if result_tx.send((
                         None,
                         TaskEventStopReason::Terminated(reason.clone()),
