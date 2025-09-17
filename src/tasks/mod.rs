@@ -2,8 +2,8 @@ pub mod async_tokio;
 pub mod config;
 pub mod error;
 pub mod event;
-pub mod security;
 pub mod state;
+pub mod validator;
 
 #[cfg(test)]
 mod integration_tests;

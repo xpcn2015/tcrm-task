@@ -8,9 +8,9 @@ const MAX_WORKING_DIR_LEN: usize = 4096;
 const MAX_ENV_KEY_LEN: usize = 1024;
 const MAX_ENV_VALUE_LEN: usize = 4096;
 /// Security validation utilities for task configuration
-pub struct SecurityValidator;
+pub struct ConfigValidator;
 
-impl SecurityValidator {
+impl ConfigValidator {
     /// Validates command name for security and correctness.
     ///
     /// # Arguments
@@ -353,8 +353,8 @@ mod tests {
 
     #[test]
     fn validate_command_rejects_empty() {
-        assert!(SecurityValidator::validate_command("").is_err());
-        assert!(SecurityValidator::validate_command("   ").is_err());
+        assert!(ConfigValidator::validate_command("").is_err());
+        assert!(ConfigValidator::validate_command("   ").is_err());
     }
 
     #[test]
@@ -372,7 +372,7 @@ mod tests {
 
         for cmd in &shell_commands {
             assert!(
-                SecurityValidator::validate_command(cmd).is_ok(),
+                ConfigValidator::validate_command(cmd).is_ok(),
                 "Should accept shell feature: {}",
                 cmd
             );
@@ -390,7 +390,7 @@ mod tests {
 
         for cmd in &dangerous_commands {
             assert!(
-                SecurityValidator::validate_command(cmd).is_err(),
+                ConfigValidator::validate_command(cmd).is_err(),
                 "Should reject obvious injection: {}",
                 cmd
             );
@@ -407,7 +407,7 @@ mod tests {
 
         for cmd in &shell_commands {
             assert!(
-                SecurityValidator::validate_command_strict(cmd).is_err(),
+                ConfigValidator::validate_command_strict(cmd).is_err(),
                 "Strict validation should reject: {}",
                 cmd
             );
@@ -430,7 +430,7 @@ mod tests {
 
         for cmd in &safe_commands {
             assert!(
-                SecurityValidator::validate_command(cmd).is_ok(),
+                ConfigValidator::validate_command(cmd).is_ok(),
                 "Should accept: {}",
                 cmd
             );
@@ -446,26 +446,26 @@ mod tests {
             "path/to/file".to_string(),
         ];
 
-        assert!(SecurityValidator::validate_args(&normal_args).is_ok());
+        assert!(ConfigValidator::validate_args(&normal_args).is_ok());
     }
 
     #[test]
     fn validate_args_rejects_null_bytes() {
         let dangerous_args = vec!["arg\0with\0nulls".to_string()];
 
-        assert!(SecurityValidator::validate_args(&dangerous_args).is_err());
+        assert!(ConfigValidator::validate_args(&dangerous_args).is_err());
     }
 
     #[test]
     fn validate_working_dir_accepts_relative_paths() {
         // Should accept relative paths including .. for developer use
         let current_dir = std::env::current_dir().unwrap();
-        assert!(SecurityValidator::validate_working_dir(current_dir.to_str().unwrap()).is_ok());
+        assert!(ConfigValidator::validate_working_dir(current_dir.to_str().unwrap()).is_ok());
     }
 
     #[test]
     fn validate_working_dir_rejects_nonexistent() {
-        assert!(SecurityValidator::validate_working_dir("/nonexistent/path").is_err());
+        assert!(ConfigValidator::validate_working_dir("/nonexistent/path").is_err());
     }
 
     #[test]
@@ -473,7 +473,7 @@ mod tests {
         // Environment variable keys should not contain spaces
         let mut env = HashMap::new();
         env.insert("KEY WITH SPACE".to_string(), "value".to_string());
-        assert!(SecurityValidator::validate_env_vars(&env).is_err());
+        assert!(ConfigValidator::validate_env_vars(&env).is_err());
     }
 
     #[test]
@@ -485,20 +485,20 @@ mod tests {
             "CUSTOM_VAR".to_string(),
             "some value with spaces".to_string(),
         );
-        assert!(SecurityValidator::validate_env_vars(&env).is_ok());
+        assert!(ConfigValidator::validate_env_vars(&env).is_ok());
     }
 
     #[test]
     fn validate_env_vars_rejects_invalid_keys() {
         let mut env = HashMap::new();
         env.insert("KEY=BAD".to_string(), "value".to_string());
-        assert!(SecurityValidator::validate_env_vars(&env).is_err());
+        assert!(ConfigValidator::validate_env_vars(&env).is_err());
     }
 
     #[test]
     fn validate_env_vars_rejects_null_chars() {
         let mut env = HashMap::new();
         env.insert("KEY".to_string(), "value\0with\0nulls".to_string());
-        assert!(SecurityValidator::validate_env_vars(&env).is_err());
+        assert!(ConfigValidator::validate_env_vars(&env).is_err());
     }
 }

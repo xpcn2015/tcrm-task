@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use crate::tasks::{error::TaskError, security::SecurityValidator};
+use crate::tasks::{error::TaskError, validator::ConfigValidator};
 
 /// Configuration for a task to be executed.
 ///
@@ -329,7 +329,7 @@ impl TaskConfig {
     /// ```
     pub fn validate(&self) -> Result<(), TaskError> {
         // Validate command
-        SecurityValidator::validate_command(&self.command)?;
+        ConfigValidator::validate_command(&self.command)?;
 
         // Validate ready_indicator
         if let Some(indicator) = &self.ready_indicator
@@ -342,17 +342,17 @@ impl TaskConfig {
 
         // Validate arguments
         if let Some(args) = &self.args {
-            SecurityValidator::validate_args(args)?;
+            ConfigValidator::validate_args(args)?;
         }
 
         // Validate working directory
         if let Some(dir) = &self.working_dir {
-            SecurityValidator::validate_working_dir(dir)?;
+            ConfigValidator::validate_working_dir(dir)?;
         }
 
         // Validate environment variables
         if let Some(env) = &self.env {
-            SecurityValidator::validate_env_vars(env)?;
+            ConfigValidator::validate_env_vars(env)?;
         }
 
         // Validate timeout
