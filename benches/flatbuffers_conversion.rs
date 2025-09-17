@@ -4,10 +4,12 @@ use std::hint::black_box;
 use tcrm_task::tasks::{
     config::{StreamSource, TaskConfig},
     error::TaskError,
-    event::{TaskEvent, TaskEventStopReason},
-    state::{TaskState, TaskTerminateReason},
+    event::{TaskEvent, TaskEventStopReason, TaskTerminateReason},
+    state::TaskState,
 };
 
+#[cfg(feature = "flatbuffers")]
+use tcrm_task::flatbuffers::conversion::{FromFlatbuffers, ToFlatbuffers};
 #[cfg(feature = "flatbuffers")]
 use tcrm_task::flatbuffers::tcrm_task_generated;
 
@@ -53,7 +55,7 @@ fn bench_config_serialization(c: &mut Criterion) {
             let fb_config =
                 flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskConfig>(black_box(bytes))
                     .unwrap();
-            black_box(TaskConfig::try_from(fb_config).unwrap())
+            black_box(TaskConfig::from_flatbuffers(fb_config).unwrap())
         })
     });
 }
@@ -65,7 +67,6 @@ fn bench_error_conversion(c: &mut Criterion) {
         TaskError::Handle("Handle error benchmark".to_string()),
         TaskError::Channel("Channel error benchmark".to_string()),
         TaskError::InvalidConfiguration("Invalid config benchmark".to_string()),
-        TaskError::Custom("Custom error benchmark".to_string()),
     ];
 
     c.bench_function("error_to_flatbuffers", |b| {
@@ -101,7 +102,7 @@ fn bench_event_serialization(c: &mut Criterion) {
         },
         TaskEvent::Error {
             task_name: "benchmark_task".to_string(),
-            error: TaskError::Custom("Benchmark error".to_string()),
+            error: TaskError::IO("Benchmark error".to_string()),
         },
     ];
 
@@ -109,7 +110,7 @@ fn bench_event_serialization(c: &mut Criterion) {
         b.iter(|| {
             for event in &events {
                 let mut builder = flatbuffers::FlatBufferBuilder::new();
-                let (_, offset) = black_box(event).to_flatbuffers(&mut builder);
+                let offset = black_box(event).to_flatbuffers(&mut builder);
                 builder.finish(offset, None);
                 black_box(builder.finished_data().to_vec());
             }
@@ -142,16 +143,17 @@ fn bench_state_conversion(c: &mut Criterion) {
         TaskTerminateReason::Timeout,
         TaskTerminateReason::Cleanup,
         TaskTerminateReason::DependenciesFinished,
-        TaskTerminateReason::Custom("Benchmark custom reason".to_string()),
     ];
 
     c.bench_function("terminate_reason_to_flatbuffers", |b| {
         b.iter(|| {
             for reason in &terminate_reasons {
+                use tcrm_task::flatbuffers::conversion::ToFlatbuffersUnion;
+
                 let mut builder = flatbuffers::FlatBufferBuilder::new();
-                let (_, offset) = black_box(reason).to_flatbuffers(&mut builder);
-                builder.finish(offset, None);
-                black_box(builder.finished_data().to_vec());
+                let (discriminant, union_offset) =
+                    black_box(reason).to_flatbuffers_union(&mut builder);
+                black_box((discriminant, union_offset));
             }
         })
     });

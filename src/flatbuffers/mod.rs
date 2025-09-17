@@ -26,6 +26,7 @@
 //! # #[cfg(feature = "flatbuffers")]
 //! # {
 //! use tcrm_task::tasks::config::TaskConfig;
+//! use tcrm_task::flatbuffers::conversion::ToFlatbuffers;
 //! use flatbuffers::FlatBufferBuilder;
 //!
 //! let config = TaskConfig::new("cmd").args(["/C", "echo", "hello"]);
@@ -44,13 +45,14 @@
 //! # #[cfg(feature = "flatbuffers")]
 //! # {
 //! use tcrm_task::tasks::event::TaskTerminateReason;
+//! use tcrm_task::flatbuffers::conversion::ToFlatbuffersUnion;
 //! use flatbuffers::FlatBufferBuilder;
 //!
 //! let reason = TaskTerminateReason::Timeout;
 //!
 //! // Serialize terminate reason for logging
 //! let mut builder = FlatBufferBuilder::new();
-//! let (fb_reason, _offset) = reason.to_flatbuffers(&mut builder);
+//! let (fb_reason, _offset) = reason.to_flatbuffers_union(&mut builder);
 //! println!("Reason serialized: {:?}", fb_reason);
 //! # }
 //! ```

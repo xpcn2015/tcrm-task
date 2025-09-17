@@ -1,4 +1,10 @@
-use crate::{flatbuffers::tcrm_task_generated, tasks::error::TaskError};
+use crate::{
+    flatbuffers::{
+        conversion::{FromFlatbuffers, ToFlatbuffers},
+        tcrm_task_generated,
+    },
+    tasks::error::TaskError,
+};
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone)]
@@ -45,14 +51,9 @@ impl std::fmt::Display for ConversionError {
 }
 impl std::error::Error for ConversionError {}
 
-impl TaskError {
-    /// Converts from `FlatBuffers` representation to `TaskError`.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`ConversionError::InvalidTaskErrorType`] if the error type is not recognized.
-    pub fn from_flatbuffers(
-        fb_error: tcrm_task_generated::tcrm::task::TaskError,
+impl FromFlatbuffers<tcrm_task_generated::tcrm::task::TaskError<'_>> for TaskError {
+    fn from_flatbuffers(
+        fb_error: tcrm_task_generated::tcrm::task::TaskError<'_>,
     ) -> Result<Self, ConversionError> {
         let kind = fb_error.kind();
         let message = fb_error.message().unwrap_or("").to_string();
@@ -68,35 +69,20 @@ impl TaskError {
             tcrm_task_generated::tcrm::task::TaskErrorType::InvalidConfiguration => {
                 Ok(TaskError::InvalidConfiguration(message))
             }
-            tcrm_task_generated::tcrm::task::TaskErrorType::Custom => {
-                Ok(TaskError::Custom(message))
-            }
             _ => Err(ConversionError::InvalidTaskErrorType(kind.0)),
         }
     }
+}
 
-    /// Converts the task error to `FlatBuffers` representation.
-    ///
-    /// Serializes both the error type discriminant and message content into
-    /// a `FlatBuffers` `TaskError` structure.
-    ///
-    /// # Arguments
-    ///
-    /// * `builder` - `FlatBuffers` builder for creating the serialized data.
-    ///
-    /// # Returns
-    ///
-    /// A `FlatBuffers` offset pointing to the serialized `TaskError`.
-    pub fn to_flatbuffers<'a>(
-        &self,
-        builder: &mut flatbuffers::FlatBufferBuilder<'a>,
-    ) -> flatbuffers::WIPOffset<tcrm_task_generated::tcrm::task::TaskError<'a>> {
+impl<'a> ToFlatbuffers<'a> for TaskError {
+    type Output = flatbuffers::WIPOffset<tcrm_task_generated::tcrm::task::TaskError<'a>>;
+
+    fn to_flatbuffers(&self, builder: &mut flatbuffers::FlatBufferBuilder<'a>) -> Self::Output {
         let message = match self {
             TaskError::IO(msg)
             | TaskError::Handle(msg)
             | TaskError::Channel(msg)
-            | TaskError::InvalidConfiguration(msg)
-            | TaskError::Custom(msg) => msg,
+            | TaskError::InvalidConfiguration(msg) => msg,
         };
         let msg_offset = builder.create_string(message);
 
@@ -107,7 +93,6 @@ impl TaskError {
             TaskError::InvalidConfiguration(_) => {
                 tcrm_task_generated::tcrm::task::TaskErrorType::InvalidConfiguration
             }
-            TaskError::Custom(_) => tcrm_task_generated::tcrm::task::TaskErrorType::Custom,
         };
 
         tcrm_task_generated::tcrm::task::TaskError::create(
@@ -132,7 +117,6 @@ mod tests {
             TaskError::Handle("handle error message".to_string()),
             TaskError::Channel("channel error message".to_string()),
             TaskError::InvalidConfiguration("invalid config message".to_string()),
-            TaskError::Custom("custom error message".to_string()),
         ];
 
         for original_error in test_cases {
@@ -157,7 +141,6 @@ mod tests {
                 (TaskError::InvalidConfiguration(orig), TaskError::InvalidConfiguration(conv)) => {
                     assert_eq!(orig, conv)
                 }
-                (TaskError::Custom(orig), TaskError::Custom(conv)) => assert_eq!(orig, conv),
                 _ => panic!(
                     "Error type mismatch: {:?} vs {:?}",
                     original_error, converted_error
@@ -199,10 +182,6 @@ mod tests {
                 TaskError::InvalidConfiguration("config test".to_string()),
                 tcrm_task_generated::tcrm::task::TaskErrorType::InvalidConfiguration,
             ),
-            (
-                TaskError::Custom("custom test".to_string()),
-                tcrm_task_generated::tcrm::task::TaskErrorType::Custom,
-            ),
         ];
 
         for (error, expected_type) in errors {
@@ -219,7 +198,7 @@ mod tests {
 
     #[test]
     fn test_task_error_unicode_message() {
-        let error = TaskError::Custom("Unicode error: 测试错误 🚀".to_string());
+        let error = TaskError::IO("Unicode error: 测试错误 🚀".to_string());
         let mut builder = flatbuffers::FlatBufferBuilder::new();
         let fb_error = error.to_flatbuffers(&mut builder);
         builder.finish(fb_error, None);
@@ -229,16 +208,16 @@ mod tests {
         assert_eq!(fb.message().unwrap(), "Unicode error: 测试错误 🚀");
 
         let converted = TaskError::from_flatbuffers(fb).unwrap();
-        if let TaskError::Custom(msg) = converted {
+        if let TaskError::IO(msg) = converted {
             assert_eq!(msg, "Unicode error: 测试错误 🚀");
         } else {
-            panic!("Expected Custom error");
+            panic!("Expected IO error");
         }
     }
 
     #[test]
     fn test_task_error_empty_message() {
-        let error = TaskError::Custom("".to_string());
+        let error = TaskError::Channel("".to_string());
         let mut builder = flatbuffers::FlatBufferBuilder::new();
         let fb_error = error.to_flatbuffers(&mut builder);
         builder.finish(fb_error, None);
@@ -248,10 +227,10 @@ mod tests {
         assert_eq!(fb.message().unwrap(), "");
 
         let converted = TaskError::from_flatbuffers(fb).unwrap();
-        if let TaskError::Custom(msg) = converted {
+        if let TaskError::Channel(msg) = converted {
             assert_eq!(msg, "");
         } else {
-            panic!("Expected Custom error");
+            panic!("Expected Channel error");
         }
     }
 

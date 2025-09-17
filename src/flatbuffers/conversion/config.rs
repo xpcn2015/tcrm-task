@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
 use crate::{
-    flatbuffers::{conversion::error::ConversionError, tcrm_task_generated},
+    flatbuffers::{
+        conversion::{FromFlatbuffers, ToFlatbuffers, error::ConversionError},
+        tcrm_task_generated,
+    },
     tasks::config::{StreamSource, TaskConfig},
 };
 
@@ -70,11 +73,61 @@ impl<'a> TryFrom<tcrm_task_generated::tcrm::task::TaskConfig<'a>> for TaskConfig
         })
     }
 }
-impl TaskConfig {
-    pub fn to_flatbuffers<'a>(
-        &self,
-        builder: &mut flatbuffers::FlatBufferBuilder<'a>,
-    ) -> flatbuffers::WIPOffset<tcrm_task_generated::tcrm::task::TaskConfig<'a>> {
+
+impl FromFlatbuffers<tcrm_task_generated::tcrm::task::TaskConfig<'_>> for TaskConfig {
+    fn from_flatbuffers(
+        fb_config: tcrm_task_generated::tcrm::task::TaskConfig<'_>,
+    ) -> Result<Self, ConversionError> {
+        let command = fb_config.command().to_string();
+
+        let args = fb_config
+            .args()
+            .map(|args_vec| args_vec.iter().map(std::string::ToString::to_string).collect());
+
+        let working_dir = fb_config.working_dir().map(std::string::ToString::to_string);
+
+        let env = fb_config.env().map(|env_vec| {
+            env_vec
+                .iter()
+                .map(|entry| {
+                    let key = entry.key().to_string();
+                    let value = entry.value().to_string();
+                    (key, value)
+                })
+                .collect()
+        });
+
+        let timeout_ms = if fb_config.timeout_ms() == 0 {
+            None
+        } else {
+            Some(fb_config.timeout_ms())
+        };
+        let enable_stdin = if fb_config.enable_stdin() {
+            Some(true)
+        } else {
+            None
+        };
+        let ready_indicator = fb_config.ready_indicator().map(std::string::ToString::to_string);
+        let ready_indicator_source =
+            Some(StreamSource::try_from(fb_config.ready_indicator_source())?);
+
+        Ok(TaskConfig {
+            command,
+            args,
+            working_dir,
+            env,
+            timeout_ms,
+            enable_stdin,
+            ready_indicator,
+            ready_indicator_source,
+        })
+    }
+}
+
+impl<'a> ToFlatbuffers<'a> for TaskConfig {
+    type Output = flatbuffers::WIPOffset<tcrm_task_generated::tcrm::task::TaskConfig<'a>>;
+
+    fn to_flatbuffers(&self, builder: &mut flatbuffers::FlatBufferBuilder<'a>) -> Self::Output {
         // Required
         let command_offset = builder.create_string(&self.command);
 
