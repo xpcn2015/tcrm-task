@@ -419,7 +419,7 @@ impl TaskSpawner {
     /// use tcrm_task::tasks::{
     ///     config::TaskConfig,
     ///     async_tokio::spawner::TaskSpawner,
-    ///     state::TaskTerminateReason
+    ///     event::TaskTerminateReason
     /// };
     /// use tokio::sync::mpsc;
     ///

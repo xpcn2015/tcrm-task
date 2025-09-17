@@ -158,7 +158,7 @@ pub enum TaskEvent {
 /// # Examples
 ///
 /// ```rust
-/// use tcrm_task::tasks::{event::TaskEventStopReason, state::TaskTerminateReason};
+/// use tcrm_task::tasks::{event::TaskEventStopReason, event::TaskTerminateReason};
 ///
 /// // Natural completion
 /// let reason = TaskEventStopReason::Finished;
@@ -194,7 +194,7 @@ pub enum TaskEventStopReason {
 /// use tcrm_task::tasks::{
 ///     config::TaskConfig,
 ///     async_tokio::spawner::TaskSpawner,
-///     state::TaskTerminateReason
+///     event::TaskTerminateReason
 /// };
 /// use tokio::sync::mpsc;
 ///
@@ -214,12 +214,12 @@ pub enum TaskEventStopReason {
 /// }
 /// ```
 ///
-/// ## Custom Termination
+/// ## Cleanup Termination
 /// ```rust
 /// use tcrm_task::tasks::{
 ///     config::TaskConfig,
 ///     async_tokio::spawner::TaskSpawner,
-///     state::TaskTerminateReason
+///     event::TaskTerminateReason
 /// };
 /// use tokio::sync::mpsc;
 ///
@@ -231,8 +231,8 @@ pub enum TaskEventStopReason {
 ///     let (tx, _rx) = mpsc::channel(100);
 ///     spawner.start_direct(tx).await?;
 ///     
-///     // Custom shutdown reason
-///     let reason = TaskTerminateReason::Custom("User requested shutdown".to_string());
+///     // Cleanup shutdown reason
+///     let reason = TaskTerminateReason::Cleanup;
 ///     spawner.send_terminate_signal(reason).await?;
 ///     
 ///     Ok(())

@@ -30,13 +30,13 @@ impl ConfigValidator {
     ///
     /// # Examples
     /// ```rust
-    /// use tcrm_task::tasks::security::SecurityValidator;
+    /// use tcrm_task::tasks::validator::ConfigValidator;
     ///
     /// let valid_command = "echo Hello";
-    /// assert!(SecurityValidator::validate_command(valid_command).is_ok());
+    /// assert!(ConfigValidator::validate_command(valid_command).is_ok());
     ///
     /// let invalid_command = "\0";
-    /// assert!(SecurityValidator::validate_command(invalid_command).is_err());
+    /// assert!(ConfigValidator::validate_command(invalid_command).is_err());
     /// ```
     pub fn validate_command(command: &str) -> Result<(), TaskError> {
         // Check for empty or whitespace-only commands
@@ -84,13 +84,13 @@ impl ConfigValidator {
     ///
     /// # Examples
     /// ```rust
-    /// use tcrm_task::tasks::security::SecurityValidator;
+    /// use tcrm_task::tasks::validator::ConfigValidator;
     ///
     /// let valid_args = vec!["arg1".to_string(), "arg2".to_string()];
-    /// assert!(SecurityValidator::validate_args(&valid_args).is_ok());
+    /// assert!(ConfigValidator::validate_args(&valid_args).is_ok());
     ///
     /// let invalid_args = vec!["arg1".to_string(), "\0".to_string()];
-    /// assert!(SecurityValidator::validate_args(&invalid_args).is_err());
+    /// assert!(ConfigValidator::validate_args(&invalid_args).is_err());
     /// ```
     pub fn validate_args(args: &[String]) -> Result<(), TaskError> {
         for arg in args {
@@ -138,17 +138,17 @@ impl ConfigValidator {
     ///
     /// # Examples
     /// ```rust
-    /// use tcrm_task::tasks::security::SecurityValidator;
+    /// use tcrm_task::tasks::validator::ConfigValidator;
     /// use std::env;
     ///
     /// // Test with current directory (should exist)
     /// let current_dir = env::current_dir().unwrap();
     /// let valid_dir = current_dir.to_str().unwrap();
-    /// assert!(SecurityValidator::validate_working_dir(valid_dir).is_ok());
+    /// assert!(ConfigValidator::validate_working_dir(valid_dir).is_ok());
     ///
     /// // Test with nonexistent directory
     /// let invalid_dir = "nonexistent_dir_12345";
-    /// assert!(SecurityValidator::validate_working_dir(invalid_dir).is_err());
+    /// assert!(ConfigValidator::validate_working_dir(invalid_dir).is_err());
     /// ```
     pub fn validate_working_dir(dir: &str) -> Result<(), TaskError> {
         let path = Path::new(dir);
@@ -200,16 +200,16 @@ impl ConfigValidator {
     ///
     /// # Examples
     /// ```rust
-    /// use tcrm_task::tasks::security::SecurityValidator;
+    /// use tcrm_task::tasks::validator::ConfigValidator;
     /// use std::collections::HashMap;
     ///
     /// let mut valid_env = HashMap::new();
     /// valid_env.insert("KEY".to_string(), "VALUE".to_string());
-    /// assert!(SecurityValidator::validate_env_vars(&valid_env).is_ok());
+    /// assert!(ConfigValidator::validate_env_vars(&valid_env).is_ok());
     ///
     /// let mut invalid_env = HashMap::new();
     /// invalid_env.insert("KEY\0".to_string(), "VALUE".to_string());
-    /// assert!(SecurityValidator::validate_env_vars(&invalid_env).is_err());
+    /// assert!(ConfigValidator::validate_env_vars(&invalid_env).is_err());
     /// ```
     pub fn validate_env_vars(env: &HashMap<String, String>) -> Result<(), TaskError> {
         for (key, value) in env {
@@ -308,15 +308,15 @@ impl ConfigValidator {
     ///
     /// # Examples
     /// ```rust
-    /// use tcrm_task::tasks::security::SecurityValidator;
+    /// use tcrm_task::tasks::validator::ConfigValidator;
     ///
     /// // Simple command should pass
     /// let simple_command = "echo";
-    /// assert!(SecurityValidator::validate_command_strict(simple_command).is_ok());
+    /// assert!(ConfigValidator::validate_command_strict(simple_command).is_ok());
     ///
     /// // Command with shell features should fail
     /// let shell_command = "echo hello; rm -rf /";
-    /// assert!(SecurityValidator::validate_command_strict(shell_command).is_err());
+    /// assert!(ConfigValidator::validate_command_strict(shell_command).is_err());
     /// ```
     #[allow(dead_code)]
     pub fn validate_command_strict(command: &str) -> Result<(), TaskError> {
