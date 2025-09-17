@@ -86,8 +86,10 @@ pub mod tcrm {
             type Inner = Self;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                let b = unsafe { flatbuffers::read_scalar_at::<i8>(buf, loc) };
-                Self(b)
+                unsafe {
+                    let b = flatbuffers::read_scalar_at::<i8>(buf, loc);
+                    Self(b)
+                }
             }
         }
 
@@ -95,7 +97,9 @@ pub mod tcrm {
             type Output = StreamSource;
             #[inline]
             unsafe fn push(&self, dst: &mut [u8], _written_len: usize) {
-                unsafe { flatbuffers::emplace_scalar::<i8>(dst, self.0) };
+                unsafe {
+                    flatbuffers::emplace_scalar::<i8>(dst, self.0);
+                }
             }
         }
 
@@ -193,8 +197,10 @@ pub mod tcrm {
             type Inner = Self;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                let b = unsafe { flatbuffers::read_scalar_at::<i8>(buf, loc) };
-                Self(b)
+                unsafe {
+                    let b = flatbuffers::read_scalar_at::<i8>(buf, loc);
+                    Self(b)
+                }
             }
         }
 
@@ -202,7 +208,9 @@ pub mod tcrm {
             type Output = TaskState;
             #[inline]
             unsafe fn push(&self, dst: &mut [u8], _written_len: usize) {
-                unsafe { flatbuffers::emplace_scalar::<i8>(dst, self.0) };
+                unsafe {
+                    flatbuffers::emplace_scalar::<i8>(dst, self.0);
+                }
             }
         }
 
@@ -296,8 +304,10 @@ pub mod tcrm {
             type Inner = Self;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                let b = unsafe { flatbuffers::read_scalar_at::<i8>(buf, loc) };
-                Self(b)
+                unsafe {
+                    let b = flatbuffers::read_scalar_at::<i8>(buf, loc);
+                    Self(b)
+                }
             }
         }
 
@@ -305,7 +315,9 @@ pub mod tcrm {
             type Output = TaskErrorType;
             #[inline]
             unsafe fn push(&self, dst: &mut [u8], _written_len: usize) {
-                unsafe { flatbuffers::emplace_scalar::<i8>(dst, self.0) };
+                unsafe {
+                    flatbuffers::emplace_scalar::<i8>(dst, self.0);
+                }
             }
         }
 
@@ -344,16 +356,17 @@ pub mod tcrm {
             since = "2.0.0",
             note = "Use associated constants instead. This will no longer be generated in 2021."
         )]
-        pub const ENUM_MAX_TASK_TERMINATE_REASON: i8 = 2;
+        pub const ENUM_MAX_TASK_TERMINATE_REASON: i8 = 3;
         #[deprecated(
             since = "2.0.0",
             note = "Use associated constants instead. This will no longer be generated in 2021."
         )]
         #[allow(non_camel_case_types)]
-        pub const ENUM_VALUES_TASK_TERMINATE_REASON: [TaskTerminateReason; 3] = [
+        pub const ENUM_VALUES_TASK_TERMINATE_REASON: [TaskTerminateReason; 4] = [
             TaskTerminateReason::Timeout,
             TaskTerminateReason::Cleanup,
             TaskTerminateReason::DependenciesFinished,
+            TaskTerminateReason::UserRequested,
         ];
 
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
@@ -364,17 +377,23 @@ pub mod tcrm {
             pub const Timeout: Self = Self(0);
             pub const Cleanup: Self = Self(1);
             pub const DependenciesFinished: Self = Self(2);
+            pub const UserRequested: Self = Self(3);
 
             pub const ENUM_MIN: i8 = 0;
-            pub const ENUM_MAX: i8 = 2;
-            pub const ENUM_VALUES: &'static [Self] =
-                &[Self::Timeout, Self::Cleanup, Self::DependenciesFinished];
+            pub const ENUM_MAX: i8 = 3;
+            pub const ENUM_VALUES: &'static [Self] = &[
+                Self::Timeout,
+                Self::Cleanup,
+                Self::DependenciesFinished,
+                Self::UserRequested,
+            ];
             /// Returns the variant's name or "" if unknown.
             pub fn variant_name(self) -> Option<&'static str> {
                 match self {
                     Self::Timeout => Some("Timeout"),
                     Self::Cleanup => Some("Cleanup"),
                     Self::DependenciesFinished => Some("DependenciesFinished"),
+                    Self::UserRequested => Some("UserRequested"),
                     _ => None,
                 }
             }
@@ -392,8 +411,10 @@ pub mod tcrm {
             type Inner = Self;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                let b = unsafe { flatbuffers::read_scalar_at::<i8>(buf, loc) };
-                Self(b)
+                unsafe {
+                    let b = flatbuffers::read_scalar_at::<i8>(buf, loc);
+                    Self(b)
+                }
             }
         }
 
@@ -401,7 +422,9 @@ pub mod tcrm {
             type Output = TaskTerminateReason;
             #[inline]
             unsafe fn push(&self, dst: &mut [u8], _written_len: usize) {
-                unsafe { flatbuffers::emplace_scalar::<i8>(dst, self.0) };
+                unsafe {
+                    flatbuffers::emplace_scalar::<i8>(dst, self.0);
+                }
             }
         }
 
@@ -440,18 +463,19 @@ pub mod tcrm {
             since = "2.0.0",
             note = "Use associated constants instead. This will no longer be generated in 2021."
         )]
-        pub const ENUM_MAX_TASK_EVENT_STOP_REASON: u8 = 5;
+        pub const ENUM_MAX_TASK_EVENT_STOP_REASON: u8 = 6;
         #[deprecated(
             since = "2.0.0",
             note = "Use associated constants instead. This will no longer be generated in 2021."
         )]
         #[allow(non_camel_case_types)]
-        pub const ENUM_VALUES_TASK_EVENT_STOP_REASON: [TaskEventStopReason; 6] = [
+        pub const ENUM_VALUES_TASK_EVENT_STOP_REASON: [TaskEventStopReason; 7] = [
             TaskEventStopReason::NONE,
             TaskEventStopReason::Finished,
             TaskEventStopReason::TerminatedTimeout,
             TaskEventStopReason::TerminatedCleanup,
             TaskEventStopReason::TerminatedDependenciesFinished,
+            TaskEventStopReason::TerminatedUserRequested,
             TaskEventStopReason::Error,
         ];
 
@@ -465,16 +489,18 @@ pub mod tcrm {
             pub const TerminatedTimeout: Self = Self(2);
             pub const TerminatedCleanup: Self = Self(3);
             pub const TerminatedDependenciesFinished: Self = Self(4);
-            pub const Error: Self = Self(5);
+            pub const TerminatedUserRequested: Self = Self(5);
+            pub const Error: Self = Self(6);
 
             pub const ENUM_MIN: u8 = 0;
-            pub const ENUM_MAX: u8 = 5;
+            pub const ENUM_MAX: u8 = 6;
             pub const ENUM_VALUES: &'static [Self] = &[
                 Self::NONE,
                 Self::Finished,
                 Self::TerminatedTimeout,
                 Self::TerminatedCleanup,
                 Self::TerminatedDependenciesFinished,
+                Self::TerminatedUserRequested,
                 Self::Error,
             ];
             /// Returns the variant's name or "" if unknown.
@@ -485,6 +511,7 @@ pub mod tcrm {
                     Self::TerminatedTimeout => Some("TerminatedTimeout"),
                     Self::TerminatedCleanup => Some("TerminatedCleanup"),
                     Self::TerminatedDependenciesFinished => Some("TerminatedDependenciesFinished"),
+                    Self::TerminatedUserRequested => Some("TerminatedUserRequested"),
                     Self::Error => Some("Error"),
                     _ => None,
                 }
@@ -503,8 +530,10 @@ pub mod tcrm {
             type Inner = Self;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                let b = unsafe { flatbuffers::read_scalar_at::<u8>(buf, loc) };
-                Self(b)
+                unsafe {
+                    let b = flatbuffers::read_scalar_at::<u8>(buf, loc);
+                    Self(b)
+                }
             }
         }
 
@@ -512,7 +541,9 @@ pub mod tcrm {
             type Output = TaskEventStopReason;
             #[inline]
             unsafe fn push(&self, dst: &mut [u8], _written_len: usize) {
-                unsafe { flatbuffers::emplace_scalar::<u8>(dst, self.0) };
+                unsafe {
+                    flatbuffers::emplace_scalar::<u8>(dst, self.0);
+                }
             }
         }
 
@@ -616,8 +647,10 @@ pub mod tcrm {
             type Inner = Self;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                let b = unsafe { flatbuffers::read_scalar_at::<u8>(buf, loc) };
-                Self(b)
+                unsafe {
+                    let b = flatbuffers::read_scalar_at::<u8>(buf, loc);
+                    Self(b)
+                }
             }
         }
 
@@ -625,7 +658,9 @@ pub mod tcrm {
             type Output = TaskEventUnion;
             #[inline]
             unsafe fn push(&self, dst: &mut [u8], _written_len: usize) {
-                unsafe { flatbuffers::emplace_scalar::<u8>(dst, self.0) };
+                unsafe {
+                    flatbuffers::emplace_scalar::<u8>(dst, self.0);
+                }
             }
         }
 
@@ -668,8 +703,10 @@ pub mod tcrm {
             type Inner = TaskConfig<'a>;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                Self {
-                    _tab: unsafe { flatbuffers::Table::new(buf, loc) },
+                unsafe {
+                    Self {
+                        _tab: flatbuffers::Table::new(buf, loc),
+                    }
                 }
             }
         }
@@ -1001,8 +1038,10 @@ pub mod tcrm {
             type Inner = EnvEntry<'a>;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                Self {
-                    _tab: unsafe { flatbuffers::Table::new(buf, loc) },
+                unsafe {
+                    Self {
+                        _tab: flatbuffers::Table::new(buf, loc),
+                    }
                 }
             }
         }
@@ -1144,8 +1183,10 @@ pub mod tcrm {
             type Inner = TaskError<'a>;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                Self {
-                    _tab: unsafe { flatbuffers::Table::new(buf, loc) },
+                unsafe {
+                    Self {
+                        _tab: flatbuffers::Table::new(buf, loc),
+                    }
                 }
             }
         }
@@ -1282,8 +1323,10 @@ pub mod tcrm {
             type Inner = DummyTable<'a>;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                Self {
-                    _tab: unsafe { flatbuffers::Table::new(buf, loc) },
+                unsafe {
+                    Self {
+                        _tab: flatbuffers::Table::new(buf, loc),
+                    }
                 }
             }
         }
@@ -1366,8 +1409,10 @@ pub mod tcrm {
             type Inner = ErrorStopReason<'a>;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                Self {
-                    _tab: unsafe { flatbuffers::Table::new(buf, loc) },
+                unsafe {
+                    Self {
+                        _tab: flatbuffers::Table::new(buf, loc),
+                    }
                 }
             }
         }
@@ -1490,8 +1535,10 @@ pub mod tcrm {
             type Inner = StartedEvent<'a>;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                Self {
-                    _tab: unsafe { flatbuffers::Table::new(buf, loc) },
+                unsafe {
+                    Self {
+                        _tab: flatbuffers::Table::new(buf, loc),
+                    }
                 }
             }
         }
@@ -1611,8 +1658,10 @@ pub mod tcrm {
             type Inner = OutputEvent<'a>;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                Self {
-                    _tab: unsafe { flatbuffers::Table::new(buf, loc) },
+                unsafe {
+                    Self {
+                        _tab: flatbuffers::Table::new(buf, loc),
+                    }
                 }
             }
         }
@@ -1779,8 +1828,10 @@ pub mod tcrm {
             type Inner = ReadyEvent<'a>;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                Self {
-                    _tab: unsafe { flatbuffers::Table::new(buf, loc) },
+                unsafe {
+                    Self {
+                        _tab: flatbuffers::Table::new(buf, loc),
+                    }
                 }
             }
         }
@@ -1899,8 +1950,10 @@ pub mod tcrm {
             type Inner = StoppedEvent<'a>;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                Self {
-                    _tab: unsafe { flatbuffers::Table::new(buf, loc) },
+                unsafe {
+                    Self {
+                        _tab: flatbuffers::Table::new(buf, loc),
+                    }
                 }
             }
         }
@@ -2045,6 +2098,20 @@ pub mod tcrm {
 
             #[inline]
             #[allow(non_snake_case)]
+            pub fn reason_as_terminated_user_requested(&self) -> Option<DummyTable<'a>> {
+                if self.reason_type() == TaskEventStopReason::TerminatedUserRequested {
+                    let u = self.reason();
+                    // Safety:
+                    // Created from a valid Table for this object
+                    // Which contains a valid union in this slot
+                    Some(unsafe { DummyTable::init_from_table(u) })
+                } else {
+                    None
+                }
+            }
+
+            #[inline]
+            #[allow(non_snake_case)]
             pub fn reason_as_error(&self) -> Option<ErrorStopReason<'a>> {
                 if self.reason_type() == TaskEventStopReason::Error {
                     let u = self.reason();
@@ -2074,6 +2141,7 @@ pub mod tcrm {
           TaskEventStopReason::TerminatedTimeout => v.verify_union_variant::<flatbuffers::ForwardsUOffset<DummyTable>>("TaskEventStopReason::TerminatedTimeout", pos),
           TaskEventStopReason::TerminatedCleanup => v.verify_union_variant::<flatbuffers::ForwardsUOffset<DummyTable>>("TaskEventStopReason::TerminatedCleanup", pos),
           TaskEventStopReason::TerminatedDependenciesFinished => v.verify_union_variant::<flatbuffers::ForwardsUOffset<DummyTable>>("TaskEventStopReason::TerminatedDependenciesFinished", pos),
+          TaskEventStopReason::TerminatedUserRequested => v.verify_union_variant::<flatbuffers::ForwardsUOffset<DummyTable>>("TaskEventStopReason::TerminatedUserRequested", pos),
           TaskEventStopReason::Error => v.verify_union_variant::<flatbuffers::ForwardsUOffset<ErrorStopReason>>("TaskEventStopReason::Error", pos),
           _ => Ok(()),
         }
@@ -2200,6 +2268,16 @@ pub mod tcrm {
                             )
                         }
                     }
+                    TaskEventStopReason::TerminatedUserRequested => {
+                        if let Some(x) = self.reason_as_terminated_user_requested() {
+                            ds.field("reason", &x)
+                        } else {
+                            ds.field(
+                                "reason",
+                                &"InvalidFlatbuffer: Union discriminant does not match value.",
+                            )
+                        }
+                    }
                     TaskEventStopReason::Error => {
                         if let Some(x) = self.reason_as_error() {
                             ds.field("reason", &x)
@@ -2229,8 +2307,10 @@ pub mod tcrm {
             type Inner = ErrorEvent<'a>;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                Self {
-                    _tab: unsafe { flatbuffers::Table::new(buf, loc) },
+                unsafe {
+                    Self {
+                        _tab: flatbuffers::Table::new(buf, loc),
+                    }
                 }
             }
         }
@@ -2381,8 +2461,10 @@ pub mod tcrm {
             type Inner = TaskEvent<'a>;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                Self {
-                    _tab: unsafe { flatbuffers::Table::new(buf, loc) },
+                unsafe {
+                    Self {
+                        _tab: flatbuffers::Table::new(buf, loc),
+                    }
                 }
             }
         }

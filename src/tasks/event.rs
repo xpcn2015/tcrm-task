@@ -257,4 +257,9 @@ pub enum TaskTerminateReason {
     /// Used in task orchestration scenarios where tasks depend on
     /// other tasks and should be terminated when dependencies complete.
     DependenciesFinished,
+
+    /// Task was terminated by explicit user request
+    ///
+    /// Used when user or external library requests the task to stop.
+    UserRequested,
 }

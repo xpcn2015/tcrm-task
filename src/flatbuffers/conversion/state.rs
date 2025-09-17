@@ -66,6 +66,9 @@ impl From<TaskTerminateReason> for tcrm_task_generated::tcrm::task::TaskTerminat
             TaskTerminateReason::DependenciesFinished => {
                 tcrm_task_generated::tcrm::task::TaskTerminateReason::DependenciesFinished
             }
+            TaskTerminateReason::UserRequested => {
+                tcrm_task_generated::tcrm::task::TaskTerminateReason::UserRequested
+            }
         }
     }
 }
@@ -91,7 +94,6 @@ impl<'a> ToFlatbuffersUnion<'a, tcrm_task_generated::tcrm::task::TaskEventStopRe
                     r.as_union_value(),
                 )
             }
-
             TaskTerminateReason::Cleanup => {
                 let r = tcrm_task_generated::tcrm::task::DummyTable::create(
                     builder,
@@ -108,7 +110,17 @@ impl<'a> ToFlatbuffersUnion<'a, tcrm_task_generated::tcrm::task::TaskEventStopRe
                     &tcrm_task_generated::tcrm::task::DummyTableArgs {},
                 );
                 (
-                    tcrm_task_generated::tcrm::task::TaskEventStopReason::TerminatedDependenciesFinished,
+                            tcrm_task_generated::tcrm::task::TaskEventStopReason::TerminatedDependenciesFinished,
+                            r.as_union_value(),
+                        )
+            }
+            TaskTerminateReason::UserRequested => {
+                let r = tcrm_task_generated::tcrm::task::DummyTable::create(
+                    builder,
+                    &tcrm_task_generated::tcrm::task::DummyTableArgs {},
+                );
+                (
+                    tcrm_task_generated::tcrm::task::TaskEventStopReason::TerminatedUserRequested,
                     r.as_union_value(),
                 )
             }
@@ -183,6 +195,12 @@ mod tests {
                     assert_eq!(
                         stop_reason,
                         tcrm_task_generated::tcrm::task::TaskEventStopReason::TerminatedDependenciesFinished
+                    );
+                }
+                TaskTerminateReason::UserRequested => {
+                    assert_eq!(
+                        stop_reason,
+                        tcrm_task_generated::tcrm::task::TaskEventStopReason::TerminatedUserRequested
                     );
                 }
             }
