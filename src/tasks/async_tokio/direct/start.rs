@@ -247,7 +247,7 @@ impl TaskSpawner {
             self.update_state(TaskState::Finished).await;
             let error_event = TaskEvent::Error {
                 task_name: self.task_name.clone(),
-                error: TaskError::IO(msg.to_string()),
+                error: TaskError::Handle(msg.to_string()),
             };
 
             if (event_tx.send(error_event).await).is_err() {
@@ -255,7 +255,7 @@ impl TaskSpawner {
                 tracing::warn!("Event channel closed while sending TaskEvent::Error");
             }
 
-            return Err(TaskError::IO(msg.to_string()));
+            return Err(TaskError::Handle(msg.to_string()));
         };
         *self.process_id.write().await = Some(child_id);
         let mut task_handles = vec![];

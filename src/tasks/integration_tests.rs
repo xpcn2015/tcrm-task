@@ -8,9 +8,6 @@ use crate::tasks::{
     state::TaskState,
 };
 
-/// Integration tests that verify actual task execution behavior
-/// These tests execute real processes and validate their behavior
-
 #[cfg(test)]
 mod integration_tests {
     use super::*;

@@ -70,15 +70,13 @@ pub enum TaskError {
     #[error("IO error: {0}")]
     IO(String),
 
-    /// Process handle operation failed
+    /// Process handle or watcher error
     ///
-    /// Errors related to process management operations like
-    /// getting process ID, waiting for completion, or termination.
+    /// Errors related to process handle management or watcher failures.
     ///
     /// # Common Causes
-    /// - Failed to get process ID after spawn
-    /// - Process handle became invalid
-    /// - Termination signal delivery failed
+    /// - Failed to obtain process ID after spawning
+    /// - Watcher task join or abort errors
     #[error("Handle error: {0}")]
     Handle(String),
 

@@ -2,9 +2,9 @@ use crate::tasks::{config::StreamSource, error::TaskError};
 
 /// Events emitted during task execution lifecycle
 ///
-/// `TaskEvent` represents all significant events that occur during task execution,
+/// `TaskEvent` represents all events that occur during task execution,
 /// from process start to completion. These events enable real-time monitoring
-/// and reactive programming patterns.
+/// and event-driven programming patterns.
 ///
 /// # Event Flow
 ///
@@ -12,8 +12,8 @@ use crate::tasks::{config::StreamSource, error::TaskError};
 /// 1. `Started` - Process has been spawned
 /// 2. `Output` - Output lines from stdout/stderr (ongoing)
 /// 3. `Ready` - Ready indicator detected (optional, for long-running processes)
-/// 4. `Stopped` - Process has completed
-/// 5. `Error` - If any error occurs during execution
+/// 4. `Stopped` - Process has completed, with exit code and reason
+/// 5. `Error` - Error related to task execution
 ///
 /// # Examples
 ///
@@ -127,7 +127,6 @@ pub enum TaskEvent {
 
     /// Process has completed execution
     ///
-    /// This is the final event for successful task execution.
     /// The process has exited and all resources have been cleaned up.
     Stopped {
         /// Name of the task that stopped

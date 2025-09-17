@@ -11,7 +11,7 @@ const MAX_ENV_VALUE_LEN: usize = 4096;
 pub struct ConfigValidator;
 
 impl ConfigValidator {
-    /// Validates command name for security and correctness.
+    /// Validates command name.
     ///
     /// # Arguments
     ///
@@ -27,6 +27,8 @@ impl ConfigValidator {
     /// Returns a [`TaskError::InvalidConfiguration`] if:
     /// - Command is empty or contains only whitespace
     /// - Command contains null bytes or obvious injection patterns
+    /// - Command has leading or trailing whitespace
+    /// - Command length exceeds maximum allowed length
     ///
     /// # Examples
     /// ```rust
@@ -67,7 +69,7 @@ impl ConfigValidator {
         Ok(())
     }
 
-    /// Validates arguments for security issues.
+    /// Validates arguments.
     ///
     /// # Arguments
     ///
@@ -80,7 +82,11 @@ impl ConfigValidator {
     ///
     /// # Errors
     ///
-    /// Returns a [`TaskError::InvalidConfiguration`] if any argument contains null bytes.
+    /// Returns a [`TaskError::InvalidConfiguration`] if:
+    /// - any argument contains null bytes
+    /// - any argument is an empty string
+    /// - any argument has leading or trailing whitespace
+    /// - any argument exceeds maximum length
     ///
     /// # Examples
     /// ```rust
@@ -135,6 +141,8 @@ impl ConfigValidator {
     /// Returns a [`TaskError::InvalidConfiguration`] if:
     /// - Directory does not exist
     /// - Path exists but is not a directory
+    /// - Directory has leading or trailing whitespace
+    /// - Directory path exceeds maximum length
     ///
     /// # Examples
     /// ```rust
@@ -181,7 +189,7 @@ impl ConfigValidator {
         Ok(())
     }
 
-    /// Validates environment variables for security and correctness.
+    /// Validates environment variables.
     ///
     /// # Arguments
     ///
@@ -197,6 +205,7 @@ impl ConfigValidator {
     /// Returns a [`TaskError::InvalidConfiguration`] if:
     /// - Any environment variable key contains spaces, '=', or null bytes
     /// - Any environment variable value contains null bytes
+    /// - Any environment variable key/value exceeds maximum length
     ///
     /// # Examples
     /// ```rust
@@ -289,7 +298,6 @@ impl ConfigValidator {
     /// Validates command with strict security rules for untrusted input sources.
     ///
     /// This is an alternative to `validate_command` that blocks all shell features
-    /// and should be used when `TaskConfig` comes from external/untrusted sources.
     ///
     /// # Arguments
     ///

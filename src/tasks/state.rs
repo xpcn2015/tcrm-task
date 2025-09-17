@@ -1,8 +1,7 @@
 /// Execution state of a task throughout its lifecycle
 ///
 /// `TaskState` tracks the progression of a task from creation through completion.
-/// States transition in a defined order, enabling predictable state management
-/// and event-driven programming.
+/// States transition in a defined order, enabling event-driven tasks execution.
 ///
 /// # State Transitions
 ///

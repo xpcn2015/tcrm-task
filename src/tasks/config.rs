@@ -7,10 +7,6 @@ use crate::tasks::{error::TaskError, validator::ConfigValidator};
 /// `TaskConfig` defines all parameters needed to execute a system process securely.
 /// It includes the command, arguments, environment setup, timeouts, and monitoring options.
 ///
-/// All fields are validated before execution to prevent:
-/// - Path traversal
-/// - Null byte
-///
 /// # Examples
 ///
 /// ## Basic Command
@@ -284,13 +280,13 @@ impl TaskConfig {
 
     /// Validate the configuration
     ///
-    /// Validates all configuration parameters for security and correctness.
+    /// Validates all configuration parameters.
     /// This method should be called before executing the task to ensure
     /// safe operation.
     ///
     /// # Validation Checks
-    ///
-    /// - **Command**: Must not be empty, contain shell injection patterns, or exceed length limits
+    /// - all fields length limits
+    /// - **Command**: Must not be empty, contain shell injection patterns
     /// - **Arguments**: Must not contain null bytes or shell injection patterns  
     /// - **Working Directory**: Must exist and be a valid directory
     /// - **Environment Variables**: Keys must not contain spaces, '=', or null bytes
