@@ -109,16 +109,4 @@ pub enum TaskError {
     /// - Security validation failures (command injection, etc.)
     #[error("Invalid configuration: {0}")]
     InvalidConfiguration(String),
-
-    /// Application-specific or unexpected error
-    ///
-    /// Used for errors that don't fit other categories or
-    /// for wrapping external errors from dependencies.
-    ///
-    /// # Common Causes
-    /// - Custom validation logic failures
-    /// - Wrapped errors from external libraries
-    /// - Unexpected internal state conditions
-    #[error("Custom error: {0}")]
-    Custom(String),
 }
