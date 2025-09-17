@@ -2,6 +2,15 @@
 
 ## 0.3
 
+### 0.3.4 (2025/09/17)
+#### Added
+- Flatbuffers conversion traits
+#### Changed
+- Remove `Custom(String)` from `TaskTerminateReason` 
+- Remove `Custom()` from `TaskError`
+#### Fixed
+- Documents typo
+  
 ### 0.3.3 (2025/09/15)
 #### Added
 - Implemented FlatBuffers conversion.
