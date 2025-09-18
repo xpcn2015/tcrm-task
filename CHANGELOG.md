@@ -5,8 +5,6 @@
 #### Added
 - Optional process group management: `TaskConfig::use_process_group(bool)` allows enabling/disabling cross-platform process group/job object usage for child process tracking. Default is enabled. [[commit](https://github.com/xpcn2015/tcrm-task/commit/37a007cf13753979852206a7fd397d99f30e27ae)]
 - Example `process_group_optional.rs` demonstrating both enabled and disabled modes, with platform-specific commands for Windows and Unix.
-#### Changed
-- When process groups are disabled, child processes are still explicitly terminated on main process exit to prevent orphans.
 
 ### 0.3.5 (2025/09/17)
 #### Added
