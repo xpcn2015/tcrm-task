@@ -2,6 +2,11 @@
 
 ## 0.3
 
+### 0.3.5 (2025/09/17)
+#### Added
+- Added `UserRequested` to `TaskTerminateReason` [[commit](https://github.com/xpcn2015/tcrm-task/commit/894d1ea0d30aafa90d8a737ff75307dd52bc6987)]
+
+
 ### 0.3.4 (2025/09/17)
 #### Added
 - Flatbuffers conversion traits

@@ -1,6 +1,6 @@
 [package]
 name = "tcrm-task"
-version = "0.3.4"
+version = "0.3.5"
 edition = "2024"
 description = "Task execution unit for TCRM project"
 repository = "https://github.com/xpcn2015/tcrm-task"
