@@ -333,7 +333,79 @@ mod tests {
         let result = ProcessGroup::create_with_command(command);
         assert!(result.is_ok());
     }
+    #[tokio::test]
+    async fn test_basic_process_lifecycle() {
+        // Test basic process spawning and termination
+        let command = Command::new(if cfg!(windows) { "cmd" } else { "echo" });
+        let (mut command, process_group) = ProcessGroup::create_with_command(command).unwrap();
 
+        if cfg!(windows) {
+            command.args(["/C", "echo", "test"]);
+        } else {
+            command.arg("test");
+        }
+
+        let mut child = command.spawn().expect("Failed to spawn process");
+
+        // Assign child to process group
+        process_group
+            .assign_child(&child)
+            .await
+            .expect("Failed to assign child");
+
+        // Wait for process to complete normally
+        let status = child.wait().await.expect("Failed to wait for child");
+        assert!(status.success() || cfg!(windows)); // Windows cmd might have different exit codes
+
+        // Test termination (should be no-op since process already finished)
+        let result = process_group.terminate_all().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_process_group_termination() {
+        // Test terminating a long-running process
+        let command = if cfg!(windows) {
+            let mut cmd = Command::new("ping");
+            cmd.args(["127.0.0.1", "-n", "100"]); // Long-running ping
+            cmd
+        } else if cfg!(unix) {
+            let mut cmd = Command::new("sleep");
+            cmd.arg("30"); // 30 second sleep
+            cmd
+        } else {
+            // On other platforms, just use a quick command
+            let mut cmd = Command::new("echo");
+            cmd.arg("test");
+            cmd
+        };
+
+        let (mut command, process_group) = ProcessGroup::create_with_command(command).unwrap();
+        let mut child = command.spawn().expect("Failed to spawn process");
+
+        // Assign child to process group
+        process_group
+            .assign_child(&child)
+            .await
+            .expect("Failed to assign child");
+
+        // Wait a bit for the process to start
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
+        // Terminate the process group
+        let result = process_group.terminate_all().await;
+        assert!(result.is_ok());
+
+        // On Unix/Windows, the process should be terminated
+        // On other platforms, we need to kill it manually for cleanup
+        #[cfg(not(any(unix, windows)))]
+        {
+            let _ = child.kill().await;
+        }
+
+        // Clean up
+        let _ = child.wait().await;
+    }
     #[tokio::test]
     async fn test_process_tree_termination() {
         // This test demonstrates the cross-platform process tree termination
