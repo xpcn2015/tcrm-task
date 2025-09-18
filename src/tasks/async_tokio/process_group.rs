@@ -188,12 +188,21 @@ impl ProcessGroup {
         }
         #[cfg(windows)]
         {
+            use windows::Win32::Foundation::CloseHandle;
             use windows::Win32::System::JobObjects::AssignProcessToJobObject;
-            use windows::Win32::System::Threading::OpenProcess;
-            use windows::Win32::System::Threading::PROCESS_ALL_ACCESS;
+            use windows::Win32::System::Threading::{
+                OpenProcess, PROCESS_SET_INFORMATION, PROCESS_SET_QUOTA, PROCESS_TERMINATE,
+            };
+
             let inner = self.inner.lock().await;
             if let Some(pid) = child.id() {
-                let process_handle = unsafe { OpenProcess(PROCESS_ALL_ACCESS, false, pid) };
+                let process_handle = unsafe {
+                    OpenProcess(
+                        PROCESS_SET_QUOTA | PROCESS_TERMINATE | PROCESS_SET_INFORMATION,
+                        false,
+                        pid,
+                    )
+                };
                 let process_handle = match process_handle {
                     Ok(h) => h,
                     Err(e) => {
@@ -203,18 +212,28 @@ impl ProcessGroup {
                         )));
                     }
                 };
-                if let Some(SendHandle(job_handle)) = &inner.job_handle {
-                    let result = unsafe { AssignProcessToJobObject(*job_handle, process_handle) };
-                    if let Err(e) = result {
-                        return Err(ProcessGroupError::AssignmentFailed(format!(
-                            "Failed to assign process to Job Object: {}",
-                            e
-                        )));
-                    }
+
+                let result = if let Some(SendHandle(job_handle)) = &inner.job_handle {
+                    unsafe { AssignProcessToJobObject(*job_handle, process_handle) }
                 } else {
+                    unsafe {
+                        let _ = CloseHandle(process_handle);
+                    }
                     return Err(ProcessGroupError::AssignmentFailed(
                         "No Job Object handle available".to_string(),
                     ));
+                };
+
+                // Always close the process handle to prevent resource leaks
+                unsafe {
+                    let _ = CloseHandle(process_handle);
+                }
+
+                if let Err(e) = result {
+                    return Err(ProcessGroupError::AssignmentFailed(format!(
+                        "Failed to assign process to Job Object: {}",
+                        e
+                    )));
                 }
             }
             Ok(())
