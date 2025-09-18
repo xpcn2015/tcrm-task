@@ -105,9 +105,15 @@ impl ProcessGroup {
         }
         #[cfg(windows)]
         {
-            use windows::Win32::System::JobObjects::CreateJobObjectW;
+            use windows::Win32::System::JobObjects::JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+            use windows::Win32::System::JobObjects::{
+                CreateJobObjectW, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
+                JobObjectExtendedLimitInformation, SetInformationJobObject,
+            };
+            use windows::core::PCWSTR;
+
             // Create a Job Object for the process group
-            let job_handle = unsafe { CreateJobObjectW(None, None) };
+            let job_handle = unsafe { CreateJobObjectW(None, PCWSTR::null()) };
             let job_handle = match job_handle {
                 Ok(h) => h,
                 Err(e) => {
@@ -117,6 +123,30 @@ impl ProcessGroup {
                     )));
                 }
             };
+
+            // Configure the job to kill all processes when the job handle is closed
+            let mut job_info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
+            job_info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+
+            let result = unsafe {
+                SetInformationJobObject(
+                    job_handle,
+                    JobObjectExtendedLimitInformation,
+                    &job_info as *const _ as *const std::ffi::c_void,
+                    std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
+                )
+            };
+
+            if let Err(e) = result {
+                unsafe {
+                    let _ = windows::Win32::Foundation::CloseHandle(job_handle);
+                }
+                return Err(ProcessGroupError::CreationFailed(format!(
+                    "Failed to configure Job Object: {}",
+                    e
+                )));
+            }
+
             let inner = ProcessGroupInner {
                 job_handle: Some(SendHandle(job_handle)),
             };
