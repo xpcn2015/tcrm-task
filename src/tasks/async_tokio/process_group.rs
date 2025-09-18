@@ -280,10 +280,10 @@ impl ProcessGroup {
             use windows::Win32::System::JobObjects::TerminateJobObject;
 
             let inner = self.inner.lock().await;
-            if let Some(SendHandle(job_handle)) = inner.job_handle {
+            if let Some(SendHandle(job_handle)) = &inner.job_handle {
                 unsafe {
                     // Terminate all processes in the job object
-                    match TerminateJobObject(job_handle, 1) {
+                    match TerminateJobObject(*job_handle, 1) {
                         Ok(_) => Ok(()),
                         Err(e) => Err(ProcessGroupError::TerminationFailed(format!(
                             "Failed to terminate job object: {}",
@@ -297,7 +297,6 @@ impl ProcessGroup {
                 ))
             }
         }
-
         #[cfg(not(any(unix, windows)))]
         {
             // On other platforms, we can't kill process groups
