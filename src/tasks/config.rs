@@ -60,6 +60,12 @@ pub struct TaskConfig {
 
     /// Source of the ready indicator string (stdout/stderr)
     pub ready_indicator_source: Option<StreamSource>,
+
+    /// Enable process group management for child process termination (default: true)
+    ///
+    /// When enabled, creates process groups (Unix) or Job Objects (Windows) to ensure
+    /// all child processes and their descendants are terminated when the main process is killed.
+    pub use_process_group: Option<bool>,
 }
 
 pub type SharedTaskConfig = Arc<TaskConfig>;
@@ -74,6 +80,7 @@ impl Default for TaskConfig {
             enable_stdin: Some(false),
             ready_indicator: None,
             ready_indicator_source: Some(StreamSource::Stdout),
+            use_process_group: Some(true),
         }
     }
 }
@@ -278,6 +285,34 @@ impl TaskConfig {
         self
     }
 
+    /// Enable or disable process group management
+    ///
+    /// When enabled (default), creates process groups on Unix or Job Objects on Windows
+    /// to ensure all child processes and their descendants are terminated when the main
+    /// process is killed. This prevents orphaned processes.
+    ///
+    /// # Arguments
+    ///
+    /// * `enabled` - Whether to use process group management
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tcrm_task::tasks::config::TaskConfig;
+    ///
+    /// // Disable process group management
+    /// let config = TaskConfig::new("cmd")
+    ///     .use_process_group(false);
+    ///     
+    /// // Explicitly enable (though it's enabled by default)
+    /// let config2 = TaskConfig::new("node")
+    ///     .use_process_group(true);
+    /// ```
+    #[must_use]
+    pub fn use_process_group(mut self, enabled: bool) -> Self {
+        self.use_process_group = Some(enabled);
+        self
+    }
+
     /// Validate the configuration
     ///
     /// Validates all configuration parameters.
@@ -361,6 +396,25 @@ impl TaskConfig {
         }
 
         Ok(())
+    }
+
+    /// Check if process group management is enabled
+    ///
+    /// Returns true if process group management should be used, false otherwise.
+    /// Defaults to true if not explicitly set.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tcrm_task::tasks::config::TaskConfig;
+    ///
+    /// let config = TaskConfig::new("cmd");
+    /// assert!(config.is_process_group_enabled()); // Default is true
+    ///
+    /// let config2 = TaskConfig::new("cmd").use_process_group(false);
+    /// assert!(!config2.is_process_group_enabled());
+    /// ```
+    pub fn is_process_group_enabled(&self) -> bool {
+        self.use_process_group.unwrap_or(true)
     }
 }
 

@@ -720,6 +720,7 @@ pub mod tcrm {
             pub const VT_ENABLE_STDIN: flatbuffers::VOffsetT = 14;
             pub const VT_READY_INDICATOR: flatbuffers::VOffsetT = 16;
             pub const VT_READY_INDICATOR_SOURCE: flatbuffers::VOffsetT = 18;
+            pub const VT_USE_PROCESS_GROUP: flatbuffers::VOffsetT = 20;
 
             #[inline]
             pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -752,6 +753,7 @@ pub mod tcrm {
                 if let Some(x) = args.command {
                     builder.add_command(x);
                 }
+                builder.add_use_process_group(args.use_process_group);
                 builder.add_ready_indicator_source(args.ready_indicator_source);
                 builder.add_enable_stdin(args.enable_stdin);
                 builder.finish()
@@ -854,6 +856,17 @@ pub mod tcrm {
                         .unwrap()
                 }
             }
+            #[inline]
+            pub fn use_process_group(&self) -> bool {
+                // Safety:
+                // Created from valid Table for this object
+                // which contains a valid value in this slot
+                unsafe {
+                    self._tab
+                        .get::<bool>(TaskConfig::VT_USE_PROCESS_GROUP, Some(false))
+                        .unwrap()
+                }
+            }
         }
 
         impl flatbuffers::Verifiable for TaskConfig<'_> {
@@ -892,6 +905,7 @@ pub mod tcrm {
                         Self::VT_READY_INDICATOR_SOURCE,
                         false,
                     )?
+                    .visit_field::<bool>("use_process_group", Self::VT_USE_PROCESS_GROUP, false)?
                     .finish();
                 Ok(())
             }
@@ -913,6 +927,7 @@ pub mod tcrm {
             pub enable_stdin: bool,
             pub ready_indicator: Option<flatbuffers::WIPOffset<&'a str>>,
             pub ready_indicator_source: StreamSource,
+            pub use_process_group: bool,
         }
         impl<'a> Default for TaskConfigArgs<'a> {
             #[inline]
@@ -926,6 +941,7 @@ pub mod tcrm {
                     enable_stdin: false,
                     ready_indicator: None,
                     ready_indicator_source: StreamSource::Stdout,
+                    use_process_group: false,
                 }
             }
         }
@@ -996,6 +1012,14 @@ pub mod tcrm {
                 );
             }
             #[inline]
+            pub fn add_use_process_group(&mut self, use_process_group: bool) {
+                self.fbb_.push_slot::<bool>(
+                    TaskConfig::VT_USE_PROCESS_GROUP,
+                    use_process_group,
+                    false,
+                );
+            }
+            #[inline]
             pub fn new(
                 _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
             ) -> TaskConfigBuilder<'a, 'b, A> {
@@ -1024,6 +1048,7 @@ pub mod tcrm {
                 ds.field("enable_stdin", &self.enable_stdin());
                 ds.field("ready_indicator", &self.ready_indicator());
                 ds.field("ready_indicator_source", &self.ready_indicator_source());
+                ds.field("use_process_group", &self.use_process_group());
                 ds.finish()
             }
         }

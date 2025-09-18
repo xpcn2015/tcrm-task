@@ -9,20 +9,21 @@ use tokio::{
 use crate::{
     helper::tracing::MaybeInstrument,
     tasks::{
-        event::{TaskEventStopReason, TaskTerminateReason},
-        state::TaskState,
+        async_tokio::process_group::{ProcessGroup, ProcessGroupError}, event::{TaskEventStopReason, TaskTerminateReason}, state::TaskState
     },
 };
 
 /// Spawns a watcher that waits for the child process to exit or be terminated.
 ///
 /// Sends stop reason and signals other watchers to terminate.
+/// Uses cross-platform process group termination to kill entire process trees.
 ///
 /// # Arguments
 ///
 /// * `task_name` - Name of the task.
 /// * `state` - Shared state of the task.
 /// * `child` - The child process to monitor.
+/// * `process_group` - Process group for killing entire process trees.
 /// * `terminate_rx` - Receiver for termination signals.
 /// * `handle_terminator_tx` - Sender to signal other watchers to terminate.
 /// * `result_tx` - Sender for the process exit code and stop reason.
@@ -36,6 +37,7 @@ pub(crate) fn spawn_wait_watcher(
     task_name: String,
     state: Arc<RwLock<TaskState>>,
     mut child: Child,
+    process_group: Option<ProcessGroup>,
     terminate_rx: oneshot::Receiver<TaskTerminateReason>,
     handle_terminator_tx: watch::Sender<bool>,
     result_tx: oneshot::Sender<(Option<i32>, TaskEventStopReason)>,
@@ -47,6 +49,18 @@ pub(crate) fn spawn_wait_watcher(
                 result = child.wait() => {
                     #[cfg(feature = "tracing")]
                     tracing::trace!("child process finished");
+                    
+                    // When main process exits, it must terminate any remaining child processes
+                    // to prevent orphaned processes from continuing to run
+                    if let Some(ref pg) = process_group {
+                        #[cfg(feature = "tracing")]
+                        tracing::debug!("Main process finished, terminating remaining child processes in group");
+                        if let Err(_e) = pg.terminate_all().await {
+                            #[cfg(feature = "tracing")]
+                            tracing::warn!(error = %_e, "Failed to terminate remaining child processes after main process exit");
+                        }
+                    }
+                    
                     match result {
                         Ok(status) => {
                             let exit_code = status.code();
@@ -58,7 +72,7 @@ pub(crate) fn spawn_wait_watcher(
                                     tracing::warn!(exit_code, "Result channel closed while sending TaskEventStopReason::Finished");
                             }
                                 #[cfg(feature = "tracing")]
-                                tracing::debug!(exit_code = ?exit_code, "Child process finished normally");
+                                tracing::debug!(exit_code = ?exit_code, "Child process finished normally, child processes terminated");
                         }
                         Err(e) => {
                             // Expected OS level error
@@ -78,20 +92,53 @@ pub(crate) fn spawn_wait_watcher(
                     #[cfg(feature = "tracing")]
                     tracing::trace!("Termination signal received");
 
-                    if let Err(e) = child.kill().await {
-                        // Expected OS level error
-                        if result_tx.send((
-                            None,
-                            TaskEventStopReason::Error(format!(
-                                "Failed to terminate task {task_name}: {e}"
-                            )),
-                        )).is_err() {
+                    // Try to terminate the entire process group if enabled, otherwise just the individual process
+                    let termination_result = if let Some(ref pg) = process_group {
+                        #[cfg(feature = "tracing")]
+                        tracing::trace!("Terminating process group");
+                        pg.terminate_all().await
+                    } else {
+                        #[cfg(feature = "tracing")]
+                        tracing::trace!("Process group disabled, terminating individual process");
+                        child.kill().await.map_err(|e| ProcessGroupError::TerminationFailed(e.to_string()))
+                    };
+
+                    if let Err(e) = termination_result {
+                        #[cfg(feature = "tracing")]
+                        tracing::warn!(error = %e, "Process termination failed");
+                        
+                        // If process group termination failed and we're using process groups, fallback to individual kill
+                        if process_group.is_some() {
+                            if let Err(e2) = child.kill().await {
+                                // Expected OS level error
+                                if result_tx.send((
+                                    None,
+                                    TaskEventStopReason::Error(format!(
+                                        "Failed to terminate task {task_name}: process group: {e}, individual: {e2}"
+                                    )),
+                                )).is_err() {
+                                    #[cfg(feature = "tracing")]
+                                    tracing::warn!(error = %e2, "Result channel closed while sending TaskEventStopReason::Error");
+                                }
+                                #[cfg(feature = "tracing")]
+                                tracing::error!(error = %e2, "Failed to kill child process after process group failure");
+                                return;
+                            }
+                        } else {
+                            // Process group not available and individual termination failed
+                            if result_tx.send((
+                                None,
+                                TaskEventStopReason::Error(format!(
+                                    "Failed to terminate task {task_name}: {e}"
+                                )),
+                            )).is_err() {
                                 #[cfg(feature = "tracing")]
                                 tracing::warn!(error = %e, "Result channel closed while sending TaskEventStopReason::Error");
-                        }
+                            }
                             #[cfg(feature = "tracing")]
                             tracing::error!(error = %e, "Failed to kill child process");
-                        return;
+                            return;
+                        }
                     }
 
                     *state.write().await = TaskState::Finished;
@@ -104,7 +151,7 @@ pub(crate) fn spawn_wait_watcher(
                             tracing::warn!(reason = ?reason, "Result channel closed while sending TaskEventStopReason::Terminated");
                     }
                         #[cfg(feature = "tracing")]
-                        tracing::debug!(reason = ?reason, "Child process terminated via watcher");
+                        tracing::debug!(reason = ?reason, "Process group terminated via watcher");
                 }
             }
             // Task finished, send handle terminate signal

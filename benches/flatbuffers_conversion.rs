@@ -33,6 +33,7 @@ fn bench_config_serialization(c: &mut Criterion) {
         enable_stdin: Some(true),
         ready_indicator: Some("READY".to_string()),
         ready_indicator_source: Some(StreamSource::Stdout),
+        use_process_group: Some(true),
     };
 
     c.bench_function("config_to_flatbuffers", |b| {

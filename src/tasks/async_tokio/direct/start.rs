@@ -7,6 +7,7 @@ use crate::tasks::async_tokio::direct::watchers::output::spawn_output_watchers;
 use crate::tasks::async_tokio::direct::watchers::result::spawn_result_watcher;
 use crate::tasks::async_tokio::direct::watchers::timeout::spawn_timeout_watcher;
 use crate::tasks::async_tokio::direct::watchers::wait::spawn_wait_watcher;
+use crate::tasks::async_tokio::process_group::ProcessGroup;
 use crate::tasks::async_tokio::spawner::TaskSpawner;
 use crate::tasks::error::TaskError;
 use crate::tasks::event::{TaskEvent, TaskEventStopReason, TaskTerminateReason};
@@ -161,15 +162,11 @@ impl TaskSpawner {
     /// }
     /// ```
     ///
-    /// # Security
+    /// # Validation
     ///
-    /// This method validates the configuration before execution to prevent:
-    /// - Command injection attacks
-    /// - Path traversal vulnerabilities
-    /// - Invalid environment variables
-    /// - Dangerous process parameters
+    /// This method validates the configuration before execution
     ///
-    /// # Performance
+    /// # Watchers
     ///
     /// The method spawns multiple async watchers for different aspects of process monitoring:
     /// - Output watchers (stdout/stderr)
@@ -178,7 +175,7 @@ impl TaskSpawner {
     /// - Process completion watcher
     /// - Result aggregation watcher
     ///
-    /// All watchers run concurrently for optimal performance and responsiveness.
+    /// All watchers run concurrently for responsiveness.
     ///
     /// # Errors
     ///
@@ -215,10 +212,42 @@ impl TaskSpawner {
         }
 
         let mut cmd = Command::new(&self.config.command);
-        let cmd = cmd.kill_on_drop(true);
+        cmd.kill_on_drop(true);
 
-        setup_command(cmd, &self.config);
-        let mut child = match cmd.spawn() {
+        setup_command(&mut cmd, &self.config);
+
+        // Conditionally create process group for cross-platform process tree management
+        let (mut configured_cmd, process_group) = if self.config.is_process_group_enabled() {
+            match ProcessGroup::create_with_command(cmd) {
+                Ok((cmd, group)) => (cmd, Some(group)),
+                Err(e) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(error = %e, "Failed to create process group");
+
+                    self.update_state(TaskState::Finished).await;
+                    let error_event = TaskEvent::Error {
+                        task_name: self.task_name.clone(),
+                        error: TaskError::Handle(format!("Failed to create process group: {}", e)),
+                    };
+
+                    if (event_tx.send(error_event).await).is_err() {
+                        #[cfg(feature = "tracing")]
+                        tracing::warn!("Event channel closed while sending TaskEvent::Error");
+                    }
+
+                    return Err(TaskError::Handle(format!(
+                        "Failed to create process group: {}",
+                        e
+                    )));
+                }
+            }
+        } else {
+            #[cfg(feature = "tracing")]
+            tracing::debug!("Process group management disabled by configuration");
+            (cmd, None)
+        };
+
+        let mut child = match configured_cmd.spawn() {
             Ok(c) => c,
             Err(e) => {
                 #[cfg(feature = "tracing")]
@@ -238,6 +267,33 @@ impl TaskSpawner {
                 return Err(TaskError::IO(e.to_string()));
             }
         };
+
+        // Assign the child process to the process group if enabled
+        if let Some(ref pg) = process_group {
+            if let Err(e) = pg.assign_child(&child).await {
+                #[cfg(feature = "tracing")]
+                tracing::error!(error = %e, "Failed to assign child to process group");
+
+                self.update_state(TaskState::Finished).await;
+                let error_event = TaskEvent::Error {
+                    task_name: self.task_name.clone(),
+                    error: TaskError::Handle(format!(
+                        "Failed to assign child to process group: {}",
+                        e
+                    )),
+                };
+
+                if (event_tx.send(error_event).await).is_err() {
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!("Event channel closed while sending TaskEvent::Error");
+                }
+
+                return Err(TaskError::Handle(format!(
+                    "Failed to assign child to process group: {}",
+                    e
+                )));
+            }
+        }
         let Some(child_id) = child.id() else {
             let msg = "Failed to get process id";
 
@@ -300,6 +356,7 @@ impl TaskSpawner {
             self.task_name.clone(),
             self.state.clone(),
             child,
+            process_group,
             terminate_rx,
             handle_terminator_tx.clone(),
             result_tx,

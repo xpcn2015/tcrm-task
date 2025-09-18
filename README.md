@@ -2,6 +2,9 @@
 
 Async task execution unit for the TCRM project
 
+Tested on Windows 10.
+Not tested on Unix.
+
 ## Features
 
 - **Asynchronous Execution**: Built on Tokio for async task execution

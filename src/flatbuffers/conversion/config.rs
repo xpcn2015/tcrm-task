@@ -70,6 +70,7 @@ impl<'a> TryFrom<tcrm_task_generated::tcrm::task::TaskConfig<'a>> for TaskConfig
             enable_stdin: Some(fb_config.enable_stdin()),
             ready_indicator,
             ready_indicator_source,
+            use_process_group: Some(fb_config.use_process_group()),
         })
     }
 }
@@ -80,11 +81,16 @@ impl FromFlatbuffers<tcrm_task_generated::tcrm::task::TaskConfig<'_>> for TaskCo
     ) -> Result<Self, ConversionError> {
         let command = fb_config.command().to_string();
 
-        let args = fb_config
-            .args()
-            .map(|args_vec| args_vec.iter().map(std::string::ToString::to_string).collect());
+        let args = fb_config.args().map(|args_vec| {
+            args_vec
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect()
+        });
 
-        let working_dir = fb_config.working_dir().map(std::string::ToString::to_string);
+        let working_dir = fb_config
+            .working_dir()
+            .map(std::string::ToString::to_string);
 
         let env = fb_config.env().map(|env_vec| {
             env_vec
@@ -107,10 +113,17 @@ impl FromFlatbuffers<tcrm_task_generated::tcrm::task::TaskConfig<'_>> for TaskCo
         } else {
             None
         };
-        let ready_indicator = fb_config.ready_indicator().map(std::string::ToString::to_string);
+        let ready_indicator = fb_config
+            .ready_indicator()
+            .map(std::string::ToString::to_string);
         let ready_indicator_source =
             Some(StreamSource::try_from(fb_config.ready_indicator_source())?);
 
+        let use_process_group = if fb_config.use_process_group() {
+            Some(true)
+        } else {
+            None
+        };
         Ok(TaskConfig {
             command,
             args,
@@ -120,6 +133,7 @@ impl FromFlatbuffers<tcrm_task_generated::tcrm::task::TaskConfig<'_>> for TaskCo
             enable_stdin,
             ready_indicator,
             ready_indicator_source,
+            use_process_group,
         })
     }
 }
@@ -178,6 +192,7 @@ impl<'a> ToFlatbuffers<'a> for TaskConfig {
                     .clone()
                     .unwrap_or_default()
                     .into(),
+                use_process_group: self.use_process_group.unwrap_or_default(),
             },
         )
     }
@@ -226,6 +241,7 @@ mod tests {
             enable_stdin: Some(true),
             ready_indicator: Some("READY".to_string()),
             ready_indicator_source: Some(StreamSource::Stderr),
+            use_process_group: Some(true),
         };
 
         // Convert to FlatBuffer
@@ -269,6 +285,7 @@ mod tests {
             enable_stdin: None,
             ready_indicator: None,
             ready_indicator_source: None,
+            use_process_group: None,
         };
 
         // Convert to FlatBuffer and back
@@ -308,6 +325,7 @@ mod tests {
             enable_stdin: None,
             ready_indicator: None,
             ready_indicator_source: None,
+            use_process_group: None,
         };
 
         let mut builder = flatbuffers::FlatBufferBuilder::new();
@@ -332,6 +350,7 @@ mod tests {
             enable_stdin: None,
             ready_indicator: None,
             ready_indicator_source: None,
+            use_process_group: None,
         };
 
         let mut builder = flatbuffers::FlatBufferBuilder::new();
@@ -356,6 +375,7 @@ mod tests {
             enable_stdin: None,
             ready_indicator: None,
             ready_indicator_source: None,
+            use_process_group: None,
         };
 
         let mut builder = flatbuffers::FlatBufferBuilder::new();
@@ -380,6 +400,7 @@ mod tests {
             enable_stdin: None,
             ready_indicator: Some("准备就绪".to_string()),
             ready_indicator_source: None,
+            use_process_group: None,
         };
 
         let mut builder = flatbuffers::FlatBufferBuilder::new();
@@ -433,6 +454,7 @@ mod tests {
             enable_stdin: Some(true),
             ready_indicator: Some("STRESS_READY".to_string()),
             ready_indicator_source: Some(StreamSource::Stderr),
+            use_process_group: Some(true),
         };
 
         let mut builder = flatbuffers::FlatBufferBuilder::new();
