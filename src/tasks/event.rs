@@ -137,10 +137,10 @@ pub enum TaskEvent {
         reason: TaskEventStopReason,
     },
 
-    /// An error occurred during task execution
+    /// An error occurred before task execution
     ///
     /// Emitted when errors occur during configuration validation,
-    /// process spawning, or execution monitoring.
+    /// process spawning, and will not emit any further events.
     Error {
         /// Name of the task that encountered an error
         task_name: String,
