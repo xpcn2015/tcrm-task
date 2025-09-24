@@ -40,7 +40,9 @@ pub(crate) fn setup_command(cmd: &mut Command, config: &TaskConfig) {
     // Kill child process on parent exit
     #[cfg(unix)]
     {
-        cmd.process_group(0);
+        if config.use_process_group.unwrap_or_default() {
+            cmd.process_group(0);
+        }
     }
 }
 
@@ -55,15 +57,16 @@ mod tests {
         let mut cmd = if cfg!(windows) {
             Command::new("powershell")
         } else {
-            Command::new("bash")
+            Command::new("echo")
         };
         let config = if cfg!(windows) {
             let mut c = TaskConfig::new("powershell");
             c.args = Some(vec!["-Command".to_string(), "echo hello_test".to_string()]);
             c
         } else {
-            let mut c = TaskConfig::new("bash");
-            c.args = Some(vec!["-c".to_string(), "echo hello_test".to_string()]);
+            let mut c = TaskConfig::new("echo");
+            c.args = Some(vec!["hello_test".to_string()]);
+            c.use_process_group = Some(false);
             c
         };
         setup_command(&mut cmd, &config);

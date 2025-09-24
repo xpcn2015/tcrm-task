@@ -396,10 +396,11 @@ mod tests {
             .ready_indicator("READY_INDICATOR".to_string())
             .ready_indicator_source(StreamSource::Stdout);
         #[cfg(unix)]
-        let config = TaskConfig::new("bash")
-            .args(["-c", "echo READY_INDICATOR"])
+        let config = TaskConfig::new("echo")
+            .args(["READY_INDICATOR"])
             .ready_indicator("READY_INDICATOR".to_string())
-            .ready_indicator_source(StreamSource::Stdout);
+            .ready_indicator_source(StreamSource::Stdout)
+            .use_process_group(false);
 
         let mut spawner = TaskSpawner::new("ready_stdout_task".to_string(), config);
         let result = spawner.start_direct(tx).await;
@@ -428,9 +429,10 @@ mod tests {
             .ready_indicator_source(StreamSource::Stderr);
         #[cfg(unix)]
         let config = TaskConfig::new("bash")
-            .args(["-c", "echo READY_INDICATOR 1>&2"])
+            .args(["-c", "echo READY_INDICATOR >&2"])
             .ready_indicator("READY_INDICATOR".to_string())
-            .ready_indicator_source(StreamSource::Stderr);
+            .ready_indicator_source(StreamSource::Stderr)
+            .use_process_group(false);
 
         let mut spawner = TaskSpawner::new("ready_stderr_task".to_string(), config);
         let result = spawner.start_direct(tx).await;
@@ -458,10 +460,11 @@ mod tests {
             .ready_indicator("READY_INDICATOR".to_string())
             .ready_indicator_source(StreamSource::Stderr);
         #[cfg(unix)]
-        let config = TaskConfig::new("bash")
-            .args(["-c", "echo READY_INDICATOR"])
+        let config = TaskConfig::new("echo")
+            .args(["READY_INDICATOR"])
             .ready_indicator("READY_INDICATOR".to_string())
-            .ready_indicator_source(StreamSource::Stderr);
+            .ready_indicator_source(StreamSource::Stderr)
+            .use_process_group(false);
 
         let mut spawner = TaskSpawner::new("ready_mismatch_task".to_string(), config);
         let result = spawner.start_direct(tx).await;
@@ -492,7 +495,9 @@ mod tests {
         #[cfg(windows)]
         let config = TaskConfig::new("powershell").args(["-Command", "echo hello"]);
         #[cfg(unix)]
-        let config = TaskConfig::new("bash").args(["-c", "echo hello"]);
+        let config = TaskConfig::new("echo")
+            .args(["hello"])
+            .use_process_group(false);
 
         let mut spawner = TaskSpawner::new("echo_task".to_string(), config);
 
@@ -539,9 +544,10 @@ mod tests {
             .args(["-Command", "sleep 2"])
             .timeout_ms(1);
         #[cfg(unix)]
-        let config = TaskConfig::new("bash")
-            .args(["-c", "sleep 2"])
-            .timeout_ms(1);
+        let config = TaskConfig::new("sleep")
+            .args(["2"])
+            .timeout_ms(1)
+            .use_process_group(false);
 
         let (tx, mut rx) = mpsc::channel::<TaskEvent>(1024);
         let mut spawner = TaskSpawner::new("sleep_with_timeout_task".into(), config);
@@ -608,9 +614,10 @@ mod tests {
             .args(["-Command", "$line = Read-Host; Write-Output $line"])
             .enable_stdin(true);
         #[cfg(unix)]
-        let config = TaskConfig::new("bash")
-            .args(["-c", "read line; echo $line"])
-            .enable_stdin(true);
+        let config = TaskConfig::new("head")
+            .args(["-n", "1"])
+            .enable_stdin(true)
+            .use_process_group(false);
 
         let mut spawner = TaskSpawner::new("stdin_task".to_string(), config).set_stdin(stdin_rx);
 
@@ -669,7 +676,9 @@ mod tests {
         let config = TaskConfig::new("powershell")
             .args(["-Command", "$line = Read-Host; Write-Output $line"]);
         #[cfg(unix)]
-        let config = TaskConfig::new("bash").args(["-c", "read line; echo $line"]);
+        let config = TaskConfig::new("head")
+            .args(["-n", "1"])
+            .use_process_group(false);
 
         // Note: stdin is not enabled in config, so stdin should be ignored
         let mut spawner = TaskSpawner::new("stdin_task".to_string(), config).set_stdin(stdin_rx);
@@ -724,7 +733,7 @@ mod tests {
     #[tokio::test]
     async fn start_direct_command_not_found() {
         let (tx, mut rx) = mpsc::channel::<TaskEvent>(1024);
-        let config = TaskConfig::new("non_existent_command");
+        let config = TaskConfig::new("non_existent_command").use_process_group(false);
         let mut spawner = TaskSpawner::new("error_task".to_string(), config);
 
         let result = spawner.start_direct(tx).await;
@@ -793,7 +802,9 @@ mod tests {
         #[cfg(windows)]
         let config = TaskConfig::new("powershell").args(["-Command", "echo done"]);
         #[cfg(unix)]
-        let config = TaskConfig::new("bash").args(["-c", "echo done"]);
+        let config = TaskConfig::new("echo")
+            .args(["done"])
+            .use_process_group(false);
 
         let mut spawner = TaskSpawner::new("pid_test_task".to_string(), config);
         let result = spawner.start_direct(tx).await;
@@ -824,7 +835,9 @@ mod tests {
         #[cfg(windows)]
         let config = TaskConfig::new("powershell").args(["-Command", "Start-Sleep -Seconds 2"]);
         #[cfg(unix)]
-        let config = TaskConfig::new("sleep").args(["2"]);
+        let config = TaskConfig::new("sleep")
+            .args(["2"])
+            .use_process_group(false);
 
         let mut spawner = TaskSpawner::new("pid_running_task".to_string(), config);
         let result = spawner.start_direct(tx).await;

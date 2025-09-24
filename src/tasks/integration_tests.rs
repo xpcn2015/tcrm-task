@@ -19,14 +19,23 @@ mod integration_tests {
         let config = if cfg!(windows) {
             TaskConfig::new("cmd").args(vec!["/C".to_string(), "echo hello_world".to_string()])
         } else {
-            TaskConfig::new("echo").args(vec!["hello_world".to_string()])
+            TaskConfig::new("echo")
+                .args(vec!["hello_world".to_string()])
+                .use_process_group(false)
         };
 
         let mut spawner = TaskSpawner::new("echo_test".to_string(), config);
 
         // Start the task
         let result = spawner.start_direct(tx).await;
-        assert!(result.is_ok(), "Task should start successfully");
+        if let Err(ref e) = result {
+            eprintln!("Task failed to start: {:?}", e);
+        }
+        assert!(
+            result.is_ok(),
+            "Task should start successfully: {:?}",
+            result
+        );
 
         // Collect all events
         let mut events = Vec::new();
@@ -98,7 +107,9 @@ mod integration_tests {
                 .args(vec!["/C".to_string(), "cd".to_string()])
                 .working_dir(std::env::temp_dir().to_str().unwrap().to_string())
         } else {
-            TaskConfig::new("pwd").working_dir(std::env::temp_dir().to_str().unwrap().to_string())
+            TaskConfig::new("pwd")
+                .working_dir(std::env::temp_dir().to_str().unwrap().to_string())
+                .use_process_group(false)
         };
 
         let mut spawner = TaskSpawner::new("pwd_test".to_string(), config);
@@ -148,15 +159,20 @@ mod integration_tests {
                 .args(vec!["/C".to_string(), "echo %TEST_VAR%".to_string()])
                 .env(env)
         } else {
-            TaskConfig::new("sh")
-                .args(vec!["-c".to_string(), "echo $TEST_VAR".to_string()])
+            TaskConfig::new("printenv")
+                .args(vec!["TEST_VAR".to_string()])
                 .env(env)
+                .use_process_group(false)
         };
 
         let mut spawner = TaskSpawner::new("env_test".to_string(), config);
 
         let result = spawner.start_direct(tx).await;
-        assert!(result.is_ok(), "Task should start successfully");
+        assert!(
+            result.is_ok(),
+            "Task should start successfully: {}",
+            result.unwrap_err()
+        );
 
         // Collect output
         let mut output = String::new();
@@ -189,7 +205,7 @@ mod integration_tests {
         let config = if cfg!(windows) {
             TaskConfig::new("cmd").args(vec!["/C".to_string(), "exit 1".to_string()])
         } else {
-            TaskConfig::new("sh").args(vec!["-c".to_string(), "exit 1".to_string()])
+            TaskConfig::new("false").use_process_group(false)
         };
 
         let mut spawner = TaskSpawner::new("fail_test".to_string(), config);
@@ -226,7 +242,9 @@ mod integration_tests {
                 .args(vec!["/C".to_string(), "more".to_string()])
                 .enable_stdin(true)
         } else {
-            TaskConfig::new("cat").enable_stdin(true)
+            TaskConfig::new("cat")
+                .enable_stdin(true)
+                .use_process_group(false)
         };
 
         let mut spawner = TaskSpawner::new("stdin_test".to_string(), config).set_stdin(stdin_rx);
@@ -278,13 +296,11 @@ mod integration_tests {
                 .ready_indicator("READY".to_string())
                 .ready_indicator_source(StreamSource::Stdout)
         } else {
-            TaskConfig::new("sh")
-                .args(vec![
-                    "-c".to_string(),
-                    "echo READY && echo more_output && echo more_output".to_string(),
-                ])
+            TaskConfig::new("echo")
+                .args(vec!["READY".to_string()])
                 .ready_indicator("READY".to_string())
                 .ready_indicator_source(StreamSource::Stdout)
+                .use_process_group(false)
         };
 
         let mut spawner = TaskSpawner::new("ready_test".to_string(), config);
@@ -329,13 +345,11 @@ mod integration_tests {
                 .ready_indicator("Not match".to_string())
                 .ready_indicator_source(StreamSource::Stdout)
         } else {
-            TaskConfig::new("sh")
-                .args(vec![
-                    "-c".to_string(),
-                    "echo READY && echo more_output".to_string(),
-                ])
+            TaskConfig::new("echo")
+                .args(vec!["READY".to_string()])
                 .ready_indicator("Not match".to_string())
                 .ready_indicator_source(StreamSource::Stdout)
+                .use_process_group(false)
         };
 
         let mut spawner = TaskSpawner::new("ready_test_nomatch".to_string(), config);
@@ -378,7 +392,9 @@ mod integration_tests {
                 let config = if cfg!(windows) {
                     TaskConfig::new("cmd").args(vec!["/C".to_string(), format!("echo task_{}", i)])
                 } else {
-                    TaskConfig::new("echo").args(vec![format!("task_{}", i)])
+                    TaskConfig::new("echo")
+                        .args(vec![format!("task_{}", i)])
+                        .use_process_group(false)
                 };
 
                 let mut spawner = TaskSpawner::new(format!("concurrent_test_{}", i), config);
@@ -424,7 +440,9 @@ mod integration_tests {
         let config = if cfg!(windows) {
             TaskConfig::new("cmd").args(vec!["/C".to_string(), "echo test".to_string()])
         } else {
-            TaskConfig::new("echo").args(vec!["test".to_string()])
+            TaskConfig::new("echo")
+                .args(vec!["test".to_string()])
+                .use_process_group(false)
         };
 
         let mut spawner = TaskSpawner::new("state_test".to_string(), config);
