@@ -1,6 +1,11 @@
 # Changelog
 
 ## 0.3
+### 0.3.7 (2025/09/24)
+#### Fixed
+- Ready event is now correctly emitted only when the indicator string matches [[commit](https://github.com/xpcn2015/tcrm-task/commit/3bfc67ce5b9b9a7a2f0dd8da33e08c0c39066e98)]
+- Update dependencies
+
 ### 0.3.6 (2025/09/18)
 #### Added
 - Optional process group management: `TaskConfig::use_process_group(bool)` allows enabling/disabling cross-platform process group/job object usage for child process tracking. Default is enabled. [[commit](https://github.com/xpcn2015/tcrm-task/commit/37a007cf13753979852206a7fd397d99f30e27ae)]
