@@ -267,7 +267,7 @@ impl ConfigValidator {
         Ok(())
     }
 
-    pub fn validate_ready_indicator(indicator: &String) -> Result<(), TaskError> {
+    pub fn validate_ready_indicator(indicator: &str) -> Result<(), TaskError> {
         if indicator.is_empty() {
             return Err(TaskError::InvalidConfiguration(
                 "ready_indicator cannot be empty string".to_string(),
