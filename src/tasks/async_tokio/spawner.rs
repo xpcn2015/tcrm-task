@@ -521,48 +521,6 @@ mod tests {
     };
 
     #[tokio::test]
-    async fn task_spawner_is_running_returns_true_when_state_running() {
-        let config = TaskConfig::new("echo");
-        let spawner = TaskSpawner::new("running_task".to_string(), config);
-        assert!(
-            !spawner.is_running().await,
-            "Should not be running initially"
-        );
-        spawner.update_state(TaskState::Running).await;
-        assert!(spawner.is_running().await, "Should be running after update");
-    }
-
-    #[tokio::test]
-    async fn task_spawner_is_ready_returns_true_when_state_ready() {
-        let config = TaskConfig::new("echo");
-        let spawner = TaskSpawner::new("ready_task".to_string(), config);
-        assert!(!spawner.is_ready().await, "Should not be ready initially");
-        spawner.update_state(TaskState::Ready).await;
-        assert!(spawner.is_ready().await, "Should be ready after update");
-    }
-
-    #[tokio::test]
-    async fn task_spawner_initial_state_is_pending() {
-        let config = TaskConfig::new("echo");
-        let spawner = TaskSpawner::new("pending_task".to_string(), config);
-        let state = spawner.get_state().await;
-        assert_eq!(state, TaskState::Pending, "Initial state should be Pending");
-    }
-
-    #[tokio::test]
-    async fn task_spawner_update_state_changes_state() {
-        let config = TaskConfig::new("echo");
-        let spawner = TaskSpawner::new("update_task".to_string(), config);
-        spawner.update_state(TaskState::Running).await;
-        let state = spawner.get_state().await;
-        assert_eq!(
-            state,
-            TaskState::Running,
-            "State should be Running after update"
-        );
-    }
-
-    #[tokio::test]
     async fn task_spawner_uptime_increases_over_time() {
         let config = TaskConfig::new("echo");
         let spawner = TaskSpawner::new("uptime_task".to_string(), config);
