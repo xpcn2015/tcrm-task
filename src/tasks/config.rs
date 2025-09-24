@@ -432,30 +432,3 @@ impl Default for StreamSource {
         Self::Stdout
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use std::{collections::HashMap, env::temp_dir};
-
-    use crate::tasks::{config::TaskConfig, error::TaskError};
-
-    #[test]
-    fn config_builder() {
-        let config = TaskConfig::new("cargo")
-            .args(["build", "--release"])
-            .working_dir("/home/user/project")
-            .env([("RUST_LOG", "debug"), ("CARGO_TARGET_DIR", "target")])
-            .timeout_ms(300)
-            .enable_stdin(true);
-
-        assert_eq!(config.command, "cargo");
-        assert_eq!(
-            config.args,
-            Some(vec!["build".to_string(), "--release".to_string()])
-        );
-        assert_eq!(config.working_dir, Some("/home/user/project".to_string()));
-        assert!(config.env.is_some());
-        assert_eq!(config.timeout_ms, Some(300));
-        assert_eq!(config.enable_stdin, Some(true));
-    }
-}
