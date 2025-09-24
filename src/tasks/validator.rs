@@ -267,6 +267,25 @@ impl ConfigValidator {
         Ok(())
     }
 
+    pub fn validate_ready_indicator(indicator: &String) -> Result<(), TaskError> {
+        if indicator.is_empty() {
+            return Err(TaskError::InvalidConfiguration(
+                "ready_indicator cannot be empty string".to_string(),
+            ));
+        }
+        Ok(())
+    }
+
+    /// Validates timeout value (must be greater than 0 if present)
+    pub fn validate_timeout(timeout: &u64) -> Result<(), TaskError> {
+        if *timeout == 0 {
+            return Err(TaskError::InvalidConfiguration(
+                "Timeout must be greater than 0".to_string(),
+            ));
+        }
+        Ok(())
+    }
+
     /// Checks for obvious injection attempts while allowing normal shell features.
     ///
     /// This internal method identifies clearly malicious patterns without blocking

@@ -359,42 +359,22 @@ impl TaskConfig {
     /// assert!(config.validate().is_err());
     /// ```
     pub fn validate(&self) -> Result<(), TaskError> {
-        // Validate command
         ConfigValidator::validate_command(&self.command)?;
-
-        // Validate ready_indicator
-        if let Some(indicator) = &self.ready_indicator
-            && indicator.is_empty()
-        {
-            return Err(TaskError::InvalidConfiguration(
-                "ready_indicator cannot be empty string".to_string(),
-            ));
+        if let Some(ready_indicator) = &self.ready_indicator {
+            ConfigValidator::validate_ready_indicator(ready_indicator)?;
         }
-
-        // Validate arguments
         if let Some(args) = &self.args {
             ConfigValidator::validate_args(args)?;
         }
-
-        // Validate working directory
         if let Some(dir) = &self.working_dir {
             ConfigValidator::validate_working_dir(dir)?;
         }
-
-        // Validate environment variables
         if let Some(env) = &self.env {
             ConfigValidator::validate_env_vars(env)?;
         }
-
-        // Validate timeout
-        if let Some(timeout) = self.timeout_ms
-            && timeout == 0
-        {
-            return Err(TaskError::InvalidConfiguration(
-                "Timeout must be greater than 0".to_string(),
-            ));
+        if let Some(timeout) = &self.timeout_ms {
+            ConfigValidator::validate_timeout(timeout)?;
         }
-
         Ok(())
     }
 
