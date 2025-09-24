@@ -161,22 +161,21 @@ where
                                     ready_found = true;
                                     #[cfg(feature = "tracing")]
                                     tracing::debug!(stream=?src, "Ready indicator found in output stream");
-                                }
-
-                                #[cfg(feature = "tracing")]
-                                tracing::debug!("Updating task state to Ready");
-                                *state.write().await = TaskState::Ready;
-                                if (event_tx
-                                    .send(TaskEvent::Ready {
-                                        task_name: task_name.clone(),
-                                    })
-                                    .await).is_err()
-                                {
+                               
                                     #[cfg(feature = "tracing")]
-                                    tracing::warn!("Event channel closed while sending TaskEvent::Ready");
-                                    break;
+                                    tracing::debug!("Updating task state to Ready");
+                                    *state.write().await = TaskState::Ready;
+                                    if (event_tx
+                                        .send(TaskEvent::Ready {
+                                            task_name: task_name.clone(),
+                                        })
+                                        .await).is_err()
+                                    {
+                                        #[cfg(feature = "tracing")]
+                                        tracing::warn!("Event channel closed while sending TaskEvent::Ready");
+                                        break;
+                                    }
                                 }
-
                             }
                             Ok(None) => {
                                 // EOF

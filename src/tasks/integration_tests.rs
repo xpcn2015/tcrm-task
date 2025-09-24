@@ -273,7 +273,7 @@ mod integration_tests {
             TaskConfig::new("cmd")
                 .args(vec![
                     "/C".to_string(),
-                    "echo READY && echo more_output".to_string(),
+                    "echo READY && echo more_output && echo more_output".to_string(),
                 ])
                 .ready_indicator("READY".to_string())
                 .ready_indicator_source(StreamSource::Stdout)
@@ -281,7 +281,7 @@ mod integration_tests {
             TaskConfig::new("sh")
                 .args(vec![
                     "-c".to_string(),
-                    "echo READY && echo more_output".to_string(),
+                    "echo READY && echo more_output && echo more_output".to_string(),
                 ])
                 .ready_indicator("READY".to_string())
                 .ready_indicator_source(StreamSource::Stdout)
@@ -292,14 +292,14 @@ mod integration_tests {
         let result = spawner.start_direct(tx).await;
         assert!(result.is_ok(), "Task should start successfully");
 
-        // Look for Ready event
-        let mut found_ready = false;
+        // Count Ready events
+        let mut ready_count = 0;
         while let Ok(event) = timeout(Duration::from_secs(5), rx.recv()).await {
             if let Some(event) = event {
                 match event {
                     TaskEvent::Ready { task_name } => {
                         assert_eq!(task_name, "ready_test");
-                        found_ready = true;
+                        ready_count += 1;
                     }
                     TaskEvent::Stopped { .. } => break,
                     _ => {}
@@ -309,9 +309,60 @@ mod integration_tests {
             }
         }
 
-        assert!(
-            found_ready,
-            "Should receive Ready event when indicator is found"
+        assert_eq!(
+            ready_count, 1,
+            "Should receive Ready event exactly once, got {}",
+            ready_count
+        );
+    }
+
+    #[tokio::test]
+    async fn test_task_ready_indicator_not_matching() {
+        let (tx, mut rx) = mpsc::channel(100);
+
+        let config = if cfg!(windows) {
+            TaskConfig::new("cmd")
+                .args(vec![
+                    "/C".to_string(),
+                    "echo READY && echo more_output".to_string(),
+                ])
+                .ready_indicator("Not match".to_string())
+                .ready_indicator_source(StreamSource::Stdout)
+        } else {
+            TaskConfig::new("sh")
+                .args(vec![
+                    "-c".to_string(),
+                    "echo READY && echo more_output".to_string(),
+                ])
+                .ready_indicator("Not match".to_string())
+                .ready_indicator_source(StreamSource::Stdout)
+        };
+
+        let mut spawner = TaskSpawner::new("ready_test_nomatch".to_string(), config);
+
+        let result = spawner.start_direct(tx).await;
+        assert!(result.is_ok(), "Task should start successfully");
+
+        // Count Ready events
+        let mut ready_count = 0;
+        while let Ok(event) = timeout(Duration::from_secs(5), rx.recv()).await {
+            if let Some(event) = event {
+                match event {
+                    TaskEvent::Ready { .. } => {
+                        ready_count += 1;
+                    }
+                    TaskEvent::Stopped { .. } => break,
+                    _ => {}
+                }
+            } else {
+                break;
+            }
+        }
+
+        assert_eq!(
+            ready_count, 0,
+            "Should not receive Ready event when indicator does not match, got {}",
+            ready_count
         );
     }
 
