@@ -66,7 +66,7 @@ mod tests {
     }
 
     #[test]
-    fn strict_blocks_shell_features() {
+    fn strict_mode_blocks_shell_features() {
         let shell_commands = [
             "ls | grep pattern",
             "echo hello > output.txt",
@@ -105,6 +105,21 @@ mod tests {
             "ls -la",
             "grep pattern file.txt",
             "node script.js",
+            "python main.py --input data.txt",
+            "cargo build --release",
+            "npm install",
+            "git status",
+            "git commit -m 'update'",
+            "echo 'hello world'",
+            "echo \"hello world\"",
+            "ls /usr/local/bin",
+            "cat README.md",
+            "grep -i error log.txt",
+            "python -m venv .env",
+            "node --version",
+            "ls -lh /tmp",
+            "cat file.txt | head -n 10",
+            "echo $PATH",
         ];
 
         for cmd in &safe_commands {
@@ -123,6 +138,21 @@ mod tests {
             "--flag".to_string(),
             "file.txt".to_string(),
             "path/to/file".to_string(),
+            "--input=data.txt".to_string(),
+            "-v".to_string(),
+            "--output".to_string(),
+            "123".to_string(),
+            "'quoted arg'".to_string(),
+            "\"double quoted arg\"".to_string(),
+            "C:\\Program Files\\App".to_string(),
+            "./script.sh".to_string(),
+            "--env=PROD".to_string(),
+            "--threads=4".to_string(),
+            "--config=path/config.yaml".to_string(),
+            "--user=admin".to_string(),
+            "--password=secret".to_string(),
+            "--dry-run".to_string(),
+            "--verbose".to_string(),
         ];
 
         assert!(ConfigValidator::validate_args(&normal_args).is_ok());
