@@ -228,7 +228,7 @@ impl ConfigValidator {
                     "Environment variable key cannot be empty".to_string(),
                 ));
             }
-            if key.contains('=') || key.contains('\0') {
+            if key.contains('=') || key.contains('\0') || key.contains('\t') || key.contains('\n') {
                 return Err(TaskError::InvalidConfiguration(
                     "Environment variable key contains invalid characters".to_string(),
                 ));
