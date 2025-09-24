@@ -283,11 +283,12 @@ impl ConfigValidator {
     fn contains_obvious_injection(input: &str) -> bool {
         // Only block patterns that are clearly malicious, not functional shell features
         let obvious_injection_patterns = [
-            "\0",    // Null bytes
-            "\x00",  // Null bytes (hex)
-            "\r\n",  // CRLF injection
-            "eval(", // Direct eval calls
-            "exec(", // Direct exec calls
+            "\0",         // Null bytes
+            "\x00",       // Null bytes (hex)
+            "\r\n",       // CRLF injection
+            "eval(",      // Direct eval calls
+            "exec(",      // Direct exec calls
+            "os.system(", // Direct Python code execution
         ];
 
         obvious_injection_patterns
