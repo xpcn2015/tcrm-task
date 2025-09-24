@@ -11,7 +11,7 @@ mod tests {
     }
 
     #[test]
-    fn validate_command_accepts_shell_features() {
+    fn accepts_shell_features() {
         // These should be allowed for developer tools
         let shell_commands = [
             "ls | grep pattern",
@@ -43,7 +43,7 @@ mod tests {
     }
 
     #[test]
-    fn validate_command_rejects_obvious_injection() {
+    fn rejects_obvious_injection() {
         let dangerous_commands = [
             "command\0with\0nulls",
             "eval(malicious_code)",
@@ -66,11 +66,22 @@ mod tests {
     }
 
     #[test]
-    fn validate_command_strict_blocks_shell_features() {
+    fn strict_blocks_shell_features() {
         let shell_commands = [
             "ls | grep pattern",
             "echo hello > output.txt",
             "make && npm test",
+            "command1; command2",
+            "echo $PATH",
+            "ls $(pwd)",
+            "cat file.txt | head -n 10",
+            "sleep 1 & echo done",
+            "(cd /tmp && ls)",
+            "cat <<EOF\nhello\nEOF",
+            "false || echo fallback",
+            "echo hello >> file.txt",
+            "echo `date`",
+            "echo hello # comment",
         ];
 
         for cmd in &shell_commands {
@@ -83,7 +94,7 @@ mod tests {
     }
 
     #[test]
-    fn validate_command_accepts_safe_commands() {
+    fn accepts_safe_commands() {
         let safe_commands = [
             "echo",
             "ls",
@@ -106,7 +117,7 @@ mod tests {
     }
 
     #[test]
-    fn validate_args_accepts_normal_args() {
+    fn accepts_normal_args() {
         let normal_args = vec![
             "arg1".to_string(),
             "--flag".to_string(),
@@ -118,7 +129,7 @@ mod tests {
     }
 
     #[test]
-    fn validate_args_rejects_null_bytes() {
+    fn rejects_null_bytes() {
         let dangerous_args = vec!["arg\0with\0nulls".to_string()];
 
         assert!(ConfigValidator::validate_args(&dangerous_args).is_err());
