@@ -12,7 +12,9 @@ async fn echo_with_args() {
     let mut cmd = Command::new("echo");
 
     #[cfg(windows)]
-    let config = TaskConfig::new("powershell").args(["-Command", "echo hello_test"]);
+    let config = TaskConfig::new("powershell")
+        .args(["-Command", "echo hello_test"])
+        .use_process_group(false);
     #[cfg(unix)]
     let config = TaskConfig::new("echo")
         .args(["hello_test"])
@@ -38,7 +40,10 @@ async fn echo_with_env() {
     envs.insert("FOO".to_string(), "BAR_TEST".to_string());
 
     #[cfg(windows)]
-    let config = TaskConfig::new("cmd").env(envs).args(["/C", "echo %FOO%"]);
+    let config = TaskConfig::new("cmd")
+        .env(envs)
+        .args(["/C", "echo %FOO%"])
+        .use_process_group(false);
     #[cfg(unix)]
     let config = TaskConfig::new("echo")
         .env(envs)
@@ -62,7 +67,8 @@ async fn stdin_enabled_accepts_input() {
     #[cfg(windows)]
     let config = TaskConfig::new("cmd")
         .enable_stdin(true)
-        .args(["/C", "more"]);
+        .args(["/C", "more"])
+        .use_process_group(false);
     #[cfg(unix)]
     let config = TaskConfig::new("cat")
         .enable_stdin(true)
@@ -95,7 +101,8 @@ async fn stdin_disabled_no_input() {
     #[cfg(windows)]
     let config = TaskConfig::new("cmd")
         .enable_stdin(false)
-        .args(["/C", "more"]);
+        .args(["/C", "more"])
+        .use_process_group(false);
     #[cfg(unix)]
     let config = TaskConfig::new("cat")
         .enable_stdin(false)
