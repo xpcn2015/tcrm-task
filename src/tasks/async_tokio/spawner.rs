@@ -39,6 +39,9 @@ pub struct TaskInfo {
     /// When the task was created
     #[cfg_attr(feature = "serde", serde(skip, default = "default_instant"))]
     pub created_at: Instant,
+    /// When the task was running
+    #[cfg_attr(feature = "serde", serde(skip, default))]
+    pub running_at: Option<Instant>,
     /// When the task finished (if completed)
     #[cfg_attr(feature = "serde", serde(skip, default))]
     pub finished_at: Option<Instant>,
@@ -171,6 +174,7 @@ pub struct TaskSpawner {
     pub(crate) terminate_tx: Arc<Mutex<Option<oneshot::Sender<TaskTerminateReason>>>>,
     pub(crate) process_id: Arc<RwLock<Option<u32>>>,
     pub(crate) created_at: Instant,
+    pub(crate) running_at: Option<Instant>,
     pub(crate) finished_at: Arc<RwLock<Option<Instant>>>,
     pub(crate) stdin_rx: Option<mpsc::Receiver<String>>,
 }
@@ -202,6 +206,7 @@ impl TaskSpawner {
             terminate_tx: Arc::new(Mutex::new(None)),
             process_id: Arc::new(RwLock::new(None)),
             created_at: Instant::now(),
+            running_at: None,
             finished_at: Arc::new(RwLock::new(None)),
             stdin_rx: None,
         }
@@ -325,7 +330,11 @@ impl TaskSpawner {
     /// ```
     #[must_use]
     pub fn uptime(&self) -> Duration {
-        self.created_at.elapsed()
+        if let Some(running_at) = self.running_at {
+            running_at.elapsed()
+        } else {
+            Duration::ZERO
+        }
     }
 
     /// Get comprehensive information about the task
@@ -352,6 +361,7 @@ impl TaskSpawner {
             state: self.get_state().await,
             uptime: self.uptime(),
             created_at: self.created_at,
+            running_at: self.running_at,
             finished_at: *self.finished_at.read().await,
         }
     }

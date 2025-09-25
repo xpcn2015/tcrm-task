@@ -1,5 +1,6 @@
 use tokio::process::Command;
 use tokio::sync::{mpsc, oneshot, watch};
+use tokio::time::Instant;
 
 use crate::tasks::async_tokio::direct::command::setup_command;
 use crate::tasks::async_tokio::direct::watchers::input::spawn_stdin_watcher;
@@ -267,6 +268,7 @@ impl TaskSpawner {
                 return Err(TaskError::IO(e.to_string()));
             }
         };
+        self.running_at = Some(Instant::now());
 
         // Assign the child process to the process group if enabled
         if let Some(ref pg) = process_group {
