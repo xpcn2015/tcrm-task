@@ -36,14 +36,6 @@ pub(crate) fn setup_command(cmd: &mut Command, config: &TaskConfig) {
             Stdio::null()
         },
     );
-
-    // Kill child process on parent exit
-    #[cfg(unix)]
-    {
-        if config.use_process_group.unwrap_or_default() {
-            cmd.process_group(0);
-        }
-    }
 }
 
 #[cfg(test)]
