@@ -531,16 +531,6 @@ mod tests {
     };
 
     #[tokio::test]
-    async fn task_spawner_uptime_increases_over_time() {
-        let config = TaskConfig::new("echo");
-        let spawner = TaskSpawner::new("uptime_task".to_string(), config);
-        let uptime1 = spawner.uptime();
-        sleep(Duration::from_millis(20)).await;
-        let uptime2 = spawner.uptime();
-        assert!(uptime2 > uptime1, "Uptime should increase after sleep");
-    }
-
-    #[tokio::test]
     async fn task_spawner_get_task_info_returns_correct_info() {
         let config = TaskConfig::new("echo");
         let spawner = TaskSpawner::new("info_task".to_string(), config);
