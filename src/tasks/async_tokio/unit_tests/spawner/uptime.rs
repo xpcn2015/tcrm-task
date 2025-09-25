@@ -16,7 +16,7 @@ async fn created_at_increases_over_time() {
 }
 
 #[tokio::test]
-async fn zero_uptime() {
+async fn zero_uptime_if_not_started() {
     let config = TaskConfig::new("echo");
     let spawner = TaskSpawner::new("uptime_task".to_string(), config);
     let uptime1 = spawner.get_task_info().await.uptime;
