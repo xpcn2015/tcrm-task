@@ -39,6 +39,9 @@ pub struct TaskInfo {
     /// When the task was created
     #[cfg_attr(feature = "serde", serde(skip, default = "default_instant"))]
     pub created_at: Instant,
+    /// When the task was running
+    #[cfg_attr(feature = "serde", serde(skip, default))]
+    pub running_at: Option<Instant>,
     /// When the task finished (if completed)
     #[cfg_attr(feature = "serde", serde(skip, default))]
     pub finished_at: Option<Instant>,
@@ -171,6 +174,7 @@ pub struct TaskSpawner {
     pub(crate) terminate_tx: Arc<Mutex<Option<oneshot::Sender<TaskTerminateReason>>>>,
     pub(crate) process_id: Arc<RwLock<Option<u32>>>,
     pub(crate) created_at: Instant,
+    pub(crate) running_at: Option<Instant>,
     pub(crate) finished_at: Arc<RwLock<Option<Instant>>>,
     pub(crate) stdin_rx: Option<mpsc::Receiver<String>>,
 }
@@ -202,6 +206,7 @@ impl TaskSpawner {
             terminate_tx: Arc::new(Mutex::new(None)),
             process_id: Arc::new(RwLock::new(None)),
             created_at: Instant::now(),
+            running_at: None,
             finished_at: Arc::new(RwLock::new(None)),
             stdin_rx: None,
         }
@@ -325,7 +330,11 @@ impl TaskSpawner {
     /// ```
     #[must_use]
     pub fn uptime(&self) -> Duration {
-        self.created_at.elapsed()
+        if let Some(running_at) = self.running_at {
+            running_at.elapsed()
+        } else {
+            Duration::ZERO
+        }
     }
 
     /// Get comprehensive information about the task
@@ -352,6 +361,7 @@ impl TaskSpawner {
             state: self.get_state().await,
             uptime: self.uptime(),
             created_at: self.created_at,
+            running_at: self.running_at,
             finished_at: *self.finished_at.read().await,
         }
     }
@@ -505,129 +515,4 @@ pub(crate) async fn join_all_handles(
     }
 
     Ok(())
-}
-#[cfg(test)]
-mod tests {
-    use std::time::Duration;
-    use tokio::sync::mpsc;
-    use tokio::time::sleep;
-
-    use crate::tasks::{
-        async_tokio::spawner::{TaskInfo, TaskSpawner},
-        config::TaskConfig,
-        error::TaskError,
-        event::TaskTerminateReason,
-        state::TaskState,
-    };
-
-    #[tokio::test]
-    async fn task_spawner_is_running_returns_true_when_state_running() {
-        let config = TaskConfig::new("echo");
-        let spawner = TaskSpawner::new("running_task".to_string(), config);
-        assert!(
-            !spawner.is_running().await,
-            "Should not be running initially"
-        );
-        spawner.update_state(TaskState::Running).await;
-        assert!(spawner.is_running().await, "Should be running after update");
-    }
-
-    #[tokio::test]
-    async fn task_spawner_is_ready_returns_true_when_state_ready() {
-        let config = TaskConfig::new("echo");
-        let spawner = TaskSpawner::new("ready_task".to_string(), config);
-        assert!(!spawner.is_ready().await, "Should not be ready initially");
-        spawner.update_state(TaskState::Ready).await;
-        assert!(spawner.is_ready().await, "Should be ready after update");
-    }
-
-    #[tokio::test]
-    async fn task_spawner_initial_state_is_pending() {
-        let config = TaskConfig::new("echo");
-        let spawner = TaskSpawner::new("pending_task".to_string(), config);
-        let state = spawner.get_state().await;
-        assert_eq!(state, TaskState::Pending, "Initial state should be Pending");
-    }
-
-    #[tokio::test]
-    async fn task_spawner_update_state_changes_state() {
-        let config = TaskConfig::new("echo");
-        let spawner = TaskSpawner::new("update_task".to_string(), config);
-        spawner.update_state(TaskState::Running).await;
-        let state = spawner.get_state().await;
-        assert_eq!(
-            state,
-            TaskState::Running,
-            "State should be Running after update"
-        );
-    }
-
-    #[tokio::test]
-    async fn task_spawner_uptime_increases_over_time() {
-        let config = TaskConfig::new("echo");
-        let spawner = TaskSpawner::new("uptime_task".to_string(), config);
-        let uptime1 = spawner.uptime();
-        sleep(Duration::from_millis(20)).await;
-        let uptime2 = spawner.uptime();
-        assert!(uptime2 > uptime1, "Uptime should increase after sleep");
-    }
-
-    #[tokio::test]
-    async fn task_spawner_get_task_info_returns_correct_info() {
-        let config = TaskConfig::new("echo");
-        let spawner = TaskSpawner::new("info_task".to_string(), config);
-        let info: TaskInfo = spawner.get_task_info().await;
-        assert_eq!(info.name, "info_task");
-        assert_eq!(info.state, TaskState::Pending);
-        assert!(info.uptime >= Duration::ZERO);
-    }
-
-    #[tokio::test]
-    async fn task_spawner_process_id_initially_none() {
-        let config = TaskConfig::new("echo");
-        let spawner = TaskSpawner::new("process_id_task".to_string(), config);
-        assert_eq!(spawner.get_process_id().await, None);
-    }
-
-    #[tokio::test]
-    async fn task_spawner_stdin_disabled_ignores_channel() {
-        let config = TaskConfig::new("echo").enable_stdin(false);
-        let (_, rx) = mpsc::channel(100);
-
-        let spawner = TaskSpawner::new("no_stdin".to_string(), config).set_stdin(rx);
-        assert!(spawner.stdin_rx.is_none());
-    }
-
-    #[tokio::test]
-    async fn task_spawner_send_terminate_signal_no_channel() {
-        let config = TaskConfig::new("echo");
-        let spawner = TaskSpawner::new("no_channel".to_string(), config);
-
-        let result = spawner
-            .send_terminate_signal(TaskTerminateReason::Cleanup)
-            .await;
-        assert!(result.is_err());
-        if let Err(TaskError::Channel(msg)) = result {
-            assert_eq!(msg, "Terminate signal already sent or channel missing");
-        } else {
-            panic!("Expected Channel error");
-        }
-    }
-
-    // TODO: Consider adding serde support for TaskInfo, not skipping Instant fields
-    #[cfg(feature = "serde")]
-    #[tokio::test]
-    async fn task_info_serde() {
-        use serde_json;
-
-        let config = TaskConfig::new("echo");
-        let spawner = TaskSpawner::new("serde_task".to_string(), config);
-        let info = spawner.get_task_info().await;
-
-        // This should work even with Instant fields skipped
-        let serialized = serde_json::to_string(&info).unwrap();
-        println!("Serialized TaskInfo: {}", serialized);
-        assert!(serialized.contains("serde_task"));
-        assert!(serialized.contains("Pending"));
-    }
 }

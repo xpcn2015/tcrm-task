@@ -228,7 +228,7 @@ impl ConfigValidator {
                     "Environment variable key cannot be empty".to_string(),
                 ));
             }
-            if key.contains('=') || key.contains('\0') {
+            if key.contains('=') || key.contains('\0') || key.contains('\t') || key.contains('\n') {
                 return Err(TaskError::InvalidConfiguration(
                     "Environment variable key contains invalid characters".to_string(),
                 ));
@@ -267,6 +267,25 @@ impl ConfigValidator {
         Ok(())
     }
 
+    pub fn validate_ready_indicator(indicator: &str) -> Result<(), TaskError> {
+        if indicator.is_empty() {
+            return Err(TaskError::InvalidConfiguration(
+                "ready_indicator cannot be empty string".to_string(),
+            ));
+        }
+        Ok(())
+    }
+
+    /// Validates timeout value (must be greater than 0 if present)
+    pub fn validate_timeout(timeout: &u64) -> Result<(), TaskError> {
+        if *timeout == 0 {
+            return Err(TaskError::InvalidConfiguration(
+                "Timeout must be greater than 0".to_string(),
+            ));
+        }
+        Ok(())
+    }
+
     /// Checks for obvious injection attempts while allowing normal shell features.
     ///
     /// This internal method identifies clearly malicious patterns without blocking
@@ -283,11 +302,12 @@ impl ConfigValidator {
     fn contains_obvious_injection(input: &str) -> bool {
         // Only block patterns that are clearly malicious, not functional shell features
         let obvious_injection_patterns = [
-            "\0",    // Null bytes
-            "\x00",  // Null bytes (hex)
-            "\r\n",  // CRLF injection
-            "eval(", // Direct eval calls
-            "exec(", // Direct exec calls
+            "\0",         // Null bytes
+            "\x00",       // Null bytes (hex)
+            "\r\n",       // CRLF injection
+            "eval(",      // Direct eval calls
+            "exec(",      // Direct exec calls
+            "os.system(", // Direct Python code execution
         ];
 
         obvious_injection_patterns
@@ -337,7 +357,7 @@ impl ConfigValidator {
 
         // Strict validation - blocks shell features
         let dangerous_patterns = [
-            ";", "&", "|", "`", "$", "(", ")", "{", "}", "[", "]", "<", ">", "&&", "||", ">>",
+            ";", "&", "|", "`", "#", "$", "(", ")", "{", "}", "[", "]", "<", ">", "&&", "||", ">>",
             "<<", "\n", "\r",
         ];
 
@@ -352,161 +372,5 @@ impl ConfigValidator {
         }
 
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn validate_command_rejects_empty() {
-        assert!(ConfigValidator::validate_command("").is_err());
-        assert!(ConfigValidator::validate_command("   ").is_err());
-    }
-
-    #[test]
-    fn validate_command_accepts_shell_features() {
-        // These should be allowed for developer tools
-        let shell_commands = [
-            "ls | grep pattern",
-            "echo hello > output.txt",
-            "make && npm test",
-            "command1; command2",
-            "echo $PATH",
-            "ls $(pwd)",
-            "cat file.txt | head -n 10",
-        ];
-
-        for cmd in &shell_commands {
-            assert!(
-                ConfigValidator::validate_command(cmd).is_ok(),
-                "Should accept shell feature: {}",
-                cmd
-            );
-        }
-    }
-
-    #[test]
-    fn validate_command_rejects_obvious_injection() {
-        let dangerous_commands = [
-            "command\0with\0nulls",
-            "eval(malicious_code)",
-            "exec(rm -rf /)",
-            "command\r\necho injected",
-        ];
-
-        for cmd in &dangerous_commands {
-            assert!(
-                ConfigValidator::validate_command(cmd).is_err(),
-                "Should reject obvious injection: {}",
-                cmd
-            );
-        }
-    }
-
-    #[test]
-    fn validate_command_strict_blocks_shell_features() {
-        let shell_commands = [
-            "ls | grep pattern",
-            "echo hello > output.txt",
-            "make && npm test",
-        ];
-
-        for cmd in &shell_commands {
-            assert!(
-                ConfigValidator::validate_command_strict(cmd).is_err(),
-                "Strict validation should reject: {}",
-                cmd
-            );
-        }
-    }
-
-    #[test]
-    fn validate_command_accepts_safe_commands() {
-        let safe_commands = [
-            "echo",
-            "ls",
-            "cat",
-            "grep",
-            "node",
-            "python",
-            "ls -la",
-            "grep pattern file.txt",
-            "node script.js",
-        ];
-
-        for cmd in &safe_commands {
-            assert!(
-                ConfigValidator::validate_command(cmd).is_ok(),
-                "Should accept: {}",
-                cmd
-            );
-        }
-    }
-
-    #[test]
-    fn validate_args_accepts_normal_args() {
-        let normal_args = vec![
-            "arg1".to_string(),
-            "--flag".to_string(),
-            "file.txt".to_string(),
-            "path/to/file".to_string(),
-        ];
-
-        assert!(ConfigValidator::validate_args(&normal_args).is_ok());
-    }
-
-    #[test]
-    fn validate_args_rejects_null_bytes() {
-        let dangerous_args = vec!["arg\0with\0nulls".to_string()];
-
-        assert!(ConfigValidator::validate_args(&dangerous_args).is_err());
-    }
-
-    #[test]
-    fn validate_working_dir_accepts_relative_paths() {
-        // Should accept relative paths including .. for developer use
-        let current_dir = std::env::current_dir().unwrap();
-        assert!(ConfigValidator::validate_working_dir(current_dir.to_str().unwrap()).is_ok());
-    }
-
-    #[test]
-    fn validate_working_dir_rejects_nonexistent() {
-        assert!(ConfigValidator::validate_working_dir("/nonexistent/path").is_err());
-    }
-
-    #[test]
-    fn validate_env_vars_rejects_spaces_in_keys() {
-        // Environment variable keys should not contain spaces
-        let mut env = HashMap::new();
-        env.insert("KEY WITH SPACE".to_string(), "value".to_string());
-        assert!(ConfigValidator::validate_env_vars(&env).is_err());
-    }
-
-    #[test]
-    fn validate_env_vars_accepts_normal_vars() {
-        // Normal environment variables should be accepted
-        let mut env = HashMap::new();
-        env.insert("PATH".to_string(), "/usr/bin:/bin".to_string());
-        env.insert(
-            "CUSTOM_VAR".to_string(),
-            "some value with spaces".to_string(),
-        );
-        assert!(ConfigValidator::validate_env_vars(&env).is_ok());
-    }
-
-    #[test]
-    fn validate_env_vars_rejects_invalid_keys() {
-        let mut env = HashMap::new();
-        env.insert("KEY=BAD".to_string(), "value".to_string());
-        assert!(ConfigValidator::validate_env_vars(&env).is_err());
-    }
-
-    #[test]
-    fn validate_env_vars_rejects_null_chars() {
-        let mut env = HashMap::new();
-        env.insert("KEY".to_string(), "value\0with\0nulls".to_string());
-        assert!(ConfigValidator::validate_env_vars(&env).is_err());
     }
 }

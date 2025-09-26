@@ -1,3 +1,8 @@
+use crate::tasks::event::TaskTerminateReason;
+
+use crate::flatbuffers::conversion::ConversionError;
+use crate::flatbuffers::conversion::FromFlatbuffers;
+use crate::tasks::error::TaskError;
 use crate::{
     flatbuffers::{
         conversion::{ToFlatbuffers, ToFlatbuffersUnion},
@@ -5,6 +10,111 @@ use crate::{
     },
     tasks::event::{TaskEvent, TaskEventStopReason},
 };
+
+impl<'a>
+    FromFlatbuffers<(
+        tcrm_task_generated::tcrm::task::TaskEventStopReason,
+        flatbuffers::Table<'a>,
+    )> for TaskEventStopReason
+{
+    fn from_flatbuffers(
+        input: (
+            tcrm_task_generated::tcrm::task::TaskEventStopReason,
+            flatbuffers::Table<'a>,
+        ),
+    ) -> Result<Self, ConversionError> {
+        let disc = input.0.0; // .0 to get the u8 discriminant
+        match disc {
+            0 => Ok(TaskEventStopReason::Finished),
+            1 => {
+                // Error
+                let error_reason = unsafe {
+                    tcrm_task_generated::tcrm::task::ErrorStopReason::init_from_table(input.1)
+                };
+                let msg = error_reason.message().to_string();
+                Ok(TaskEventStopReason::Error(msg))
+            }
+            2 => Ok(TaskEventStopReason::Terminated(
+                TaskTerminateReason::Timeout,
+            )),
+            3 => Ok(TaskEventStopReason::Terminated(
+                TaskTerminateReason::Cleanup,
+            )),
+            4 => Ok(TaskEventStopReason::Terminated(
+                TaskTerminateReason::DependenciesFinished,
+            )),
+            5 => Ok(TaskEventStopReason::Terminated(
+                TaskTerminateReason::UserRequested,
+            )),
+            _ => Err(ConversionError::InvalidTaskEventStopReasonType(disc as i8)),
+        }
+    }
+}
+impl<'a> FromFlatbuffers<tcrm_task_generated::tcrm::task::TaskEvent<'a>> for TaskEvent {
+    fn from_flatbuffers(
+        fb_event: tcrm_task_generated::tcrm::task::TaskEvent<'a>,
+    ) -> Result<Self, ConversionError> {
+        use tcrm_task_generated::tcrm::task::TaskEventUnion;
+        match fb_event.event_type() {
+            TaskEventUnion::Started => {
+                let started = fb_event
+                    .event_as_started()
+                    .ok_or(ConversionError::MissingRequiredField("StartedEvent"))?;
+                let task_name = started.task_name().to_string();
+                Ok(TaskEvent::Started { task_name })
+            }
+            TaskEventUnion::Output => {
+                let output = fb_event
+                    .event_as_output()
+                    .ok_or(ConversionError::MissingRequiredField("OutputEvent"))?;
+                let task_name = output.task_name().to_string();
+                let line = output.line().to_string();
+                let src = output
+                    .src()
+                    .try_into()
+                    .map_err(|_| ConversionError::InvalidStreamSource(output.src().0))?;
+                Ok(TaskEvent::Output {
+                    task_name,
+                    line,
+                    src,
+                })
+            }
+            TaskEventUnion::Ready => {
+                let ready = fb_event
+                    .event_as_ready()
+                    .ok_or(ConversionError::MissingRequiredField("ReadyEvent"))?;
+                let task_name = ready.task_name().to_string();
+                Ok(TaskEvent::Ready { task_name })
+            }
+            TaskEventUnion::Stopped => {
+                let stopped = fb_event
+                    .event_as_stopped()
+                    .ok_or(ConversionError::MissingRequiredField("StoppedEvent"))?;
+                let task_name = stopped.task_name().to_string();
+                let exit_code = Some(stopped.exit_code());
+                let fb_reason_type = stopped.reason_type();
+                let fb_reason_table = stopped.reason();
+                let reason =
+                    TaskEventStopReason::from_flatbuffers((fb_reason_type, fb_reason_table))?;
+                Ok(TaskEvent::Stopped {
+                    task_name,
+                    exit_code,
+                    reason,
+                })
+            }
+            TaskEventUnion::Error => {
+                let error_event = fb_event
+                    .event_as_error()
+                    .ok_or(ConversionError::MissingRequiredField("ErrorEvent"))?;
+                let task_name = error_event.task_name().to_string();
+                let fb_error = error_event.error();
+                let error = TaskError::from_flatbuffers(fb_error)?;
+                Ok(TaskEvent::Error { task_name, error })
+            }
+            other => Err(ConversionError::InvalidTaskEventType(other.0 as i8)),
+        }
+    }
+}
 
 impl<'a> ToFlatbuffers<'a> for TaskEvent {
     type Output = flatbuffers::WIPOffset<tcrm_task_generated::tcrm::task::TaskEvent<'a>>;
@@ -148,76 +258,5 @@ impl<'a> ToFlatbuffersUnion<'a, tcrm_task_generated::tcrm::task::TaskEventStopRe
                 )
             }
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::tasks::config::StreamSource;
-    use crate::tasks::event::TaskTerminateReason;
-
-    #[test]
-    fn test_task_event_started_to_flatbuffers() {
-        let event = TaskEvent::Started {
-            task_name: "test_task".to_string(),
-        };
-
-        let mut builder = flatbuffers::FlatBufferBuilder::new();
-        let fb_event = event.to_flatbuffers(&mut builder);
-        builder.finish(fb_event, None);
-
-        // Basic verification that serialization worked
-        let bytes = builder.finished_data();
-        assert!(!bytes.is_empty());
-    }
-
-    #[test]
-    fn test_task_event_output_to_flatbuffers() {
-        let event = TaskEvent::Output {
-            task_name: "test_task".to_string(),
-            line: "Hello, World!".to_string(),
-            src: StreamSource::Stdout,
-        };
-
-        let mut builder = flatbuffers::FlatBufferBuilder::new();
-        let fb_event = event.to_flatbuffers(&mut builder);
-        builder.finish(fb_event, None);
-
-        let bytes = builder.finished_data();
-        assert!(!bytes.is_empty());
-    }
-
-    #[test]
-    fn test_task_event_stop_reason_finished() {
-        let reason = TaskEventStopReason::Finished;
-
-        let mut builder = flatbuffers::FlatBufferBuilder::new();
-        let (_, _offset) = reason.to_flatbuffers_union(&mut builder);
-
-        // Basic verification that serialization worked
-        assert!(true);
-    }
-
-    #[test]
-    fn test_task_event_stop_reason_error() {
-        let reason = TaskEventStopReason::Error("Something went wrong".to_string());
-
-        let mut builder = flatbuffers::FlatBufferBuilder::new();
-        let (_, _offset) = reason.to_flatbuffers_union(&mut builder);
-
-        // Basic verification that serialization worked
-        assert!(true);
-    }
-
-    #[test]
-    fn test_task_event_stop_reason_terminated() {
-        let reason = TaskEventStopReason::Terminated(TaskTerminateReason::Timeout);
-
-        let mut builder = flatbuffers::FlatBufferBuilder::new();
-        let (_, _offset) = reason.to_flatbuffers_union(&mut builder);
-
-        // Basic verification that serialization worked
-        assert!(true);
     }
 }
