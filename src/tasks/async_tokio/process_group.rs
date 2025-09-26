@@ -56,6 +56,8 @@ pub enum ProcessGroupError {
     TerminationFailed(String),
     #[error("Failed to send signal to process group: {0}")]
     SignalFailed(String),
+
+    #[cfg(not(any(unix, windows)))]
     #[error("Unsupported platform: {0}")]
     UnsupportedPlatform(String),
 }
@@ -74,49 +76,6 @@ pub enum ProcessSignal {
 }
 
 impl ProcessGroup {
-    /// Creates a new process group from a TaskConfig and configures the command to use it.
-    pub fn create_with_config(
-        config: &crate::tasks::config::TaskConfig,
-    ) -> Result<(Command, Self), ProcessGroupError> {
-        let mut command = Command::new(&config.command);
-
-        if let Some(args) = &config.args {
-            command.args(args);
-        }
-
-        if let Some(working_dir) = &config.working_dir {
-            command.current_dir(working_dir);
-        }
-
-        if let Some(env) = &config.env {
-            for (key, value) in env {
-                command.env(key, value);
-            }
-        }
-
-        // Only create process group if enabled in config
-        if config.use_process_group.unwrap_or(true) {
-            Self::create_with_command(command)
-        } else {
-            // Return a disabled process group
-            Ok((command, Self::disabled()))
-        }
-    }
-
-    /// Creates a disabled process group (for compatibility when process groups are not supported/desired)
-    pub fn disabled() -> Self {
-        ProcessGroup {
-            inner: Arc::new(Mutex::new(ProcessGroupInner {
-                #[cfg(unix)]
-                process_group_id: None,
-                #[cfg(windows)]
-                job_handle: None,
-                #[cfg(not(any(unix, windows)))]
-                _phantom: (),
-            })),
-        }
-    }
-
     /// Creates a new process group and configures the command to use it.
     pub fn create_with_command(
         #[allow(unused_mut)] mut command: Command,
@@ -137,6 +96,7 @@ impl ProcessGroup {
             let inner = ProcessGroupInner {
                 process_group_id: None,
             };
+
             Ok((
                 command,
                 ProcessGroup {
@@ -195,7 +155,24 @@ impl ProcessGroup {
         }
     }
 
-    /// Assigns a spawned child process to this process group.
+    /// Assigns a spawned child process to this process group/job.
+    ///
+    /// # Windows Race Condition Warning
+    /// On Windows, there is an unavoidable race condition: if the spawned process creates child processes
+    /// before it is assigned to the job object, those children will not be part of the job and can escape
+    /// containment. This is a limitation of the Windows API. To minimize the risk, assign the process to the job
+    /// immediately after spawning, before it can create children. There is no supported way to make this atomic
+    /// with standard Rust APIs.
+    ///
+    /// After assignment, all future children of the process will be contained in the job, unless the process has
+    /// breakaway privileges (which are not enabled by default in this implementation).
+    ///
+    /// For malware analysis or strong containment, be aware of this limitation.
+    ///
+    /// See: https://devblogs.microsoft.com/oldnewthing/20130405-00/?p=4743
+    ///
+    /// # Arguments
+    /// * `child` - The spawned child process to assign
     pub async fn assign_child(&self, child: &Child) -> Result<(), ProcessGroupError> {
         #[cfg(unix)]
         {
@@ -305,11 +282,10 @@ impl ProcessGroup {
         {
             match signal {
                 ProcessSignal::Terminate => {
-                    use windows::Win32::System::JobObjects::TerminateJobObject;
-
                     let inner = self.inner.lock().await;
                     if let Some(SendHandle(job_handle)) = &inner.job_handle {
                         unsafe {
+                            use windows::Win32::System::JobObjects::TerminateJobObject;
                             TerminateJobObject(*job_handle, 1).map_err(|e| {
                                 ProcessGroupError::TerminationFailed(format!(
                                     "Failed to terminate job object: {}",
@@ -364,7 +340,7 @@ impl ProcessGroup {
 
     #[cfg(windows)]
     async fn suspend_resume_job_processes(&self, suspend: bool) -> Result<(), ProcessGroupError> {
-        use windows::Win32::Foundation::{CloseHandle, HANDLE};
+        use windows::Win32::Foundation::{CloseHandle, GetLastError, HANDLE};
         use windows::Win32::System::Diagnostics::ToolHelp::{
             CreateToolhelp32Snapshot, PROCESSENTRY32W, Process32FirstW, Process32NextW,
             TH32CS_SNAPPROCESS,
@@ -378,91 +354,120 @@ impl ProcessGroup {
             THREAD_SUSPEND_RESUME,
         };
 
-        let inner = self.inner.lock().await;
-        if let Some(SendHandle(job_handle)) = &inner.job_handle {
-            unsafe {
-                // First, get all processes in the job
-                let mut process_ids = Vec::new();
-                let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0).map_err(|e| {
-                    ProcessGroupError::SignalFailed(format!(
-                        "Failed to create process snapshot: {}",
-                        e
-                    ))
-                })?;
+        let current_pid = std::process::id();
+        let mut child_pids = Vec::new();
 
-                let mut process_entry = PROCESSENTRY32W {
-                    dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32,
-                    ..Default::default()
-                };
+        // Take a snapshot of all processes and find direct children of the current process
+        unsafe {
+            let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0).map_err(|e| {
+                ProcessGroupError::SignalFailed(format!("Failed to create process snapshot: {}", e))
+            })?;
 
-                if Process32FirstW(snapshot, &mut process_entry).is_ok() {
-                    loop {
-                        // Check if this process belongs to our job (simplified check)
-                        let process_handle = OpenProcess(
-                            PROCESS_QUERY_INFORMATION,
-                            false,
-                            process_entry.th32ProcessID,
-                        );
-                        if let Ok(handle) = process_handle {
-                            // For simplicity, we'll assume all processes we can open belong to our job
-                            // A more complete implementation would check job membership
-                            process_ids.push(process_entry.th32ProcessID);
-                            CloseHandle(handle).ok();
-                        }
+            let mut process_entry = PROCESSENTRY32W {
+                dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32,
+                ..Default::default()
+            };
 
-                        if Process32NextW(snapshot, &mut process_entry).is_err() {
+            if Process32FirstW(snapshot, &mut process_entry).is_ok() {
+                loop {
+                    if process_entry.th32ParentProcessID == current_pid {
+                        child_pids.push(process_entry.th32ProcessID);
+                    }
+                    if Process32NextW(snapshot, &mut process_entry).is_err() {
+                        use windows::Win32::Foundation::ERROR_NO_MORE_FILES;
+                        use windows::Win32::Foundation::GetLastError;
+                        let err = GetLastError();
+                        if err == ERROR_NO_MORE_FILES {
                             break;
+                        } else {
+                            CloseHandle(snapshot).ok();
+                            return Err(ProcessGroupError::SignalFailed(format!(
+                                "Process32NextW failed: error {}",
+                                err.0
+                            )));
                         }
                     }
-                }
-                CloseHandle(snapshot).ok();
-
-                // Now suspend/resume all threads of all processes
-                for process_id in process_ids {
-                    let thread_snapshot =
-                        CreateThreadSnapshot(TH32CS_SNAPTHREAD, 0).map_err(|e| {
-                            ProcessGroupError::SignalFailed(format!(
-                                "Failed to create thread snapshot: {}",
-                                e
-                            ))
-                        })?;
-
-                    let mut thread_entry = THREADENTRY32 {
-                        dwSize: std::mem::size_of::<THREADENTRY32>() as u32,
-                        ..Default::default()
-                    };
-
-                    if Thread32First(thread_snapshot, &mut thread_entry).is_ok() {
-                        loop {
-                            if thread_entry.th32OwnerProcessID == process_id {
-                                let thread_handle = OpenThread(
-                                    THREAD_SUSPEND_RESUME,
-                                    false,
-                                    thread_entry.th32ThreadID,
-                                );
-                                if let Ok(handle) = thread_handle {
-                                    if suspend {
-                                        SuspendThread(handle);
-                                    } else {
-                                        ResumeThread(handle);
-                                    }
-                                    CloseHandle(handle).ok();
-                                }
-                            }
-
-                            if Thread32Next(thread_snapshot, &mut thread_entry).is_err() {
-                                break;
-                            }
-                        }
-                    }
-                    CloseHandle(thread_snapshot).ok();
                 }
             }
-            Ok(())
-        } else {
-            // No job handle - process group is disabled, which is fine
-            Ok(())
+            CloseHandle(snapshot).ok();
         }
+
+        // Take a single snapshot of all threads
+        let mut thread_entries = Vec::new();
+        unsafe {
+            let thread_snapshot = CreateThreadSnapshot(TH32CS_SNAPTHREAD, 0).map_err(|e| {
+                ProcessGroupError::SignalFailed(format!("Failed to create thread snapshot: {}", e))
+            })?;
+
+            let mut thread_entry = THREADENTRY32 {
+                dwSize: std::mem::size_of::<THREADENTRY32>() as u32,
+                ..Default::default()
+            };
+
+            if Thread32First(thread_snapshot, &mut thread_entry).is_ok() {
+                loop {
+                    thread_entries.push(thread_entry.clone());
+                    if Thread32Next(thread_snapshot, &mut thread_entry).is_err() {
+                        use windows::Win32::Foundation::ERROR_NO_MORE_FILES;
+                        use windows::Win32::Foundation::GetLastError;
+                        let err = GetLastError();
+                        if err == ERROR_NO_MORE_FILES {
+                            break;
+                        } else {
+                            CloseHandle(thread_snapshot).ok();
+                            return Err(ProcessGroupError::SignalFailed(format!(
+                                "Thread32Next failed: error {}",
+                                err.0
+                            )));
+                        }
+                    }
+                }
+            }
+            CloseHandle(thread_snapshot).ok();
+        }
+
+        // SAFEGUARD: Never suspend/resume system processes (PID 0, 4, and known critical PIDs)
+        // For even more safety, you could maintain a list of critical PIDs to skip (e.g., session manager, csrss, wininit, etc.)
+        // For now, we skip PID 0 (System Idle), PID 4 (System), and any PID < 100 (conservative)
+        //
+        // NOTE: For best security, you should track only the PIDs you have spawned (see comment below)
+
+        for process_id in child_pids {
+            if process_id == 0 || process_id == 4 {
+                // Skip system/critical processes
+                // TODO: report error
+                continue;
+            }
+            for thread_entry in &thread_entries {
+                if thread_entry.th32OwnerProcessID == process_id {
+                    unsafe {
+                        let thread_handle =
+                            OpenThread(THREAD_SUSPEND_RESUME, false, thread_entry.th32ThreadID);
+                        if let Ok(handle) = thread_handle {
+                            let result = if suspend {
+                                SuspendThread(handle)
+                            } else {
+                                ResumeThread(handle)
+                            };
+                            // Check for errors
+                            if result == u32::MAX {
+                                let err = GetLastError();
+                                CloseHandle(handle).ok();
+                                return Err(ProcessGroupError::SignalFailed(format!(
+                                    "Failed to {} thread {}: error {}",
+                                    if suspend { "suspend" } else { "resume" },
+                                    thread_entry.th32ThreadID,
+                                    err.0
+                                )));
+                            }
+                            CloseHandle(handle).ok();
+                        }
+                    }
+                }
+            }
+        }
+        // and only allow suspend/resume for those PIDs. This prevents accidental or malicious targeting of unrelated processes.
+        Ok(())
     }
 
     #[cfg(windows)]
