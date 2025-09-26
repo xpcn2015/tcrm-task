@@ -65,6 +65,7 @@ pub struct TaskConfig {
     ///
     /// When enabled, creates process groups (Unix) or Job Objects (Windows) to ensure
     /// all child processes and their descendants are terminated when the main process is killed.
+    #[cfg(feature = "process-group")]
     pub use_process_group: Option<bool>,
 }
 
