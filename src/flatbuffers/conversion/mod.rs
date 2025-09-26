@@ -41,6 +41,9 @@ pub mod error;
 pub mod event;
 pub mod state;
 
+#[cfg(test)]
+mod unit_tests;
+
 // Re-export the ConversionError for use in traits
 pub use error::ConversionError;
 // Re-export FlatBufferBuilder for trait definitions
