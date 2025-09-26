@@ -29,8 +29,8 @@ tracing = { version = "0.1", optional = true }
 flatbuffers = { version = "25.2", optional = true }
 
 [target.'cfg(unix)'.dependencies]
-nix = { version = "0.30", features = ["process", "signal"] }
-libc = "0.2"
+nix = { version = "0.30", features = ["process", "signal"], optional = true }
+libc = { version = "0.2", optional = true }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62", features = [
@@ -40,14 +40,18 @@ windows = { version = "0.62", features = [
     "Win32_Security",
     "Win32_System_Diagnostics_ToolHelp",
     "Win32_System_Console",
-] }
+    "Win32_System_Pipes",
+    "Win32_Storage_FileSystem",
+], optional = true }
 
 [features]
-default = ["tokio"]
+default = ["tokio", "process-group"]
 tokio = ["dep:tokio"]
 flatbuffers = ["dep:flatbuffers"]
 serde = ["dep:serde"]
 tracing = ["dep:tracing"]
+process-group = ["dep:nix", "dep:libc", "dep:windows"]
+pty = ["dep:nix", "dep:libc", "dep:windows"]
 tracing-release_max_level_off = ["tracing/release_max_level_off"]
 tracing-release_max_level_error = ["tracing/release_max_level_error"]
 tracing-release_max_level_warn = ["tracing/release_max_level_warn"]
