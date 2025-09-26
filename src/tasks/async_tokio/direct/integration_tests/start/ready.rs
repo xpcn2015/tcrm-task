@@ -36,7 +36,7 @@ async fn ready_indicator_on_stdout() {
     );
 }
 #[tokio::test]
-async fn start_direct_ready_indicator_source_stderr() {
+async fn ready_indicator_source_stderr() {
     let (tx, mut rx) = mpsc::channel::<TaskEvent>(15);
     #[cfg(windows)]
     let config = TaskConfig::new("powershell")
@@ -69,7 +69,7 @@ async fn start_direct_ready_indicator_source_stderr() {
 }
 
 #[tokio::test]
-async fn start_direct_ready_indicator_source_mismatch() {
+async fn ready_indicator_source_mismatch() {
     let (tx, mut rx) = mpsc::channel::<TaskEvent>(1024);
     #[cfg(windows)]
     let config = TaskConfig::new("powershell")

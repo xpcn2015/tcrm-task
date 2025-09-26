@@ -6,7 +6,4 @@ pub mod state;
 pub mod validator;
 
 #[cfg(test)]
-mod integration_tests;
-
-#[cfg(test)]
 mod unit_tests;
