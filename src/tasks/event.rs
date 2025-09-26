@@ -98,18 +98,13 @@ pub enum TaskEvent {
     ///
     /// This is the first event emitted after successful process creation.
     /// The process is now running and other events will follow.
-    Started {
-        /// Name of the task that started
-        task_name: String,
-    },
+    Started,
 
     /// Output line received from the process
     ///
     /// Emitted for each line of output from stdout or stderr.
     /// Lines are buffered and emitted when complete (on newline).
     Output {
-        /// Name of the task that produced the output
-        task_name: String,
         /// The output line (without trailing newline)
         line: String,
         /// Source stream (stdout or stderr)
@@ -120,17 +115,12 @@ pub enum TaskEvent {
     ///
     /// Only emitted for long-running processes that have a ready indicator configured.
     /// Indicates the process has completed initialization and is ready for work.
-    Ready {
-        /// Name of the task that became ready
-        task_name: String,
-    },
+    Ready,
 
     /// Process has completed execution
     ///
     /// The process has exited and all resources have been cleaned up.
     Stopped {
-        /// Name of the task that stopped
-        task_name: String,
         /// Exit code from the process (None if terminated)
         exit_code: Option<i32>,
         /// Reason the process stopped
@@ -142,8 +132,6 @@ pub enum TaskEvent {
     /// Emitted when errors occur during configuration validation,
     /// process spawning, and will not emit any further events.
     Error {
-        /// Name of the task that encountered an error
-        task_name: String,
         /// The specific error that occurred
         error: TaskError,
     },
