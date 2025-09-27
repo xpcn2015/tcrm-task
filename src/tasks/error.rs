@@ -107,4 +107,7 @@ pub enum TaskError {
     /// - Security validation failures (command injection, etc.)
     #[error("Invalid configuration: {0}")]
     InvalidConfiguration(String),
+
+    #[error("Control error: {0}")]
+    Control(String),
 }

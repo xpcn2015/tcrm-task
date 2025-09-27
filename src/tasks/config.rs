@@ -378,25 +378,6 @@ impl TaskConfig {
         }
         Ok(())
     }
-
-    /// Check if process group management is enabled
-    ///
-    /// Returns true if process group management should be used, false otherwise.
-    /// Defaults to true if not explicitly set.
-    ///
-    /// # Examples
-    /// ```rust
-    /// use tcrm_task::tasks::config::TaskConfig;
-    ///
-    /// let config = TaskConfig::new("cmd");
-    /// assert!(config.is_process_group_enabled()); // Default is true
-    ///
-    /// let config2 = TaskConfig::new("cmd").use_process_group(false);
-    /// assert!(!config2.is_process_group_enabled());
-    /// ```
-    pub fn is_process_group_enabled(&self) -> bool {
-        self.use_process_group.unwrap_or(true)
-    }
 }
 
 /// Specifies the source stream for output monitoring

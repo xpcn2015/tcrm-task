@@ -15,7 +15,6 @@ use crate::{
 /// Configuration for spawning output watchers
 #[derive(Debug)]
 struct OutputWatcherConfig {
-    task_name: String,
     state: Arc<RwLock<TaskState>>,
     event_tx: mpsc::Sender<TaskEvent>,
     src: StreamSource,
@@ -42,7 +41,6 @@ struct OutputWatcherConfig {
 ///
 /// A vector of `JoinHandle` for the spawned watcher tasks.
 pub(crate) fn spawn_output_watchers(
-    task_name: String,
     state: Arc<RwLock<TaskState>>,
     event_tx: mpsc::Sender<TaskEvent>,
     child: &mut Child,
@@ -54,7 +52,6 @@ pub(crate) fn spawn_output_watchers(
     // Spawn stdout watcher
     if let Some(stdout) = child.stdout.take() {
         let config = OutputWatcherConfig {
-            task_name: task_name.clone(),
             state: state.clone(),
             event_tx: event_tx.clone(),
             src: StreamSource::Stdout,
@@ -69,7 +66,6 @@ pub(crate) fn spawn_output_watchers(
     // Spawn stderr watcher
     if let Some(stderr) = child.stderr.take() {
         let config = OutputWatcherConfig {
-            task_name,
             state,
             event_tx,
             src: StreamSource::Stderr,
@@ -111,7 +107,6 @@ where
     T: tokio::io::AsyncRead + Unpin + Send + 'static,
 {
     let OutputWatcherConfig {
-        task_name,
         state,
         event_tx,
         src,
@@ -140,7 +135,6 @@ where
 
                                 if (event_tx
                                     .send(TaskEvent::Output {
-                                        task_name: task_name.clone(),
                                         line,
                                         src: src.clone(),
                                     })
@@ -167,7 +161,6 @@ where
                                     *state.write().await = TaskState::Ready;
                                     if (event_tx
                                         .send(TaskEvent::Ready {
-                                            task_name: task_name.clone(),
                                         })
                                         .await).is_err()
                                     {
@@ -221,12 +214,10 @@ mod tests {
         let (tx, mut rx) = mpsc::channel::<TaskEvent>(10);
         let (_term_tx, term_rx) = watch::channel(false);
         let ready_indicator = Some("READY_INDICATOR".to_string());
-        let task_name = "test_task_mismatch".to_string();
         let state = Arc::new(RwLock::new(TaskState::Running));
 
         // src is Stdout, ready_indicator_source is Stderr (should NOT emit Ready)
         let config = OutputWatcherConfig {
-            task_name: task_name.clone(),
             state: state.clone(),
             event_tx: tx,
             src: StreamSource::Stdout,
@@ -268,11 +259,9 @@ mod tests {
         let (tx, mut rx) = mpsc::channel::<TaskEvent>(10);
         let (_term_tx, term_rx) = watch::channel(false);
         let ready_indicator = Some("READY_INDICATOR".to_string());
-        let task_name = "test_task".to_string();
         let state = Arc::new(RwLock::new(TaskState::Running));
 
         let config = OutputWatcherConfig {
-            task_name: task_name.clone(),
             state: state.clone(),
             event_tx: tx,
             src: StreamSource::Stdout,
@@ -287,16 +276,13 @@ mod tests {
         while let Some(event) = rx.recv().await {
             match event {
                 TaskEvent::Output {
-                    task_name: tn,
                     line,
                     src,
                 } => {
-                    assert_eq!(tn, task_name);
                     assert_eq!(src, StreamSource::Stdout);
                     output_lines.push(line);
                 }
-                TaskEvent::Ready { task_name: tn } => {
-                    assert_eq!(tn, task_name);
+                TaskEvent::Ready => {
                     ready_event = true;
                 }
                 _ => {}

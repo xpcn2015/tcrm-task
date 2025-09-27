@@ -124,13 +124,15 @@ pub enum TaskEvent {
         /// Exit code from the process (None if terminated)
         exit_code: Option<i32>,
         /// Reason the process stopped
-        reason: TaskEventStopReason,
+        reason: TaskStopReason,
     },
 
-    /// An error occurred before task execution
+    /// An error occurred during task execution
     ///
     /// Emitted when errors occur during configuration validation,
-    /// process spawning, and will not emit any further events.
+    /// process spawning, sending input/output
+    ///  
+    /// Will not emit any further events.
     Error {
         /// The specific error that occurred
         error: TaskError,
@@ -158,7 +160,7 @@ pub enum TaskEvent {
 /// ```
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq)]
-pub enum TaskEventStopReason {
+pub enum TaskStopReason {
     /// Process completed normally with an exit code
     Finished,
 

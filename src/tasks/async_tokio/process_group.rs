@@ -83,6 +83,12 @@ impl ProcessGroup {
         #[cfg(unix)]
         {
             // Configure the command to create a new session and process group
+            // use nix::unistd::setsid;
+
+            // command.pre_exec(|| {
+            //     setsid().map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+            //     Ok(())
+            // });
             unsafe {
                 command.pre_exec(|| {
                     // Create a new session, making this process the session leader

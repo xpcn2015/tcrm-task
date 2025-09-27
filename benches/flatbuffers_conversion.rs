@@ -4,7 +4,7 @@ use std::hint::black_box;
 use tcrm_task::tasks::{
     config::{StreamSource, TaskConfig},
     error::TaskError,
-    event::{TaskEvent, TaskEventStopReason, TaskTerminateReason},
+    event::{TaskEvent, TaskStopReason, TaskTerminateReason},
     state::TaskState,
 };
 

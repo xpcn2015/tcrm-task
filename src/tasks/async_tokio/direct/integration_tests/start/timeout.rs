@@ -5,7 +5,7 @@ use crate::tasks::config::TaskConfig;
 use crate::tasks::{
     async_tokio::spawner::TaskSpawner,
     error::TaskError,
-    event::{TaskEvent, TaskEventStopReason, TaskTerminateReason},
+    event::{TaskEvent, TaskStopReason, TaskTerminateReason},
 };
 
 #[tokio::test]
@@ -45,7 +45,7 @@ async fn terminated_task() {
                 assert_eq!(exit_code, None);
                 assert_eq!(
                     reason,
-                    TaskEventStopReason::Terminated(TaskTerminateReason::Timeout)
+                    TaskStopReason::Terminated(TaskTerminateReason::Timeout)
                 );
                 stopped = true;
             }

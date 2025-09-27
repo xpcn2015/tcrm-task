@@ -25,12 +25,12 @@ tokio = { version = "1.47", features = [
     "sync",
     "signal",
 ], optional = true }
+futures = { version = "0.3", optional = true }
 tracing = { version = "0.1", optional = true }
 flatbuffers = { version = "25.2", optional = true }
 
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.30", features = ["process", "signal"], optional = true }
-libc = { version = "0.2", optional = true }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62", features = [
@@ -46,12 +46,14 @@ windows = { version = "0.62", features = [
 
 [features]
 default = ["tokio", "process-group"]
-tokio = ["dep:tokio"]
+tokio = ["dep:tokio", "dep:futures"]
+std = []
 flatbuffers = ["dep:flatbuffers"]
 serde = ["dep:serde"]
 tracing = ["dep:tracing"]
-process-group = ["dep:nix", "dep:libc", "dep:windows"]
-pty = ["dep:nix", "dep:libc", "dep:windows"]
+signal = ["dep:nix", "dep:windows"]
+process-group = ["dep:nix", "dep:windows"]
+pty = ["dep:nix", "dep:windows"]
 tracing-release_max_level_off = ["tracing/release_max_level_off"]
 tracing-release_max_level_error = ["tracing/release_max_level_error"]
 tracing-release_max_level_warn = ["tracing/release_max_level_warn"]

@@ -712,7 +712,6 @@ dependencies = [
  "criterion",
  "flatbuffers",
  "futures",
- "libc",
  "nix",
  "serde",
  "serde_json",

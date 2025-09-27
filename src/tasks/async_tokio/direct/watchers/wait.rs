@@ -9,7 +9,7 @@ use tokio::{
 use crate::{
     helper::tracing::MaybeInstrument,
     tasks::{
-        async_tokio::process_group::{ProcessGroup, ProcessGroupError}, event::{TaskEventStopReason, TaskTerminateReason}, state::TaskState
+        async_tokio::process_group::{ProcessGroup, ProcessGroupError}, event::{TaskStopReason, TaskTerminateReason}, state::TaskState
     },
 };
 
@@ -40,7 +40,7 @@ pub(crate) fn spawn_wait_watcher(
     process_group: Option<ProcessGroup>,
     terminate_rx: oneshot::Receiver<TaskTerminateReason>,
     handle_terminator_tx: watch::Sender<bool>,
-    result_tx: oneshot::Sender<(Option<i32>, TaskEventStopReason)>,
+    result_tx: oneshot::Sender<(Option<i32>, TaskStopReason)>,
     process_id: Arc<RwLock<Option<u32>>>,
 ) -> JoinHandle<()> {
     let handle = tokio::spawn(
@@ -66,7 +66,7 @@ pub(crate) fn spawn_wait_watcher(
                             let exit_code = status.code();
                             if result_tx.send((
                                 exit_code,
-                                TaskEventStopReason::Finished,
+                                TaskStopReason::Finished,
                             )).is_err() {
                                     #[cfg(feature = "tracing")]
                                     tracing::warn!(exit_code, "Result channel closed while sending TaskEventStopReason::Finished");
@@ -78,7 +78,7 @@ pub(crate) fn spawn_wait_watcher(
                             // Expected OS level error
                             if result_tx.send((
                                 None,
-                                TaskEventStopReason::Error(e.to_string()),
+                                TaskStopReason::Error(e.to_string()),
                             )).is_err() {
                                     #[cfg(feature = "tracing")]
                                     tracing::warn!(error = %e, "Result channel closed while sending TaskEventStopReason::Error");
@@ -113,7 +113,7 @@ pub(crate) fn spawn_wait_watcher(
                                 // Expected OS level error
                                 if result_tx.send((
                                     None,
-                                    TaskEventStopReason::Error(format!(
+                                    TaskStopReason::Error(format!(
                                         "Failed to terminate task {task_name}: process group: {e}, individual: {e2}"
                                     )),
                                 )).is_err() {
@@ -128,7 +128,7 @@ pub(crate) fn spawn_wait_watcher(
                             // Process group not available and individual termination failed
                             if result_tx.send((
                                 None,
-                                TaskEventStopReason::Error(format!(
+                                TaskStopReason::Error(format!(
                                     "Failed to terminate task {task_name}: {e}"
                                 )),
                             )).is_err() {
@@ -145,7 +145,7 @@ pub(crate) fn spawn_wait_watcher(
                     let reason = reason.unwrap_or(TaskTerminateReason::Cleanup);
                     if result_tx.send((
                         None,
-                        TaskEventStopReason::Terminated(reason.clone()),
+                        TaskStopReason::Terminated(reason.clone()),
                     )).is_err() {
                             #[cfg(feature = "tracing")]
                             tracing::warn!(reason = ?reason, "Result channel closed while sending TaskEventStopReason::Terminated");

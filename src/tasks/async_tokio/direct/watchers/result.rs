@@ -10,7 +10,7 @@ use crate::{
     helper::tracing::MaybeInstrument,
     tasks::{
         async_tokio::spawner::join_all_handles,
-        event::{TaskEvent, TaskEventStopReason},
+        event::{TaskEvent, TaskStopReason},
         state::TaskState,
     },
 };
@@ -33,11 +33,10 @@ use crate::{
 /// A `JoinHandle` for the spawned result watcher task.
 #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
 pub(crate) fn spawn_result_watcher(
-    task_name: String,
     state: Arc<RwLock<TaskState>>,
     finished_arc: Arc<RwLock<Option<Instant>>>,
     event_tx: mpsc::Sender<TaskEvent>,
-    result_rx: oneshot::Receiver<(Option<i32>, TaskEventStopReason)>,
+    result_rx: oneshot::Receiver<(Option<i32>, TaskStopReason)>,
     mut task_handles: Vec<JoinHandle<()>>,
 ) -> JoinHandle<()> {
     let handle = tokio::spawn(
@@ -49,7 +48,7 @@ pub(crate) fn spawn_result_watcher(
                 let msg = "All result senders dropped unexpectedly";
                 #[cfg(feature = "tracing")]
                 tracing::warn!(msg);
-                (None, TaskEventStopReason::Error(msg.to_string()))
+                (None, TaskStopReason::Error(msg.to_string()))
             };
             #[cfg(feature = "tracing")]
             tracing::info!(
@@ -65,7 +64,6 @@ pub(crate) fn spawn_result_watcher(
 
             if (event_tx
                 .send(TaskEvent::Stopped {
-                    task_name: task_name.clone(),
                     exit_code,
                     reason: stop_reason.clone(),
                 })

@@ -11,7 +11,7 @@ use crate::tasks::async_tokio::direct::watchers::wait::spawn_wait_watcher;
 use crate::tasks::async_tokio::process_group::ProcessGroup;
 use crate::tasks::async_tokio::spawner::TaskSpawner;
 use crate::tasks::error::TaskError;
-use crate::tasks::event::{TaskEvent, TaskEventStopReason, TaskTerminateReason};
+use crate::tasks::event::{TaskEvent, TaskStopReason, TaskTerminateReason};
 use crate::tasks::state::TaskState;
 
 impl TaskSpawner {
@@ -199,10 +199,7 @@ impl TaskSpawner {
                 tracing::error!(error = %e, "Invalid task configuration");
 
                 self.update_state(TaskState::Finished).await;
-                let error_event = TaskEvent::Error {
-                    task_name: self.task_name.clone(),
-                    error: e.clone(),
-                };
+                let error_event = TaskEvent::Error { error: e.clone() };
 
                 if (event_tx.send(error_event).await).is_err() {
                     #[cfg(feature = "tracing")]
@@ -218,7 +215,11 @@ impl TaskSpawner {
         setup_command(&mut cmd, &self.config);
 
         // Conditionally create process group for cross-platform process tree management
-        let (mut configured_cmd, process_group) = if self.config.is_process_group_enabled() {
+        let (mut configured_cmd, process_group) = if self
+            .config
+            .use_process_group
+            .unwrap_or_default()
+        {
             match ProcessGroup::create_with_command(cmd) {
                 Ok((cmd, group)) => (cmd, Some(group)),
                 Err(e) => {
@@ -227,7 +228,6 @@ impl TaskSpawner {
 
                     self.update_state(TaskState::Finished).await;
                     let error_event = TaskEvent::Error {
-                        task_name: self.task_name.clone(),
                         error: TaskError::Handle(format!("Failed to create process group: {}", e)),
                     };
 
@@ -256,7 +256,6 @@ impl TaskSpawner {
 
                 self.update_state(TaskState::Finished).await;
                 let error_event = TaskEvent::Error {
-                    task_name: self.task_name.clone(),
                     error: TaskError::IO(e.to_string()),
                 };
 
@@ -278,7 +277,6 @@ impl TaskSpawner {
 
                 self.update_state(TaskState::Finished).await;
                 let error_event = TaskEvent::Error {
-                    task_name: self.task_name.clone(),
                     error: TaskError::Handle(format!(
                         "Failed to assign child to process group: {}",
                         e
@@ -304,7 +302,6 @@ impl TaskSpawner {
 
             self.update_state(TaskState::Finished).await;
             let error_event = TaskEvent::Error {
-                task_name: self.task_name.clone(),
                 error: TaskError::Handle(msg.to_string()),
             };
 
@@ -318,24 +315,17 @@ impl TaskSpawner {
         *self.process_id.write().await = Some(child_id);
         let mut task_handles = vec![];
         self.update_state(TaskState::Running).await;
-        if (event_tx
-            .send(TaskEvent::Started {
-                task_name: self.task_name.clone(),
-            })
-            .await)
-            .is_err()
-        {
+        if (event_tx.send(TaskEvent::Started).await).is_err() {
             #[cfg(feature = "tracing")]
             tracing::warn!("Event channel closed while sending TaskEvent::Started");
         }
 
-        let (result_tx, result_rx) = oneshot::channel::<(Option<i32>, TaskEventStopReason)>();
+        let (result_tx, result_rx) = oneshot::channel::<(Option<i32>, TaskStopReason)>();
         let (terminate_tx, terminate_rx) = oneshot::channel::<TaskTerminateReason>();
         let (handle_terminator_tx, handle_terminator_rx) = watch::channel(false);
 
         // Spawn stdout and stderr watchers
         let handles = spawn_output_watchers(
-            self.task_name.clone(),
             self.state.clone(),
             event_tx.clone(),
             &mut child,
@@ -375,7 +365,6 @@ impl TaskSpawner {
 
         // Spawn result watcher
         let _handle = spawn_result_watcher(
-            self.task_name.clone(),
             self.state.clone(),
             self.finished_at.clone(),
             event_tx,
