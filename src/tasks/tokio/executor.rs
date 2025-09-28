@@ -31,9 +31,8 @@ pub struct TaskExecutor {
     pub(crate) terminate_tx: Option<oneshot::Sender<TaskTerminateReason>>,
     pub(crate) flags: TaskExecutorFlags,
 }
-
-impl TaskInternal for TaskExecutor {
-    fn new(config: TaskConfig) -> Self {
+impl TaskExecutor {
+    pub fn new(config: TaskConfig) -> Self {
         Self {
             config,
             state: TaskState::Pending,
@@ -51,6 +50,8 @@ impl TaskInternal for TaskExecutor {
             },
         }
     }
+}
+impl TaskInternal for TaskExecutor {
     fn set_state(&mut self, new_state: TaskState) {
         self.state = new_state;
     }

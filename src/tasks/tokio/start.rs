@@ -9,7 +9,7 @@ use crate::tasks::{
     config::StreamSource,
     control::TaskInternal,
     error::TaskError,
-    event::{TaskEvent, TaskStopReason, TaskTerminateReason},
+    event::{TaskEvent, TaskTerminateReason},
     state::TaskState,
     tokio::executor::TaskExecutor,
 };
