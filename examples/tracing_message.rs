@@ -1,5 +1,5 @@
 //! Example: Print tracing messages
-use tcrm_task::tasks::{async_tokio::spawner::TaskSpawner, config::TaskConfig, event::TaskEvent};
+use tcrm_task::tasks::{tokio::spawn::spawner::TaskSpawner, config::TaskConfig, event::TaskEvent};
 use tokio::sync::mpsc;
 
 #[tokio::main]

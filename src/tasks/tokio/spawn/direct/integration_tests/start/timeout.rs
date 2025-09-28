@@ -3,7 +3,7 @@ use tokio::sync::mpsc;
 #[cfg(windows)]
 use crate::tasks::config::TaskConfig;
 use crate::tasks::{
-    async_tokio::spawner::TaskSpawner,
+    tokio::spawn::spawner::TaskSpawner,
     error::TaskError,
     event::{TaskEvent, TaskStopReason, TaskTerminateReason},
 };

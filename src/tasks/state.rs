@@ -18,7 +18,7 @@
 ///
 /// ## State Monitoring
 /// ```rust
-/// use tcrm_task::tasks::{config::TaskConfig, async_tokio::spawner::TaskSpawner, state::TaskState};
+/// use tcrm_task::tasks::{config::TaskConfig, tokio::spawn::spawner::TaskSpawner, state::TaskState};
 ///
 /// #[tokio::main]
 /// async fn main() {
@@ -37,7 +37,7 @@
 /// ```rust
 /// use tcrm_task::tasks::{
 ///     config::TaskConfig,
-///     async_tokio::spawner::TaskSpawner,
+///     tokio::spawn::spawner::TaskSpawner,
 ///     state::TaskState
 /// };
 ///

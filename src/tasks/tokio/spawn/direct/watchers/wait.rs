@@ -9,7 +9,7 @@ use tokio::{
 use crate::{
     helper::tracing::MaybeInstrument,
     tasks::{
-        async_tokio::process_group::{ProcessGroup, ProcessGroupError}, event::{TaskStopReason, TaskTerminateReason}, state::TaskState
+        tokio::spawn::process_group::{ProcessGroup, ProcessGroupError}, event::{TaskStopReason, TaskTerminateReason}, state::TaskState
     },
 };
 

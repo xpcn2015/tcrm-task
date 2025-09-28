@@ -15,7 +15,7 @@
 //! ## Quick Start
 //!
 //! ```rust
-//! use tcrm_task::tasks::{config::TaskConfig, async_tokio::spawner::TaskSpawner};
+//! use tcrm_task::tasks::{config::TaskConfig, tokio::spawn::spawner::TaskSpawner};
 //! use tokio::sync::mpsc;
 //!
 //! #[tokio::main]
@@ -47,7 +47,7 @@
 //! ### Long-running Process with Ready Indicator
 //!
 //! ```rust
-//! use tcrm_task::tasks::{config::{TaskConfig, StreamSource}, async_tokio::spawner::TaskSpawner};
+//! use tcrm_task::tasks::{config::{TaskConfig, StreamSource}, tokio::spawn::spawner::TaskSpawner};
 //! use tokio::sync::mpsc;
 //!
 //! #[tokio::main]
@@ -78,7 +78,7 @@
 //! ### Process with Environment Variables and Working Directory
 //!
 //! ```rust
-//! use tcrm_task::tasks::{config::TaskConfig, async_tokio::spawner::TaskSpawner};
+//! use tcrm_task::tasks::{config::TaskConfig, tokio::spawn::spawner::TaskSpawner};
 //! use std::collections::HashMap;
 //!
 //! #[tokio::main]

@@ -70,7 +70,7 @@ fn default_instant() -> Instant {
 ///
 /// ## Simple Command Execution
 /// ```rust
-/// use tcrm_task::tasks::{config::TaskConfig, async_tokio::spawner::TaskSpawner};
+/// use tcrm_task::tasks::{config::TaskConfig, tokio::spawn::spawner::TaskSpawner};
 /// use tokio::sync::mpsc;
 ///
 /// #[tokio::main]
@@ -97,7 +97,7 @@ fn default_instant() -> Instant {
 ///
 /// ## Long-running Process with Ready Detection
 /// ```rust
-/// use tcrm_task::tasks::{config::{TaskConfig, StreamSource}, async_tokio::spawner::TaskSpawner};
+/// use tcrm_task::tasks::{config::{TaskConfig, StreamSource}, tokio::spawn::spawner::TaskSpawner};
 /// use tokio::sync::mpsc;
 ///
 /// #[tokio::main]
@@ -128,7 +128,7 @@ fn default_instant() -> Instant {
 ///
 /// ## Interactive Process with Stdin
 /// ```rust
-/// use tcrm_task::tasks::{config::TaskConfig, async_tokio::spawner::TaskSpawner};
+/// use tcrm_task::tasks::{config::TaskConfig, tokio::spawn::spawner::TaskSpawner};
 /// use tokio::sync::mpsc;
 ///
 /// #[tokio::main]
@@ -189,7 +189,7 @@ impl TaskSpawner {
     ///
     /// # Examples
     /// ```rust
-    /// use tcrm_task::tasks::{config::TaskConfig, async_tokio::spawner::TaskSpawner};
+    /// use tcrm_task::tasks::{config::TaskConfig, tokio::spawn::spawner::TaskSpawner};
     ///
     /// let config = TaskConfig::new("echo").args(["hello"]);
     /// let spawner = TaskSpawner::new("my-task".to_string(), config);
@@ -219,7 +219,7 @@ impl TaskSpawner {
     ///
     /// # Examples
     /// ```rust
-    /// use tcrm_task::tasks::{config::TaskConfig, async_tokio::spawner::TaskSpawner};
+    /// use tcrm_task::tasks::{config::TaskConfig, tokio::spawn::spawner::TaskSpawner};
     /// use tokio::sync::mpsc;
     ///
     /// let config = TaskConfig::new("python")
@@ -245,7 +245,7 @@ impl TaskSpawner {
     ///
     /// # Examples
     /// ```rust
-    /// use tcrm_task::tasks::{config::TaskConfig, async_tokio::spawner::TaskSpawner, state::TaskState};
+    /// use tcrm_task::tasks::{config::TaskConfig, tokio::spawn::spawner::TaskSpawner, state::TaskState};
     ///
     /// #[tokio::main]
     /// async fn main() {
@@ -265,7 +265,7 @@ impl TaskSpawner {
     ///
     /// # Examples
     /// ```rust
-    /// use tcrm_task::tasks::{config::TaskConfig, async_tokio::spawner::TaskSpawner};
+    /// use tcrm_task::tasks::{config::TaskConfig, tokio::spawn::spawner::TaskSpawner};
     ///
     /// #[tokio::main]
     /// async fn main() {
@@ -288,7 +288,7 @@ impl TaskSpawner {
     ///
     /// # Examples
     /// ```rust
-    /// use tcrm_task::tasks::{config::{TaskConfig, StreamSource}, async_tokio::spawner::TaskSpawner};
+    /// use tcrm_task::tasks::{config::{TaskConfig, StreamSource}, tokio::spawn::spawner::TaskSpawner};
     ///
     /// #[tokio::main]
     /// async fn main() {
@@ -312,7 +312,7 @@ impl TaskSpawner {
     ///
     /// # Examples
     /// ```rust
-    /// use tcrm_task::tasks::{config::TaskConfig, async_tokio::spawner::TaskSpawner};
+    /// use tcrm_task::tasks::{config::TaskConfig, tokio::spawn::spawner::TaskSpawner};
     /// use std::time::Duration;
     ///
     /// #[tokio::main]
@@ -340,7 +340,7 @@ impl TaskSpawner {
     ///
     /// # Examples
     /// ```rust
-    /// use tcrm_task::tasks::{config::TaskConfig, async_tokio::spawner::TaskSpawner};
+    /// use tcrm_task::tasks::{config::TaskConfig, tokio::spawn::spawner::TaskSpawner};
     ///
     /// #[tokio::main]
     /// async fn main() {
@@ -368,7 +368,7 @@ impl TaskSpawner {
     ///
     /// # Examples
     /// ```rust
-    /// use tcrm_task::tasks::{config::TaskConfig, async_tokio::spawner::TaskSpawner};
+    /// use tcrm_task::tasks::{config::TaskConfig, tokio::spawn::spawner::TaskSpawner};
     /// use tokio::sync::mpsc;
     ///
     /// #[tokio::main]
@@ -423,7 +423,7 @@ impl TaskSpawner {
     /// ```rust
     /// use tcrm_task::tasks::{
     ///     config::TaskConfig,
-    ///     async_tokio::spawner::TaskSpawner,
+    ///     tokio::spawn::spawner::TaskSpawner,
     ///     event::TaskTerminateReason
     /// };
     /// use tokio::sync::mpsc;

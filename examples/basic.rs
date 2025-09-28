@@ -1,5 +1,5 @@
 //! Basic example: Run a simple echo command and print output events
-use tcrm_task::tasks::{async_tokio::spawner::TaskSpawner, config::TaskConfig, event::TaskEvent};
+use tcrm_task::tasks::{config::TaskConfig, event::TaskEvent, tokio::spawn::spawner::TaskSpawner};
 use tokio::sync::mpsc;
 
 #[tokio::main]

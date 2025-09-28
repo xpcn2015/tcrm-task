@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use tokio::{io::AsyncWriteExt, process::Command};
 
-use crate::tasks::{async_tokio::direct::command::setup_command, config::TaskConfig};
+use crate::tasks::{config::TaskConfig, tokio::spawn::direct::command::setup_command};
 
 #[tokio::test]
 async fn echo_with_args() {

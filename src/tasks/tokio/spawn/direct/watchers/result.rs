@@ -9,9 +9,9 @@ use tokio::{
 use crate::{
     helper::tracing::MaybeInstrument,
     tasks::{
-        async_tokio::spawner::join_all_handles,
         event::{TaskEvent, TaskStopReason},
         state::TaskState,
+        tokio::spawn::spawner::join_all_handles,
     },
 };
 

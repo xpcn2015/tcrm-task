@@ -5,7 +5,7 @@
 //! 2. The difference in behavior between process group enabled vs disabled
 //! 3. How child processes are handled in both scenarios
 
-use tcrm_task::tasks::{async_tokio::spawner::TaskSpawner, config::TaskConfig, event::TaskEvent};
+use tcrm_task::tasks::{tokio::spawn::spawner::TaskSpawner, config::TaskConfig, event::TaskEvent};
 use tokio::time::{Duration, sleep};
 
 #[tokio::main]

@@ -6,7 +6,7 @@ use tokio::time::timeout;
 use crate::tasks::config::{StreamSource, TaskConfig};
 use crate::tasks::error::TaskError;
 use crate::tasks::state::TaskState;
-use crate::tasks::{async_tokio::spawner::TaskSpawner, event::TaskEvent};
+use crate::tasks::{event::TaskEvent, tokio::spawn::spawner::TaskSpawner};
 
 #[tokio::test]
 async fn echo_command() {

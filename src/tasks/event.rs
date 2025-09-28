@@ -19,7 +19,7 @@ use crate::tasks::{config::StreamSource, error::TaskError};
 ///
 /// ## Basic Event Processing
 /// ```rust
-/// use tcrm_task::tasks::{config::TaskConfig, async_tokio::spawner::TaskSpawner, event::TaskEvent};
+/// use tcrm_task::tasks::{config::TaskConfig, tokio::spawn::spawner::TaskSpawner, event::TaskEvent};
 /// use tokio::sync::mpsc;
 ///
 /// #[tokio::main]
@@ -58,7 +58,7 @@ use crate::tasks::{config::StreamSource, error::TaskError};
 /// ```rust
 /// use tcrm_task::tasks::{
 ///     config::{TaskConfig, StreamSource},
-///     async_tokio::spawner::TaskSpawner,
+///     tokio::spawn::spawner::TaskSpawner,
 ///     event::TaskEvent
 /// };
 /// use tokio::sync::mpsc;
@@ -182,7 +182,7 @@ pub enum TaskStopReason {
 /// ```rust
 /// use tcrm_task::tasks::{
 ///     config::TaskConfig,
-///     async_tokio::spawner::TaskSpawner,
+///     tokio::spawn::spawner::TaskSpawner,
 ///     event::TaskTerminateReason
 /// };
 /// use tokio::sync::mpsc;
@@ -207,7 +207,7 @@ pub enum TaskStopReason {
 /// ```rust
 /// use tcrm_task::tasks::{
 ///     config::TaskConfig,
-///     async_tokio::spawner::TaskSpawner,
+///     tokio::spawn::spawner::TaskSpawner,
 ///     event::TaskTerminateReason
 /// };
 /// use tokio::sync::mpsc;

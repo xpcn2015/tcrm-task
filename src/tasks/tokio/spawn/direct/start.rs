@@ -2,17 +2,17 @@ use tokio::process::Command;
 use tokio::sync::{mpsc, oneshot, watch};
 use tokio::time::Instant;
 
-use crate::tasks::async_tokio::direct::command::setup_command;
-use crate::tasks::async_tokio::direct::watchers::input::spawn_stdin_watcher;
-use crate::tasks::async_tokio::direct::watchers::output::spawn_output_watchers;
-use crate::tasks::async_tokio::direct::watchers::result::spawn_result_watcher;
-use crate::tasks::async_tokio::direct::watchers::timeout::spawn_timeout_watcher;
-use crate::tasks::async_tokio::direct::watchers::wait::spawn_wait_watcher;
-use crate::tasks::async_tokio::process_group::ProcessGroup;
-use crate::tasks::async_tokio::spawner::TaskSpawner;
 use crate::tasks::error::TaskError;
 use crate::tasks::event::{TaskEvent, TaskStopReason, TaskTerminateReason};
 use crate::tasks::state::TaskState;
+use crate::tasks::tokio::spawn::direct::command::setup_command;
+use crate::tasks::tokio::spawn::direct::watchers::input::spawn_stdin_watcher;
+use crate::tasks::tokio::spawn::direct::watchers::output::spawn_output_watchers;
+use crate::tasks::tokio::spawn::direct::watchers::result::spawn_result_watcher;
+use crate::tasks::tokio::spawn::direct::watchers::timeout::spawn_timeout_watcher;
+use crate::tasks::tokio::spawn::direct::watchers::wait::spawn_wait_watcher;
+use crate::tasks::tokio::spawn::process_group::ProcessGroup;
+use crate::tasks::tokio::spawn::spawner::TaskSpawner;
 
 impl TaskSpawner {
     /// Start the task and execute it directly with real-time event monitoring
@@ -50,7 +50,7 @@ impl TaskSpawner {
     ///
     /// ## Simple Command
     /// ```rust
-    /// use tcrm_task::tasks::{config::TaskConfig, async_tokio::spawner::TaskSpawner};
+    /// use tcrm_task::tasks::{config::TaskConfig, tokio::spawn::spawner::TaskSpawner};
     /// use tokio::sync::mpsc;
     ///
     /// #[tokio::main]
@@ -84,7 +84,7 @@ impl TaskSpawner {
     /// ```rust
     /// use tcrm_task::tasks::{
     ///     config::{TaskConfig, StreamSource},
-    ///     async_tokio::spawner::TaskSpawner,
+    ///     tokio::spawn::spawner::TaskSpawner,
     ///     event::TaskEvent
     /// };
     /// use tokio::sync::mpsc;
@@ -127,7 +127,7 @@ impl TaskSpawner {
     ///
     /// ## Interactive Process with Stdin
     /// ```rust
-    /// use tcrm_task::tasks::{config::TaskConfig, async_tokio::spawner::TaskSpawner};
+    /// use tcrm_task::tasks::{config::TaskConfig, tokio::spawn::spawner::TaskSpawner};
     /// use tokio::sync::mpsc;
     ///
     /// #[tokio::main]

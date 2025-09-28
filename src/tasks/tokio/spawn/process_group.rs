@@ -613,7 +613,7 @@ impl Drop for ProcessGroupInner {
 //             .args(["demo"])
 //             .use_process_group(false);
 
-//         let mut spawner = crate::tasks::async_tokio::spawner::TaskSpawner::new(
+//         let mut spawner = crate::tasks::tokio::spawn::spawner::TaskSpawner::new(
 //             "process-tree-demo".to_string(),
 //             config,
 //         );
@@ -781,7 +781,7 @@ impl Drop for ProcessGroupInner {
 //         #[cfg(not(any(windows, unix)))]
 //         let config = crate::tasks::config::TaskConfig::new("echo").args(["test"]);
 
-//         let mut spawner = crate::tasks::async_tokio::spawner::TaskSpawner::new(
+//         let mut spawner = crate::tasks::tokio::spawn::spawner::TaskSpawner::new(
 //             "test-process-tree".to_string(),
 //             config,
 //         );

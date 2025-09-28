@@ -2,7 +2,7 @@ use tokio::sync::mpsc;
 
 #[cfg(windows)]
 use crate::tasks::config::TaskConfig;
-use crate::tasks::{async_tokio::spawner::TaskSpawner, config::StreamSource, event::TaskEvent};
+use crate::tasks::{tokio::spawn::spawner::TaskSpawner, config::StreamSource, event::TaskEvent};
 
 #[tokio::test]
 async fn stdin_valid() {

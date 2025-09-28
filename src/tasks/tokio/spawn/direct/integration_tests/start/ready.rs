@@ -1,7 +1,7 @@
 use tokio::sync::mpsc;
 
 use crate::tasks::config::{StreamSource, TaskConfig};
-use crate::tasks::{async_tokio::spawner::TaskSpawner, event::TaskEvent};
+use crate::tasks::{event::TaskEvent, tokio::spawn::spawner::TaskSpawner};
 
 #[tokio::test]
 async fn ready_indicator_on_stdout() {
