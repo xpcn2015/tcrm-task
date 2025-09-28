@@ -26,9 +26,10 @@ impl TaskExecutor {
                 #[cfg(feature = "tracing")]
                 tracing::error!(msg);
 
-                self.set_state(TaskState::Finished);
+                let time = self.set_state(TaskState::Finished);
                 let error_event = TaskEvent::Error {
                     error: TaskError::IO(msg.to_string()),
+                    finished_at: time,
                 };
                 self.send_event(event_tx, error_event).await;
 
@@ -43,9 +44,10 @@ impl TaskExecutor {
                 #[cfg(feature = "tracing")]
                 tracing::error!(msg);
 
-                self.set_state(TaskState::Finished);
+                let time = self.set_state(TaskState::Finished);
                 let error_event = TaskEvent::Error {
                     error: TaskError::IO(msg.to_string()),
+                    finished_at: time,
                 };
                 self.send_event(event_tx, error_event).await;
 
@@ -72,10 +74,11 @@ impl TaskExecutor {
                 let msg = format!("Error reading stdout: {}", e);
                 #[cfg(feature = "tracing")]
                 tracing::error!(error = %e, "Error reading stdout");
-                self.set_state(TaskState::Finished);
+                let time = self.set_state(TaskState::Finished);
 
                 let error_event = TaskEvent::Error {
                     error: TaskError::IO(msg.clone()),
+                    finished_at: time,
                 };
                 self.flags.stop = true;
                 self.stop_reason = Some(TaskStopReason::Error(msg.clone()));

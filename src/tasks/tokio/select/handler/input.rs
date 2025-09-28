@@ -42,9 +42,10 @@ impl TaskExecutor {
                 #[cfg(feature = "tracing")]
                 tracing::error!(msg);
 
-                self.set_state(TaskState::Finished);
+                let time = self.set_state(TaskState::Finished);
                 let error_event = TaskEvent::Error {
                     error: TaskError::IO(msg.to_string()),
+                    finished_at: time,
                 };
                 self.send_event(event_tx, error_event).await;
 

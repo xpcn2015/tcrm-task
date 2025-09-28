@@ -35,7 +35,7 @@ use crate::tasks::{error::TaskError, validator::ConfigValidator};
 ///     .ready_indicator_source(StreamSource::Stdout);
 /// ```
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TaskConfig {
     /// The command or executable to run
     pub command: String,

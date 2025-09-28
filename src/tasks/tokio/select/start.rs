@@ -1,4 +1,4 @@
-use std::{process::Stdio, time::Instant};
+use std::process::Stdio;
 
 use tokio::{
     process::{Child, Command},
@@ -8,7 +8,7 @@ use tokio::{
 
 use crate::tasks::{
     config::StreamSource,
-    control::TaskInternal,
+    control::{TaskInternal, TaskStatusInfo},
     error::TaskError,
     event::{TaskEvent, TaskTerminateReason},
     state::TaskState,
@@ -36,7 +36,6 @@ impl TaskExecutor {
         // Assign the child process to the process group if enabled
         //       #[cfg(feature = "process-group")]
 
-        self.update_state_after_spawn(&child, &event_tx).await?;
         let (mut stdout, mut stderr) = self.take_std_output_reader(&mut child, &event_tx).await?;
         let (terminate_tx, mut terminate_rx) = oneshot::channel::<TaskTerminateReason>();
         self.terminate_tx = Some(terminate_tx);
@@ -66,8 +65,11 @@ impl TaskExecutor {
                 #[cfg(feature = "tracing")]
                 tracing::error!(error = %e, "Invalid task configuration");
 
-                self.set_state(TaskState::Finished);
-                let error_event = TaskEvent::Error { error: e.clone() };
+                let time = self.set_state(TaskState::Finished);
+                let error_event = TaskEvent::Error {
+                    error: e.clone(),
+                    finished_at: time,
+                };
                 self.send_event(event_tx, error_event).await;
 
                 return Err(e);
@@ -111,7 +113,8 @@ impl TaskExecutor {
     ) -> Result<Child, TaskError> {
         match cmd.spawn() {
             Ok(child) => {
-                self.running_at = Some(Instant::now());
+                self.update_state_after_spawn(&child, event_tx).await?;
+
                 Ok(child)
             }
             Err(e) => {
@@ -119,9 +122,10 @@ impl TaskExecutor {
                 #[cfg(feature = "tracing")]
                 tracing::error!(error = %e, "Failed to spawn child process");
 
-                self.set_state(TaskState::Finished);
+                let time = self.set_state(TaskState::Finished);
                 let error_event = TaskEvent::Error {
                     error: TaskError::IO(msg.clone()),
+                    finished_at: time,
                 };
 
                 self.send_event(event_tx, error_event).await;
@@ -140,9 +144,10 @@ impl TaskExecutor {
             #[cfg(feature = "tracing")]
             tracing::error!(msg);
 
-            self.set_state(TaskState::Finished);
+            let time = self.set_state(TaskState::Finished);
             let error_event = TaskEvent::Error {
                 error: TaskError::Handle(msg.to_string()),
+                finished_at: time,
             };
 
             self.send_event(event_tx, error_event).await;
@@ -150,8 +155,17 @@ impl TaskExecutor {
             return Err(TaskError::Handle(msg.to_string()));
         };
         self.process_id = Some(pid);
-        self.set_state(TaskState::Running);
-        self.send_event(event_tx, TaskEvent::Started).await;
+        let time = self.set_state(TaskState::Running);
+
+        self.send_event(
+            event_tx,
+            TaskEvent::Started {
+                process_id: pid,
+                created_at: *self.get_create_at(),
+                running_at: time,
+            },
+        )
+        .await;
         Ok(())
     }
 

@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::time::SystemTime;
 
 use tokio::{process::ChildStdin, sync::oneshot};
 
@@ -6,7 +6,7 @@ use tokio::{process::ChildStdin, sync::oneshot};
 use crate::tasks::signal::ProcessSignal;
 use crate::tasks::{
     config::TaskConfig,
-    control::{TaskControl, TaskControlAction, TaskInformation, TaskInternal},
+    control::{TaskControl, TaskControlAction, TaskInternal, TaskStatusInfo},
     error::TaskError,
     event::{TaskStopReason, TaskTerminateReason},
     process::{child::terminate_process, process_group::ProcessGroup},
@@ -25,9 +25,9 @@ pub struct TaskExecutor {
     pub(crate) group: ProcessGroup,
     pub(crate) state: TaskState,
     pub(crate) process_id: Option<u32>,
-    pub(crate) created_at: Instant,
-    pub(crate) running_at: Option<Instant>,
-    pub(crate) finished_at: Option<Instant>,
+    created_at: SystemTime,
+    running_at: Option<SystemTime>,
+    finished_at: Option<SystemTime>,
     pub(crate) exit_code: Option<i32>,
     pub(crate) stop_reason: Option<TaskStopReason>,
     pub(crate) stdin: Option<ChildStdin>,
@@ -41,7 +41,7 @@ impl TaskExecutor {
             group: ProcessGroup::new(),
             state: TaskState::Pending,
             process_id: None,
-            created_at: Instant::now(),
+            created_at: SystemTime::now(),
             running_at: None,
             finished_at: None,
             exit_code: None,
@@ -56,8 +56,19 @@ impl TaskExecutor {
     }
 }
 impl TaskInternal for TaskExecutor {
-    fn set_state(&mut self, new_state: TaskState) {
+    fn set_state(&mut self, new_state: TaskState) -> SystemTime {
         self.state = new_state;
+        let time = SystemTime::now();
+        match new_state {
+            TaskState::Running => {
+                self.running_at = Some(time);
+            }
+            TaskState::Finished => {
+                self.finished_at = Some(time);
+            }
+            _ => {}
+        }
+        time
     }
 }
 
@@ -131,7 +142,7 @@ impl TaskControl for TaskExecutor {
     }
 }
 
-impl TaskInformation for TaskExecutor {
+impl TaskStatusInfo for TaskExecutor {
     fn get_config(&self) -> &TaskConfig {
         &self.config
     }
@@ -144,15 +155,15 @@ impl TaskInformation for TaskExecutor {
         &self.process_id
     }
 
-    fn get_create_at(&self) -> &Instant {
+    fn get_create_at(&self) -> &SystemTime {
         &self.created_at
     }
 
-    fn get_running_at(&self) -> &Option<Instant> {
+    fn get_running_at(&self) -> &Option<SystemTime> {
         &self.running_at
     }
 
-    fn get_finished_at(&self) -> &Option<Instant> {
+    fn get_finished_at(&self) -> &Option<SystemTime> {
         &self.finished_at
     }
     fn get_exit_code(&self) -> &Option<i32> {

@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use tokio::{process::Child, sync::mpsc};
 
 use crate::tasks::{
@@ -80,12 +78,11 @@ impl TaskExecutor {
         if self.config.use_process_group.unwrap_or_default() {
             let _ = self.perform_process_action(TaskControlAction::Terminate);
         }
-
-        self.set_state(TaskState::Finished);
-        self.finished_at = Some(Instant::now());
+        let time = self.set_state(TaskState::Finished);
         let event = TaskEvent::Stopped {
             exit_code: self.exit_code,
             reason: reason,
+            finished_at: time,
         };
         self.send_event(event_tx, event).await;
     }

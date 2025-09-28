@@ -1,3 +1,5 @@
+use std::time::SystemTime;
+
 use crate::tasks::{config::StreamSource, error::TaskError};
 
 /// Events emitted during task execution lifecycle
@@ -98,7 +100,11 @@ pub enum TaskEvent {
     ///
     /// This is the first event emitted after successful process creation.
     /// The process is now running and other events will follow.
-    Started,
+    Started {
+        process_id: u32,
+        created_at: SystemTime,
+        running_at: SystemTime,
+    },
 
     /// Output line received from the process
     ///
@@ -125,6 +131,7 @@ pub enum TaskEvent {
         exit_code: Option<i32>,
         /// Reason the process stopped
         reason: TaskStopReason,
+        finished_at: SystemTime,
     },
 
     /// An error occurred during task execution
@@ -136,6 +143,7 @@ pub enum TaskEvent {
     Error {
         /// The specific error that occurred
         error: TaskError,
+        finished_at: SystemTime,
     },
 }
 
