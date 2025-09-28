@@ -46,7 +46,7 @@ impl TaskExecutor {
                 reason = &mut terminate_rx => self.handle_terminate(reason).await,
             }
         }
-        self.handle_result(&event_tx).await;
+        self.handle_result(child, &event_tx).await;
         Ok(())
     }
     async fn validate_config(
