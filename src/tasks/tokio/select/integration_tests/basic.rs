@@ -2,7 +2,12 @@ use tokio::sync::mpsc;
 
 #[cfg(windows)]
 use crate::tasks::config::TaskConfig;
-use crate::tasks::{config::StreamSource, event::TaskEvent, tokio::select::executor::TaskExecutor};
+use crate::tasks::{
+    config::StreamSource,
+    event::{TaskEvent, TaskStopReason},
+    state::TaskState,
+    tokio::select::executor::TaskExecutor,
+};
 
 #[tokio::test]
 async fn echo_command_wait() {
@@ -44,6 +49,14 @@ async fn echo_command_wait() {
 
     assert!(started);
     assert!(stopped);
+    assert!(executor.finished_at.is_some());
+    assert_eq!(executor.exit_code, Some(0));
+    assert_eq!(executor.stop_reason, Some(TaskStopReason::Finished));
+    assert!(executor.flags.stop);
+    assert!(!executor.flags.ready);
+    assert_eq!(executor.state, TaskState::Finished);
+    assert!(executor.created_at <= executor.running_at.unwrap());
+    assert!(executor.running_at.unwrap() <= executor.finished_at.unwrap());
 }
 
 #[tokio::test]
@@ -57,9 +70,8 @@ async fn echo_command_realtime() {
     #[cfg(feature = "process-group")]
     let config = config.use_process_group(false);
 
-    let mut executor = TaskExecutor::new(config);
-    let handle = tokio::spawn(async move { executor.start(tx).await });
-
+    let executor = TaskExecutor::new(config);
+    let handle = executor.spawn_start(tx).await;
     let mut started = false;
     let mut stopped = false;
     while let Some(event) = rx.recv().await {
