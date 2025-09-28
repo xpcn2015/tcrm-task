@@ -15,6 +15,6 @@ impl TaskExecutor {
         }
     }
     pub(crate) fn handle_timeout(&mut self) {
-        let _ = self.terminate(TaskTerminateReason::Timeout);
+        let _ = self.terminate_task(TaskTerminateReason::Timeout);
     }
 }
