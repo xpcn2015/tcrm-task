@@ -2,7 +2,7 @@ use tokio::sync::oneshot::error::RecvError;
 
 use crate::tasks::{
     event::{TaskStopReason, TaskTerminateReason},
-    tokio::executor::TaskExecutor,
+    tokio::select::executor::TaskExecutor,
 };
 
 impl TaskExecutor {

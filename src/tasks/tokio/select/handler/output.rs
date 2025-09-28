@@ -10,7 +10,7 @@ use crate::tasks::{
     error::TaskError,
     event::{TaskEvent, TaskStopReason},
     state::TaskState,
-    tokio::executor::TaskExecutor,
+    tokio::select::executor::TaskExecutor,
 };
 
 impl TaskExecutor {

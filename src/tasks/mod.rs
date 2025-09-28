@@ -6,9 +6,6 @@ pub mod state;
 pub mod validator;
 
 #[cfg(feature = "tokio")]
-pub mod async_tokio;
-
-#[cfg(feature = "tokio")]
 pub mod tokio;
 
 #[cfg(feature = "signal")]

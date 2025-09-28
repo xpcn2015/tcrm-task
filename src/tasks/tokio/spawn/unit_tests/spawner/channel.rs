@@ -1,8 +1,8 @@
 use tokio::sync::mpsc;
 
 use crate::tasks::{
-    async_tokio::spawner::TaskSpawner, config::TaskConfig, error::TaskError,
-    event::TaskTerminateReason,
+    config::TaskConfig, error::TaskError, event::TaskTerminateReason,
+    tokio::spawn::spawner::TaskSpawner,
 };
 
 #[tokio::test]

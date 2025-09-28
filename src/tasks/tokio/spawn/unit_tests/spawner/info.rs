@@ -1,4 +1,4 @@
-use crate::tasks::{async_tokio::spawner::TaskSpawner, config::TaskConfig};
+use crate::tasks::{config::TaskConfig, tokio::spawn::spawner::TaskSpawner};
 
 #[tokio::test]
 async fn process_id_initially_none() {

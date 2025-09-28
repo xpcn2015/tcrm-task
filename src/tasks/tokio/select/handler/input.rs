@@ -2,7 +2,7 @@ use tokio::{io::AsyncWriteExt, process::Child, sync::mpsc};
 
 use crate::tasks::{
     control::TaskInternal, error::TaskError, event::TaskEvent, state::TaskState,
-    tokio::executor::TaskExecutor,
+    tokio::select::executor::TaskExecutor,
 };
 impl TaskExecutor {
     pub async fn send_stdin(&mut self, input: impl Into<String>) -> Result<(), TaskError> {

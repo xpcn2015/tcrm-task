@@ -1,4 +1,4 @@
-use crate::tasks::{async_tokio::spawner::TaskSpawner, config::TaskConfig};
+use crate::tasks::{config::TaskConfig, tokio::spawn::spawner::TaskSpawner};
 use std::time::Duration;
 use tokio::time::sleep;
 

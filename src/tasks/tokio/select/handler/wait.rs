@@ -1,6 +1,6 @@
 use std::process::ExitStatus;
 
-use crate::tasks::{event::TaskStopReason, tokio::executor::TaskExecutor};
+use crate::tasks::{event::TaskStopReason, tokio::select::executor::TaskExecutor};
 
 impl TaskExecutor {
     pub(crate) async fn handle_wait_result(&mut self, result: Result<ExitStatus, std::io::Error>) {

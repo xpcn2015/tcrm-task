@@ -1,4 +1,4 @@
-use crate::tasks::{async_tokio::spawner::TaskSpawner, config::TaskConfig, state::TaskState};
+use crate::tasks::{config::TaskConfig, state::TaskState, tokio::spawn::spawner::TaskSpawner};
 
 #[tokio::test]
 async fn fn_is_running_returns_true_when_state_running() {

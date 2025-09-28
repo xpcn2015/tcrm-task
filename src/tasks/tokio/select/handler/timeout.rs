@@ -3,7 +3,7 @@ use std::time::Duration;
 use futures::future::pending;
 
 use crate::tasks::{
-    control::TaskControl, event::TaskTerminateReason, tokio::executor::TaskExecutor,
+    control::TaskControl, event::TaskTerminateReason, tokio::select::executor::TaskExecutor,
 };
 
 impl TaskExecutor {

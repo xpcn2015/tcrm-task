@@ -6,7 +6,7 @@ use crate::tasks::{
     control::TaskInternal,
     event::{TaskEvent, TaskStopReason},
     state::TaskState,
-    tokio::executor::TaskExecutor,
+    tokio::select::executor::TaskExecutor,
 };
 
 impl TaskExecutor {
