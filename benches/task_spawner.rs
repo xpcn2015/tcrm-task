@@ -1,7 +1,10 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
 use std::time::Duration;
-use tcrm_task::tasks::config::{StreamSource, TaskConfig};
+use tcrm_task::tasks::{
+    config::{StreamSource, TaskConfig},
+    tokio::spawn::spawner::TaskSpawner,
+};
 use tokio::sync::mpsc;
 
 fn bench_task_spawner_creation(c: &mut Criterion) {
