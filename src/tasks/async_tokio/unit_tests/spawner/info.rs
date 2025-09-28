@@ -3,7 +3,7 @@ use crate::tasks::{async_tokio::spawner::TaskSpawner, config::TaskConfig};
 #[tokio::test]
 async fn process_id_initially_none() {
     let config = TaskConfig::new("echo");
-    let spawner = TaskSpawner::new("process_id_task".to_string(), config);
+    let spawner = TaskSpawner::new(config);
     assert_eq!(spawner.get_process_id().await, None);
 }
 
@@ -14,7 +14,7 @@ async fn task_info_serde() {
     use serde_json;
 
     let config = TaskConfig::new("echo");
-    let spawner = TaskSpawner::new("serde_task".to_string(), config);
+    let spawner = TaskSpawner::new(config);
     let info = spawner.get_task_info().await;
 
     // This should work even with Instant fields skipped

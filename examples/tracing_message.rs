@@ -17,7 +17,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .args(["-c", "echo Hello!"])
         .timeout_ms(5000);
 
-    let mut spawner = TaskSpawner::new("example_echo".to_string(), config);
+    let mut spawner = TaskSpawner::new(config);
     let (event_tx, mut event_rx) = mpsc::channel::<TaskEvent>(100);
     let _pid = spawner.start_direct(event_tx).await?;
     while let Some(event) = event_rx.recv().await {

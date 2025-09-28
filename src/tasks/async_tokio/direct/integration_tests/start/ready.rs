@@ -19,14 +19,13 @@ async fn ready_indicator_on_stdout() {
         .ready_indicator_source(StreamSource::Stdout)
         .use_process_group(false);
 
-    let mut spawner = TaskSpawner::new("ready_stdout_task".to_string(), config);
+    let mut spawner = TaskSpawner::new(config);
     let result = spawner.start_direct(tx).await;
     assert!(result.is_ok());
 
     let mut ready_event = false;
     while let Some(event) = rx.recv().await {
-        if let TaskEvent::Ready { task_name } = event {
-            assert_eq!(task_name, "ready_stdout_task");
+        if let TaskEvent::Ready = event {
             ready_event = true;
         }
     }
@@ -51,14 +50,13 @@ async fn ready_indicator_source_stderr() {
         .ready_indicator_source(StreamSource::Stderr)
         .use_process_group(false);
 
-    let mut spawner = TaskSpawner::new("ready_stderr_task".to_string(), config);
+    let mut spawner = TaskSpawner::new(config);
     let result = spawner.start_direct(tx).await;
     assert!(result.is_ok());
 
     let mut ready_event = false;
     while let Some(event) = rx.recv().await {
-        if let TaskEvent::Ready { task_name } = event {
-            assert_eq!(task_name, "ready_stderr_task");
+        if let TaskEvent::Ready = event {
             ready_event = true;
         }
     }
@@ -84,7 +82,7 @@ async fn ready_indicator_source_mismatch() {
         .ready_indicator_source(StreamSource::Stderr)
         .use_process_group(false);
 
-    let mut spawner = TaskSpawner::new("ready_mismatch_task".to_string(), config);
+    let mut spawner = TaskSpawner::new(config);
     let result = spawner.start_direct(tx).await;
     assert!(result.is_ok());
 

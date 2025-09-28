@@ -16,8 +16,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .args(["-c", "cat"])
         .enable_stdin(true)
         .timeout_ms(5000);
-    let mut spawner =
-        TaskSpawner::new("interactive_native".to_string(), config).set_stdin(stdin_rx);
+    let mut spawner = TaskSpawner::new(config).set_stdin(stdin_rx);
     let (event_tx, mut event_rx) = mpsc::channel::<TaskEvent>(100);
     let _pid = spawner.start_direct(event_tx).await?;
     // Send some lines to the process

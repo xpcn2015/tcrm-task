@@ -11,7 +11,7 @@ fn bench_task_spawner_creation(c: &mut Criterion) {
     c.bench_function("task_spawner_new", |b| {
         b.iter(|| {
             let config = TaskConfig::new("echo");
-            black_box(TaskSpawner::new("bench_task".to_string(), config))
+            black_box(TaskSpawner::new(config))
         })
     });
 
@@ -32,13 +32,13 @@ fn bench_task_spawner_creation(c: &mut Criterion) {
                 .into_iter()
                 .collect(),
             );
-            black_box(TaskSpawner::new("complex_bench_task".to_string(), config))
+            black_box(TaskSpawner::new(config))
         })
     });
 
     c.bench_function("task_spawner_uptime", |b| {
         let config = TaskConfig::new("echo");
-        let spawner = TaskSpawner::new("uptime_bench_task".to_string(), config);
+        let spawner = TaskSpawner::new(config);
         b.iter(|| black_box(spawner.uptime()))
     });
 
@@ -46,7 +46,7 @@ fn bench_task_spawner_creation(c: &mut Criterion) {
         b.iter(|| {
             let config = TaskConfig::new("cat").enable_stdin(true);
             let (_, rx) = mpsc::channel(100);
-            black_box(TaskSpawner::new("stdin_bench_task".to_string(), config).set_stdin(rx))
+            black_box(TaskSpawner::new(config).set_stdin(rx))
         })
     });
 }
@@ -54,7 +54,7 @@ fn bench_task_spawner_creation(c: &mut Criterion) {
 fn bench_task_spawner_state_operations(c: &mut Criterion) {
     c.bench_function("task_spawner_get_state", |b| {
         let config = TaskConfig::new("echo");
-        let spawner = TaskSpawner::new("state_bench_task".to_string(), config);
+        let spawner = TaskSpawner::new(config);
         let rt = tokio::runtime::Runtime::new().unwrap();
 
         b.iter(|| rt.block_on(async { black_box(spawner.get_state().await) }))
@@ -62,7 +62,7 @@ fn bench_task_spawner_state_operations(c: &mut Criterion) {
 
     c.bench_function("task_spawner_get_task_info", |b| {
         let config = TaskConfig::new("echo");
-        let spawner = TaskSpawner::new("info_bench_task".to_string(), config);
+        let spawner = TaskSpawner::new(config);
         let rt = tokio::runtime::Runtime::new().unwrap();
 
         b.iter(|| rt.block_on(async { black_box(spawner.get_task_info().await) }))
@@ -70,7 +70,7 @@ fn bench_task_spawner_state_operations(c: &mut Criterion) {
 
     c.bench_function("task_spawner_is_running", |b| {
         let config = TaskConfig::new("echo");
-        let spawner = TaskSpawner::new("running_bench_task".to_string(), config);
+        let spawner = TaskSpawner::new(config);
         let rt = tokio::runtime::Runtime::new().unwrap();
 
         b.iter(|| rt.block_on(async { black_box(spawner.is_running().await) }))
@@ -103,7 +103,7 @@ fn bench_task_execution_lightweight(c: &mut Criterion) {
             // Validate config (this is what would happen in real usage)
             config.validate().unwrap();
 
-            black_box(TaskSpawner::new("validated_bench_task".to_string(), config))
+            black_box(TaskSpawner::new(config))
         })
     });
 }
@@ -125,8 +125,7 @@ fn bench_concurrent_task_creation(c: &mut Criterion) {
                                 let config =
                                     TaskConfig::new("echo").args(vec![format!("task_{}", i)]);
 
-                                let spawner =
-                                    TaskSpawner::new(format!("concurrent_bench_{}", i), config);
+                                let spawner = TaskSpawner::new(config);
 
                                 black_box(spawner)
                             });
@@ -195,7 +194,7 @@ fn bench_actual_process_execution(c: &mut Criterion) {
                     TaskConfig::new("echo").args(vec!["benchmark".to_string()])
                 };
 
-                let mut spawner = TaskSpawner::new("benchmark_process".to_string(), config);
+                let mut spawner = TaskSpawner::new(config);
 
                 let result = spawner.start_direct(tx).await;
                 assert!(result.is_ok());

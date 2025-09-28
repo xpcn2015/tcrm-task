@@ -17,8 +17,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .enable_stdin(true)
         .ready_indicator("ready")
         .timeout_ms(5000);
-    let mut spawner =
-        TaskSpawner::new("interactive_native".to_string(), config).set_stdin(stdin_rx);
+    let mut spawner = TaskSpawner::new(config).set_stdin(stdin_rx);
     let (event_tx, mut event_rx) = mpsc::channel::<TaskEvent>(100);
     let _pid = spawner.start_direct(event_tx).await?;
     while let Some(event) = event_rx.recv().await {
@@ -31,8 +30,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 break;
             }
             TaskEvent::Error { error, .. } => eprintln!("Error: {}", error),
-            TaskEvent::Ready { task_name } => {
-                println!("Task {} is ready, sending input", task_name);
+            TaskEvent::Ready => {
+                println!("Task is ready, sending input");
                 stdin_tx.send("Hello from Rust!".to_string()).await?;
             }
             _ => {}

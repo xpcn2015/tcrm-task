@@ -28,6 +28,5 @@ pub trait TaskInformation {
 }
 
 pub(crate) trait TaskInternal {
-    fn new(config: TaskConfig) -> Self;
     fn set_state(&mut self, new_state: TaskState);
 }

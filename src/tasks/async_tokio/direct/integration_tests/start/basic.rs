@@ -20,7 +20,7 @@ async fn echo_command() {
         .args(["hello"])
         .use_process_group(false);
 
-    let mut spawner = TaskSpawner::new("echo_task".to_string(), config);
+    let mut spawner = TaskSpawner::new(config);
 
     let result = spawner.start_direct(tx).await;
     assert!(result.is_ok());
@@ -29,25 +29,17 @@ async fn echo_command() {
     let mut stopped = false;
     while let Some(event) = rx.recv().await {
         match event {
-            TaskEvent::Started { task_name } => {
-                assert_eq!(task_name, "echo_task");
+            TaskEvent::Started => {
                 started = true;
             }
-            TaskEvent::Output {
-                task_name,
-                line,
-                src,
-            } => {
-                assert_eq!(task_name, "echo_task");
+            TaskEvent::Output { line, src } => {
                 assert_eq!(line, "hello");
                 assert_eq!(src, StreamSource::Stdout);
             }
             TaskEvent::Stopped {
-                task_name,
                 exit_code,
                 reason: _,
             } => {
-                assert_eq!(task_name, "echo_task");
                 assert_eq!(exit_code, Some(0));
                 stopped = true;
             }
@@ -76,7 +68,7 @@ async fn env_echo() {
         .env(env)
         .use_process_group(false);
 
-    let mut spawner = TaskSpawner::new("env_test".to_string(), config);
+    let mut spawner = TaskSpawner::new(config);
 
     let result = spawner.start_direct(tx).await;
     assert!(
@@ -111,7 +103,7 @@ async fn env_echo() {
 async fn invalid_empty_command() {
     let (tx, mut rx) = mpsc::channel::<TaskEvent>(10);
     let config = TaskConfig::new(""); // invalid: empty command
-    let mut spawner = TaskSpawner::new("bad_task".to_string(), config);
+    let mut spawner = TaskSpawner::new(config);
 
     let result = spawner.start_direct(tx).await;
     assert!(matches!(result, Err(TaskError::InvalidConfiguration(_))));
@@ -119,8 +111,7 @@ async fn invalid_empty_command() {
     // Should receive an Error event
     let mut error_event = false;
     while let Some(event) = rx.recv().await {
-        if let TaskEvent::Error { task_name, error } = event {
-            assert_eq!(task_name, "bad_task");
+        if let TaskEvent::Error { error } = event {
             assert!(matches!(error, TaskError::InvalidConfiguration(_)));
             error_event = true;
         }
@@ -139,13 +130,12 @@ async fn invalid_empty_command() {
 async fn command_not_found() {
     let (tx, mut rx) = mpsc::channel::<TaskEvent>(1024);
     let config = TaskConfig::new("non_existent_command").use_process_group(false);
-    let mut spawner = TaskSpawner::new("error_task".to_string(), config);
+    let mut spawner = TaskSpawner::new(config);
 
     let result = spawner.start_direct(tx).await;
     assert!(matches!(result, Err(TaskError::IO(_))));
 
-    if let Some(TaskEvent::Error { task_name, error }) = rx.recv().await {
-        assert_eq!(task_name, "error_task");
+    if let Some(TaskEvent::Error { error }) = rx.recv().await {
         assert!(matches!(error, TaskError::IO(_)));
         if let TaskError::IO(msg) = error {
             #[cfg(windows)]
@@ -163,13 +153,12 @@ async fn invalid_working_directory() {
     let (tx, mut rx) = mpsc::channel::<TaskEvent>(1024);
     let config = TaskConfig::new("echo").working_dir("/non/existent/directory");
 
-    let mut spawner = TaskSpawner::new("working_dir_task".to_string(), config);
+    let mut spawner = TaskSpawner::new(config);
 
     let result = spawner.start_direct(tx).await;
     assert!(matches!(result, Err(TaskError::InvalidConfiguration(_))));
 
-    if let Some(TaskEvent::Error { task_name, error }) = rx.recv().await {
-        assert_eq!(task_name, "working_dir_task");
+    if let Some(TaskEvent::Error { error }) = rx.recv().await {
         assert!(matches!(error, TaskError::InvalidConfiguration(_)));
     } else {
         panic!("Expected TaskEvent::Error");
@@ -187,7 +176,7 @@ async fn task_failure_handling() {
     #[cfg(unix)]
     let config = TaskConfig::new("false").use_process_group(false);
 
-    let mut spawner = TaskSpawner::new("fail_test".to_string(), config);
+    let mut spawner = TaskSpawner::new(config);
 
     let result = spawner.start_direct(tx).await;
     assert!(
@@ -229,7 +218,7 @@ async fn concurrent_task_execution() {
                 .args([&format!("task_{}", i)])
                 .use_process_group(false);
 
-            let mut spawner = TaskSpawner::new(format!("concurrent_test_{}", i), config);
+            let mut spawner = TaskSpawner::new(config);
 
             let result = spawner.start_direct(tx).await;
             assert!(result.is_ok(), "Task {} should start successfully", i);
@@ -278,7 +267,7 @@ async fn test_task_state_transitions() {
         .args(["test"])
         .use_process_group(false);
 
-    let mut spawner = TaskSpawner::new("state_test".to_string(), config);
+    let mut spawner = TaskSpawner::new(config);
 
     // Initial state should be Pending
     assert_eq!(spawner.get_state().await, TaskState::Pending);

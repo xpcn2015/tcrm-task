@@ -5,7 +5,7 @@ use tokio::time::sleep;
 #[tokio::test]
 async fn created_at_increases_over_time() {
     let config = TaskConfig::new("echo");
-    let spawner = TaskSpawner::new("create_at_task".to_string(), config);
+    let spawner = TaskSpawner::new(config);
     let create_at1 = spawner.get_task_info().await.created_at.elapsed();
     sleep(Duration::from_millis(20)).await;
     let create_at2 = spawner.get_task_info().await.created_at.elapsed();
@@ -18,7 +18,7 @@ async fn created_at_increases_over_time() {
 #[tokio::test]
 async fn zero_uptime_if_not_started() {
     let config = TaskConfig::new("echo");
-    let spawner = TaskSpawner::new("uptime_task".to_string(), config);
+    let spawner = TaskSpawner::new(config);
     let uptime1 = spawner.get_task_info().await.uptime;
     sleep(Duration::from_millis(20)).await;
     let uptime2 = spawner.get_task_info().await.uptime;

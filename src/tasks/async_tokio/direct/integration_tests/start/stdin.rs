@@ -21,7 +21,7 @@ async fn stdin_valid() {
         .enable_stdin(true)
         .use_process_group(false);
 
-    let mut spawner = TaskSpawner::new("stdin_task".to_string(), config).set_stdin(stdin_rx);
+    let mut spawner = TaskSpawner::new(config).set_stdin(stdin_rx);
 
     // Spawn the task
     let result = spawner.start_direct(tx).await;
@@ -36,26 +36,15 @@ async fn stdin_valid() {
 
     while let Some(event) = rx.recv().await {
         match event {
-            TaskEvent::Started { task_name } => {
-                assert_eq!(task_name, "stdin_task");
+            TaskEvent::Started => {
                 started = true;
             }
-            TaskEvent::Output {
-                task_name,
-                line,
-                src,
-            } => {
-                assert_eq!(task_name, "stdin_task");
+            TaskEvent::Output { line, src } => {
                 assert_eq!(line, "hello world");
                 assert_eq!(src, StreamSource::Stdout);
                 output_ok = true;
             }
-            TaskEvent::Stopped {
-                task_name,
-                exit_code,
-                ..
-            } => {
-                assert_eq!(task_name, "stdin_task");
+            TaskEvent::Stopped { exit_code, .. } => {
                 assert_eq!(exit_code, Some(0));
                 stopped = true;
             }
@@ -84,7 +73,7 @@ async fn stdin_ignore() {
         .use_process_group(false);
 
     // Note: stdin is not enabled in config, so stdin should be ignored
-    let mut spawner = TaskSpawner::new("stdin_task".to_string(), config).set_stdin(stdin_rx);
+    let mut spawner = TaskSpawner::new(config).set_stdin(stdin_rx);
 
     // Spawn the task
     let result = spawner.start_direct(tx).await;
@@ -103,20 +92,14 @@ async fn stdin_ignore() {
 
     while let Some(event) = rx.recv().await {
         match event {
-            TaskEvent::Started { task_name } => {
-                assert_eq!(task_name, "stdin_task");
+            TaskEvent::Started => {
                 started = true;
             }
             TaskEvent::Output { .. } => {
                 // Should NOT receive output from stdin
                 output_found = true;
             }
-            TaskEvent::Stopped {
-                task_name,
-                exit_code,
-                ..
-            } => {
-                assert_eq!(task_name, "stdin_task");
+            TaskEvent::Stopped { exit_code, .. } => {
                 assert_eq!(exit_code, Some(0));
                 stopped = true;
             }

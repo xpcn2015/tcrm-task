@@ -82,12 +82,8 @@ async fn test_process_behavior(
     config: TaskConfig,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!("   Starting task: {}", test_name);
-    println!(
-        "   Process group enabled: {}",
-        config.is_process_group_enabled()
-    );
 
-    let mut spawner = TaskSpawner::new("test_task".to_string(), config);
+    let mut spawner = TaskSpawner::new(config);
 
     let (event_tx, mut event_rx) = tokio::sync::mpsc::channel(100);
 
@@ -99,32 +95,24 @@ async fn test_process_behavior(
     while let Some(event) = event_rx.recv().await {
         events_received += 1;
         match event {
-            TaskEvent::Started { task_name } => {
-                println!("   🚀 Task started: {}", task_name);
+            TaskEvent::Started => {
+                println!("   🚀 Task started",);
             }
-            TaskEvent::Ready { task_name } => {
-                println!("   ✅ Task ready: {}", task_name);
+            TaskEvent::Ready => {
+                println!("   ✅ Task ready",);
             }
-            TaskEvent::Output {
-                task_name,
-                line,
-                src,
-            } => {
-                println!("   📤 Output [{}]({:?}): {}", task_name, src, line);
+            TaskEvent::Output { line, src } => {
+                println!("   📤 Output [{:?}]({})", src, line);
             }
-            TaskEvent::Stopped {
-                task_name,
-                exit_code,
-                reason,
-            } => {
+            TaskEvent::Stopped { exit_code, reason } => {
                 println!(
-                    "   🛑 Task stopped: {} - Exit: {:?}, Reason: {:?}",
-                    task_name, exit_code, reason
+                    "   🛑 Task stopped - Exit: {:?}, Reason: {:?}",
+                    exit_code, reason
                 );
                 break;
             }
-            TaskEvent::Error { task_name, error } => {
-                println!("   ❌ Task error: {} - {}", task_name, error);
+            TaskEvent::Error { error } => {
+                println!("   ❌ Task error: {}", error);
                 break;
             }
         }

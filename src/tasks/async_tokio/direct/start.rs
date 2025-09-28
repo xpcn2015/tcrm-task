@@ -184,7 +184,7 @@ impl TaskSpawner {
     /// - Task configuration validation fails
     /// - Process fails to start due to invalid command or working directory
     /// - Unable to obtain process ID from started child process
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self, event_tx), fields(task_name = %self.task_name)))]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self, event_tx)))]
     #[allow(clippy::too_many_lines)]
     pub async fn start_direct(
         &mut self,
@@ -345,7 +345,6 @@ impl TaskSpawner {
         *self.terminate_tx.lock().await = Some(terminate_tx);
 
         let handle = spawn_wait_watcher(
-            self.task_name.clone(),
             self.state.clone(),
             child,
             process_group,

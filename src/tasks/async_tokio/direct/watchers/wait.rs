@@ -34,7 +34,6 @@ use crate::{
 /// A `JoinHandle` for the spawned watcher task.
 #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
 pub(crate) fn spawn_wait_watcher(
-    task_name: String,
     state: Arc<RwLock<TaskState>>,
     mut child: Child,
     process_group: Option<ProcessGroup>,
@@ -114,7 +113,7 @@ pub(crate) fn spawn_wait_watcher(
                                 if result_tx.send((
                                     None,
                                     TaskStopReason::Error(format!(
-                                        "Failed to terminate task {task_name}: process group: {e}, individual: {e2}"
+                                        "Failed to terminate task : process group: {e}, individual: {e2}"
                                     )),
                                 )).is_err() {
                                     #[cfg(feature = "tracing")]
@@ -129,7 +128,7 @@ pub(crate) fn spawn_wait_watcher(
                             if result_tx.send((
                                 None,
                                 TaskStopReason::Error(format!(
-                                    "Failed to terminate task {task_name}: {e}"
+                                    "Failed to terminate task : {e}"
                                 )),
                             )).is_err() {
                                 #[cfg(feature = "tracing")]

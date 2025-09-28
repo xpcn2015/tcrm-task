@@ -13,14 +13,13 @@ async fn process_id_returns_none_after_stopped() {
         .args(["done"])
         .use_process_group(false);
 
-    let mut spawner = TaskSpawner::new("pid_test_task".to_string(), config);
+    let mut spawner = TaskSpawner::new(config);
     let result = spawner.start_direct(tx).await;
     assert!(result.is_ok());
 
     let mut stopped = false;
     while let Some(event) = rx.recv().await {
-        if let TaskEvent::Stopped { task_name, .. } = event {
-            assert_eq!(task_name, "pid_test_task");
+        if let TaskEvent::Stopped { .. } = event {
             stopped = true;
             break;
         }
@@ -46,7 +45,7 @@ async fn process_id_returns_some_while_task_running() {
         .args(["2"])
         .use_process_group(false);
 
-    let mut spawner = TaskSpawner::new("pid_running_task".to_string(), config);
+    let mut spawner = TaskSpawner::new(config);
     let result = spawner.start_direct(tx).await;
     assert!(result.is_ok());
 

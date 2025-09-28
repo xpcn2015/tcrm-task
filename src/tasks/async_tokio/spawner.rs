@@ -30,8 +30,6 @@ use crate::tasks::{config::TaskConfig, state::TaskState};
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone)]
 pub struct TaskInfo {
-    /// Name of the task
-    pub name: String,
     /// Current execution state
     pub state: TaskState,
     /// How long the task has been running
@@ -169,7 +167,6 @@ fn default_instant() -> Instant {
 #[derive(Debug)]
 pub struct TaskSpawner {
     pub(crate) config: TaskConfig,
-    pub(crate) task_name: String,
     pub(crate) state: Arc<RwLock<TaskState>>,
     pub(crate) terminate_tx: Arc<Mutex<Option<oneshot::Sender<TaskTerminateReason>>>>,
     pub(crate) process_id: Arc<RwLock<Option<u32>>>,
@@ -198,9 +195,8 @@ impl TaskSpawner {
     /// let spawner = TaskSpawner::new("my-task".to_string(), config);
     /// ```
     #[must_use]
-    pub fn new(task_name: String, config: TaskConfig) -> Self {
+    pub fn new(config: TaskConfig) -> Self {
         Self {
-            task_name,
             config,
             state: Arc::new(RwLock::new(TaskState::Pending)),
             terminate_tx: Arc::new(Mutex::new(None)),
@@ -357,7 +353,6 @@ impl TaskSpawner {
     /// ```
     pub async fn get_task_info(&self) -> TaskInfo {
         TaskInfo {
-            name: self.task_name.clone(),
             state: self.get_state().await,
             uptime: self.uptime(),
             created_at: self.created_at,
