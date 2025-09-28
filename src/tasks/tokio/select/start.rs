@@ -3,6 +3,7 @@ use std::{process::Stdio, time::Instant};
 use tokio::{
     process::{Child, Command},
     sync::{mpsc, oneshot},
+    task::JoinHandle,
 };
 
 use crate::tasks::{
@@ -15,6 +16,12 @@ use crate::tasks::{
 };
 
 impl TaskExecutor {
+    pub async fn spawn_start(
+        mut self,
+        event_tx: mpsc::Sender<TaskEvent>,
+    ) -> JoinHandle<Result<(), TaskError>> {
+        tokio::spawn(async move { self.start(event_tx).await })
+    }
     pub async fn start(&mut self, event_tx: mpsc::Sender<TaskEvent>) -> Result<(), TaskError> {
         self.set_state(TaskState::Initiating);
         self.validate_config(&event_tx).await?;
