@@ -11,6 +11,7 @@ impl TaskExecutor {
                 let exit_code = status.code();
                 self.exit_code = exit_code;
                 self.stop_reason = Some(TaskStopReason::Finished);
+                #[cfg(feature = "tracing")]
                 tracing::debug!(exit_code = ?exit_code, "Child process finished normally");
             }
             Err(e) => {
