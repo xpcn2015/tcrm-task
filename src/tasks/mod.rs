@@ -2,6 +2,7 @@ pub mod config;
 pub mod control;
 pub mod error;
 pub mod event;
+pub mod process;
 pub mod state;
 pub mod validator;
 
@@ -10,9 +11,6 @@ pub mod tokio;
 
 #[cfg(feature = "signal")]
 pub mod signal;
-
-#[cfg(feature = "process-group")]
-pub mod process_group;
 
 #[cfg(test)]
 mod unit_tests;

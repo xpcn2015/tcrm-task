@@ -6,9 +6,10 @@ use tokio::{process::ChildStdin, sync::oneshot};
 use crate::tasks::signal::ProcessSignal;
 use crate::tasks::{
     config::TaskConfig,
-    control::{TaskControl, TaskInformation, TaskInternal},
+    control::{TaskControl, TaskControlAction, TaskInformation, TaskInternal},
     error::TaskError,
     event::{TaskStopReason, TaskTerminateReason},
+    process::{child::terminate_process, process_group::ProcessGroup},
     state::TaskState,
 };
 
@@ -20,6 +21,8 @@ pub(crate) struct TaskExecutorFlags {
 #[derive(Debug)]
 pub struct TaskExecutor {
     pub(crate) config: TaskConfig,
+    #[cfg(feature = "process-group")]
+    pub(crate) group: ProcessGroup,
     pub(crate) state: TaskState,
     pub(crate) process_id: Option<u32>,
     pub(crate) created_at: Instant,
@@ -35,6 +38,7 @@ impl TaskExecutor {
     pub fn new(config: TaskConfig) -> Self {
         Self {
             config,
+            group: ProcessGroup::new(),
             state: TaskState::Pending,
             process_id: None,
             created_at: Instant::now(),
@@ -58,7 +62,7 @@ impl TaskInternal for TaskExecutor {
 }
 
 impl TaskControl for TaskExecutor {
-    fn terminate(&mut self, reason: TaskTerminateReason) -> Result<(), TaskError> {
+    fn terminate_task(&mut self, reason: TaskTerminateReason) -> Result<(), TaskError> {
         if self.state == TaskState::Finished {
             return Err(TaskError::Control("Task already finished".to_string()));
         }
@@ -76,6 +80,48 @@ impl TaskControl for TaskExecutor {
             return Err(TaskError::Channel(msg.to_string()));
         }
 
+        Ok(())
+    }
+
+    fn perform_process_action(&mut self, action: TaskControlAction) -> Result<(), TaskError> {
+        let use_process_group = self.config.use_process_group.unwrap_or_default();
+
+        #[cfg(feature = "process-group")]
+        let active = self.group.is_active();
+        #[cfg(not(feature = "process-group"))]
+        let active = false;
+
+        let process_id = match self.process_id {
+            Some(pid) => pid,
+            None => {
+                let msg = "No process ID available to perform action";
+                #[cfg(feature = "tracing")]
+                tracing::warn!(msg);
+                return Err(TaskError::Control(msg.to_string()));
+            }
+        };
+        match action {
+            TaskControlAction::Terminate => {
+                if use_process_group && active {
+                    self.group.terminate_group().map_err(|e| {
+                        let msg = format!("Failed to terminate process group: {}", e);
+                        #[cfg(feature = "tracing")]
+                        tracing::error!(error=%e, "{}", msg);
+                        TaskError::Control(msg)
+                    })?;
+                } else {
+                    terminate_process(process_id).map_err(|e| {
+                        let msg = format!("Failed to terminate process: {}", e);
+                        #[cfg(feature = "tracing")]
+                        tracing::error!(error=%e, "{}", msg);
+                        TaskError::Control(msg)
+                    })?;
+                }
+            }
+            TaskControlAction::Pause => todo!(),
+            TaskControlAction::Resume => todo!(),
+            TaskControlAction::Interrupt => todo!(),
+        }
         Ok(())
     }
 

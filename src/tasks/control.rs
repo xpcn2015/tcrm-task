@@ -11,7 +11,10 @@ use crate::tasks::{
 use crate::tasks::signal::ProcessSignal;
 
 pub trait TaskControl {
-    fn terminate(&mut self, reason: TaskTerminateReason) -> Result<(), TaskError>;
+    fn terminate_task(&mut self, reason: TaskTerminateReason) -> Result<(), TaskError>;
+
+    /// Perform a control action on the child process.
+    fn perform_process_action(&mut self, action: TaskControlAction) -> Result<(), TaskError>;
 
     #[cfg(feature = "signal")]
     fn send_signal(&self, signal: ProcessSignal) -> Result<(), TaskError>;
@@ -29,4 +32,11 @@ pub trait TaskInformation {
 
 pub(crate) trait TaskInternal {
     fn set_state(&mut self, new_state: TaskState);
+}
+
+pub enum TaskControlAction {
+    Terminate,
+    Pause,
+    Resume,
+    Interrupt,
 }

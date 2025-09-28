@@ -4,6 +4,7 @@ use tokio::time::Instant;
 
 use crate::tasks::error::TaskError;
 use crate::tasks::event::{TaskEvent, TaskStopReason, TaskTerminateReason};
+use crate::tasks::process::process_group::ProcessGroup;
 use crate::tasks::state::TaskState;
 use crate::tasks::tokio::spawn::direct::command::setup_command;
 use crate::tasks::tokio::spawn::direct::watchers::input::spawn_stdin_watcher;
@@ -11,7 +12,6 @@ use crate::tasks::tokio::spawn::direct::watchers::output::spawn_output_watchers;
 use crate::tasks::tokio::spawn::direct::watchers::result::spawn_result_watcher;
 use crate::tasks::tokio::spawn::direct::watchers::timeout::spawn_timeout_watcher;
 use crate::tasks::tokio::spawn::direct::watchers::wait::spawn_wait_watcher;
-use crate::tasks::tokio::spawn::process_group::ProcessGroup;
 use crate::tasks::tokio::spawn::spawner::TaskSpawner;
 
 impl TaskSpawner {
@@ -269,9 +269,27 @@ impl TaskSpawner {
         };
         self.running_at = Some(Instant::now());
 
+        let Some(child_id) = child.id() else {
+            let msg = "Failed to get process id";
+
+            #[cfg(feature = "tracing")]
+            tracing::error!(msg);
+
+            self.update_state(TaskState::Finished).await;
+            let error_event = TaskEvent::Error {
+                error: TaskError::Handle(msg.to_string()),
+            };
+
+            if (event_tx.send(error_event).await).is_err() {
+                #[cfg(feature = "tracing")]
+                tracing::warn!("Event channel closed while sending TaskEvent::Error");
+            }
+
+            return Err(TaskError::Handle(msg.to_string()));
+        };
         // Assign the child process to the process group if enabled
         if let Some(ref pg) = process_group {
-            if let Err(e) = pg.assign_child(&child).await {
+            if let Err(e) = pg.assign_child(child_id) {
                 #[cfg(feature = "tracing")]
                 tracing::error!(error = %e, "Failed to assign child to process group");
 
@@ -294,24 +312,6 @@ impl TaskSpawner {
                 )));
             }
         }
-        let Some(child_id) = child.id() else {
-            let msg = "Failed to get process id";
-
-            #[cfg(feature = "tracing")]
-            tracing::error!(msg);
-
-            self.update_state(TaskState::Finished).await;
-            let error_event = TaskEvent::Error {
-                error: TaskError::Handle(msg.to_string()),
-            };
-
-            if (event_tx.send(error_event).await).is_err() {
-                #[cfg(feature = "tracing")]
-                tracing::warn!("Event channel closed while sending TaskEvent::Error");
-            }
-
-            return Err(TaskError::Handle(msg.to_string()));
-        };
         *self.process_id.write().await = Some(child_id);
         let mut task_handles = vec![];
         self.update_state(TaskState::Running).await;

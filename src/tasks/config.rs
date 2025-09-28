@@ -309,6 +309,7 @@ impl TaskConfig {
     ///     .use_process_group(true);
     /// ```
     #[must_use]
+    #[cfg(feature = "process-group")]
     pub fn use_process_group(mut self, enabled: bool) -> Self {
         self.use_process_group = Some(enabled);
         self

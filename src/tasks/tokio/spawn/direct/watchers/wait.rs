@@ -9,7 +9,7 @@ use tokio::{
 use crate::{
     helper::tracing::MaybeInstrument,
     tasks::{
-        tokio::spawn::process_group::{ProcessGroup, ProcessGroupError}, event::{TaskStopReason, TaskTerminateReason}, state::TaskState
+         event::{TaskStopReason, TaskTerminateReason}, process::process_group::{ProcessGroup, ProcessGroupError}, state::TaskState
     },
 };
 
@@ -54,7 +54,7 @@ pub(crate) fn spawn_wait_watcher(
                     if let Some(ref pg) = process_group {
                         #[cfg(feature = "tracing")]
                         tracing::debug!("Main process finished, terminating remaining child processes in group");
-                        if let Err(_e) = pg.terminate_all().await {
+                        if let Err(_e) = pg.terminate_group() {
                             #[cfg(feature = "tracing")]
                             tracing::warn!(error = %_e, "Failed to terminate remaining child processes after main process exit");
                         }
@@ -95,11 +95,11 @@ pub(crate) fn spawn_wait_watcher(
                     let termination_result = if let Some(ref pg) = process_group {
                         #[cfg(feature = "tracing")]
                         tracing::trace!("Terminating process group");
-                        pg.terminate_all().await
+                        pg.terminate_group()
                     } else {
                         #[cfg(feature = "tracing")]
                         tracing::trace!("Process group disabled, terminating individual process");
-                        child.kill().await.map_err(|e| ProcessGroupError::TerminationFailed(e.to_string()))
+                        child.kill().await.map_err(|e| ProcessGroupError::SignalFailed(e.to_string()))
                     };
 
                     if let Err(e) = termination_result {
