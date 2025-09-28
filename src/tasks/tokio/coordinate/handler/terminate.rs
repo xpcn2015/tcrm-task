@@ -1,14 +1,17 @@
-use tokio::sync::oneshot::error::RecvError;
+use std::sync::Arc;
+
+use tokio::sync::{Mutex, oneshot::error::RecvError};
 
 use crate::tasks::{
     event::{TaskStopReason, TaskTerminateReason},
-    tokio::select::executor::TaskExecutor,
+    tokio::executor::TaskExecutor,
 };
 
 impl TaskExecutor {
     pub(crate) async fn handle_terminate(
-        &mut self,
         reason: Result<TaskTerminateReason, RecvError>,
+        stop_reason: &Arc<Mutex<Option<TaskStopReason>>>,
+        stop: &mut bool,
     ) {
         #[cfg(feature = "tracing")]
         tracing::debug!(?reason, "Terminate signal received");
@@ -16,14 +19,18 @@ impl TaskExecutor {
         let reason = match reason {
             Ok(r) => r,
             Err(_) => {
-                self.flags.stop = true;
+                *stop = true;
                 #[cfg(feature = "tracing")]
                 tracing::warn!("Terminate channel closed unexpectedly");
                 return;
             }
         };
 
-        self.flags.stop = true;
-        self.stop_reason = Some(TaskStopReason::Terminated(reason));
+        *stop = true;
+        let mut stop_reason = stop_reason.lock().await;
+        if stop_reason.is_some() {
+            return;
+        }
+        *stop_reason = Some(TaskStopReason::Terminated(reason));
     }
 }

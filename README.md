@@ -28,7 +28,7 @@ tcrm-task = { version = "0.3.2" }
 ```rust
 use tcrm_task::tasks::{
     config::TaskConfig,
-    async_tokio::spawner::TaskSpawner,
+    tokio::spawn::spawner::TaskSpawner,
     event::TaskEvent,
 };
 use tokio::sync::mpsc;

@@ -1,18 +1,31 @@
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, AtomicU8, Ordering},
+};
+
 use tokio::{
     io::{AsyncBufReadExt, BufReader, Lines},
     process::{Child, ChildStderr, ChildStdout},
-    sync::mpsc,
+    sync::{Mutex, mpsc, oneshot},
 };
 
 use crate::tasks::{
     config::StreamSource,
-    control::TaskInternal,
     error::TaskError,
-    event::{TaskEvent, TaskStopReason},
+    event::{TaskEvent, TaskStopReason, TaskTerminateReason},
     state::TaskState,
-    tokio::select::executor::TaskExecutor,
+    tokio::executor::TaskExecutor,
 };
-
+pub(crate) struct OutputArgs {
+    pub(crate) state: Arc<AtomicU8>,
+    pub(crate) stop_reason: Arc<Mutex<Option<TaskStopReason>>>,
+    pub(crate) ready_flag: Arc<AtomicBool>,
+    pub(crate) ready_indicator_source: StreamSource,
+    pub(crate) ready_indicator: Option<String>,
+    pub(crate) src: StreamSource,
+    pub(crate) event_tx: mpsc::Sender<TaskEvent>,
+    pub(crate) internal_terminate_tx: Arc<Mutex<Option<oneshot::Sender<TaskTerminateReason>>>>,
+}
 impl TaskExecutor {
     pub(crate) async fn take_std_output_reader(
         &mut self,
@@ -26,12 +39,9 @@ impl TaskExecutor {
                 #[cfg(feature = "tracing")]
                 tracing::error!(msg);
 
-                let time = self.set_state(TaskState::Finished);
-                let error_event = TaskEvent::Error {
-                    error: TaskError::IO(msg.to_string()),
-                    finished_at: time,
-                };
-                self.send_event(event_tx, error_event).await;
+                let error = TaskError::IO(msg.to_string());
+                self.send_error_event_and_stop(error.clone(), event_tx)
+                    .await;
 
                 return Err(TaskError::IO(msg.to_string()));
             }
@@ -44,12 +54,9 @@ impl TaskExecutor {
                 #[cfg(feature = "tracing")]
                 tracing::error!(msg);
 
-                let time = self.set_state(TaskState::Finished);
-                let error_event = TaskEvent::Error {
-                    error: TaskError::IO(msg.to_string()),
-                    finished_at: time,
-                };
-                self.send_event(event_tx, error_event).await;
+                let error = TaskError::IO(msg.to_string());
+                self.send_error_event_and_stop(error.clone(), event_tx)
+                    .await;
 
                 return Err(TaskError::IO(msg.to_string()));
             }
@@ -59,10 +66,8 @@ impl TaskExecutor {
     }
 
     pub(crate) async fn handle_output(
-        &mut self,
-        src: StreamSource,
+        args: &OutputArgs,
         line: Result<Option<String>, std::io::Error>,
-        event_tx: &mpsc::Sender<TaskEvent>,
     ) {
         let line = match line {
             Ok(Some(l)) => l,
@@ -74,44 +79,40 @@ impl TaskExecutor {
                 let msg = format!("Error reading stdout: {}", e);
                 #[cfg(feature = "tracing")]
                 tracing::error!(error = %e, "Error reading stdout");
-                let time = self.set_state(TaskState::Finished);
-
-                let error_event = TaskEvent::Error {
-                    error: TaskError::IO(msg.clone()),
-                    finished_at: time,
-                };
-                self.flags.stop = true;
-                self.stop_reason = Some(TaskStopReason::Error(msg.clone()));
-                self.send_event(event_tx, error_event).await;
+                let error = TaskError::IO(msg);
+                *args.stop_reason.lock().await = Some(TaskStopReason::Error(error.clone()));
+                let error_event = TaskEvent::Error { error };
+                Self::send_event(&args.event_tx, error_event).await;
+                Self::internal_terminate(
+                    &args.internal_terminate_tx,
+                    TaskTerminateReason::InternalError,
+                )
+                .await;
                 return;
             }
         };
         let event = TaskEvent::Output {
             line: line.clone(),
-            src: src.clone(),
+            src: args.src.clone(),
         };
-        self.send_event(event_tx, event).await;
+        Self::send_event(&args.event_tx, event).await;
 
-        if self.flags.ready {
+        if args.ready_flag.load(Ordering::SeqCst) {
             return;
         }
-        let ready_indicator_source = match &self.config.ready_indicator_source {
-            Some(ind) => ind,
-            None => &StreamSource::default(),
-        };
-        if ready_indicator_source != &src {
+
+        if args.ready_indicator_source != args.src {
             return;
         }
-        let ready_indicator = match &self.config.ready_indicator {
+        let ready_indicator = match &args.ready_indicator {
             Some(text) => text,
             None => return,
         };
 
         if line.contains(ready_indicator) {
-            self.flags.ready = true;
-            self.set_state(TaskState::Ready);
-            let ready_event = TaskEvent::Ready;
-            self.send_event(event_tx, ready_event).await;
+            args.ready_flag.store(true, Ordering::SeqCst);
+            Self::set_state(args.state.clone(), TaskState::Ready, None);
+            Self::send_event(&args.event_tx, TaskEvent::Ready).await;
         }
     }
 }

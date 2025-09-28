@@ -45,10 +45,10 @@ windows = { version = "0.62", features = [
 ], optional = true }
 
 [features]
-default = ["tokio", "process-group", "tokio-select"]
-tokio-select = ["tokio", "dep:nix", "dep:windows"]
-tokio-spawn = ["tokio"]
+default = ["tokio", "process-group", "tokio-coordinate"]
 tokio = ["dep:tokio", "dep:futures"]
+tokio-coordinate = ["tokio", "dep:nix", "dep:windows"]
+tokio-concurrent = ["tokio"]
 std = []
 flatbuffers = ["dep:flatbuffers"]
 serde = ["dep:serde"]

@@ -1,12 +1,19 @@
 # Changelog
 
-## 0.3
-### 0.3.8 (2025/09/24)
+## 0.4
+
+### 0.4.1 (2025/09/26)
 #### Fixed
 - In validator function, environment variable key should not contain tab and newline characters [[commit](https://github.com/xpcn2015/tcrm-task/commit/0140ab862fb7cb1735b202fe05ec60a3ac1f0b92)]
 #### Changed
+- Simplify TaskEvent enum by removing task_name fields [[commit](https://github.com/xpcn2015/tcrm-task/commit/b99a4c8fa9c388b982b4c7a0725562dffc47eff9)]
 - Add 'os.system(' to injection patterns in validator [[commit](https://github.com/xpcn2015/tcrm-task/commit/1c5829039f878235019cd21a57955bba3e33df34)]
 - Add '#' as invalid pattern in validate_command_strict() [[commit](https://github.com/xpcn2015/tcrm-task/commit/c45a2743605a83a16aa4069dcc413cb94e8beeea)]
+- process group logic now guard behide "process-group" feature
+- Single executor handles multiple async operations using tokio::select! (version 0.3 using tokio::spawn to handle multiple operations) [[commit](https://github.com/xpcn2015/tcrm-task/commit/ae5b9fc041e6ad119b95d3cf696fbcfb95e771ad)]
+
+## 0.3
+
 ### 0.3.7 (2025/09/24)
 #### Fixed
 - Ready event is now correctly emitted only when the indicator string matches [[commit](https://github.com/xpcn2015/tcrm-task/commit/3bfc67ce5b9b9a7a2f0dd8da33e08c0c39066e98)]

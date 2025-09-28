@@ -139,11 +139,9 @@ pub enum TaskEvent {
     /// Emitted when errors occur during configuration validation,
     /// process spawning, sending input/output
     ///  
-    /// Will not emit any further events.
     Error {
         /// The specific error that occurred
         error: TaskError,
-        finished_at: SystemTime,
     },
 }
 
@@ -176,7 +174,7 @@ pub enum TaskStopReason {
     Terminated(TaskTerminateReason),
 
     /// Process stopped due to an error
-    Error(String),
+    Error(TaskError),
 }
 
 /// Reason for terminating a running task
@@ -260,4 +258,7 @@ pub enum TaskTerminateReason {
     ///
     /// Used when user or external library requests the task to stop.
     UserRequested,
+
+    /// Task was terminated due to internal error condition
+    InternalError,
 }

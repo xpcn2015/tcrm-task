@@ -7,7 +7,7 @@ use crate::tasks::{
     control::{TaskInformation, TaskStatusInfo},
     event::{TaskEvent, TaskStopReason},
     state::TaskState,
-    tokio::select::executor::TaskExecutor,
+    tokio::coordinate::executor::TaskExecutor,
 };
 
 #[tokio::test]

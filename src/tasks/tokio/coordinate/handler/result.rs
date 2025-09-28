@@ -1,29 +1,40 @@
-use tokio::{process::Child, sync::mpsc};
+use std::{
+    os::windows::process,
+    sync::{Arc, atomic::AtomicU32},
+};
+
+use tokio::{
+    process::Child,
+    sync::{Mutex, mpsc},
+};
 
 use crate::tasks::{
-    control::{TaskControl, TaskControlAction, TaskInternal},
+    control::{TaskControl, TaskControlAction},
+    error::TaskError,
     event::{TaskEvent, TaskStopReason},
     process::child::terminate_process,
     state::TaskState,
-    tokio::select::executor::TaskExecutor,
+    tokio::executor::TaskExecutor,
 };
 
 impl TaskExecutor {
     pub(crate) async fn handle_result(
-        &mut self,
         mut child: Child,
         event_tx: &mpsc::Sender<TaskEvent>,
+        stop_reason: &Arc<Mutex<Option<TaskStopReason>>>,
+        process_id: Arc<AtomicU32>,
     ) {
-        let reason = match self.stop_reason.clone() {
+        let reason = stop_reason.lock().await;
+        let reason = match *reason {
             Some(r) => r,
             None => {
                 // This should not happen, but just in case
                 let msg = "Task finished without a stop reason";
                 #[cfg(feature = "tracing")]
                 tracing::warn!(msg);
-                let reason = TaskStopReason::Error(msg.to_string());
-                self.stop_reason = Some(reason.clone());
-                reason
+                let r = TaskStopReason::Error(TaskError::Channel(msg.to_string()));
+                *reason = Some(r.clone());
+                r
             }
         };
 
@@ -58,7 +69,8 @@ impl TaskExecutor {
                         }
                     }
                     // Try to terminate by process ID if available
-                    if let Some(process_id) = self.process_id {
+                    let process_id = process_id.load(std::sync::atomic::Ordering::SeqCst);
+                    if process_id != 0 {
                         #[cfg(feature = "tracing")]
                         tracing::info!("Trying to terminate process ID {}", process_id);
                         if let Err(e) = terminate_process(process_id) {
