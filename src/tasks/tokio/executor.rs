@@ -1,4 +1,5 @@
 use std::{
+    process::Stdio,
     sync::{
         Arc,
         atomic::{AtomicBool, AtomicI32, AtomicU8, AtomicU32, AtomicU64, Ordering},
@@ -7,7 +8,7 @@ use std::{
 };
 
 use tokio::{
-    process::ChildStdin,
+    process::{ChildStdin, Command},
     sync::{Mutex, mpsc, oneshot},
 };
 
@@ -38,7 +39,7 @@ pub struct TaskExecutor {
     pub(crate) ready_flag: Arc<AtomicBool>,
 
     #[cfg(feature = "process-group")]
-    pub(crate) group: ProcessGroup,
+    pub(crate) group: Arc<Mutex<ProcessGroup>>,
 }
 impl TaskExecutor {
     pub fn new(config: TaskConfig) -> Self {
@@ -53,12 +54,12 @@ impl TaskExecutor {
             created_at: Arc::new(AtomicU64::new(now_millis)),
             running_at: Arc::new(AtomicU64::new(0)),
             finished_at: Arc::new(AtomicU64::new(0)),
-            exit_code: Arc::new(AtomicI32::new(0)),
+            exit_code: Arc::new(AtomicI32::new(-1)),
             stdin: None,
             terminate_tx: None,
             internal_terminate_tx: Arc::new(Mutex::new(None)),
             stop_reason: Arc::new(Mutex::new(None)),
-            group: ProcessGroup::new(),
+            group: Arc::new(Mutex::new(ProcessGroup::new())),
             ready_flag: Arc::new(AtomicBool::new(false)),
         }
     }
@@ -80,11 +81,11 @@ impl TaskExecutor {
         now
     }
     pub(crate) fn set_time(time_store: Arc<AtomicU64>, time: SystemTime) {
-        let millis = time
+        let nanos = time
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
-            .as_millis() as u64;
-        time_store.store(millis, Ordering::SeqCst);
+            .as_nanos() as u64;
+        time_store.store(nanos, Ordering::SeqCst);
     }
 
     pub(crate) async fn send_event(event_tx: &mpsc::Sender<TaskEvent>, event: TaskEvent) {
@@ -136,6 +137,111 @@ impl TaskExecutor {
             return;
         }
     }
+
+    pub async fn perform_process_action(
+        &mut self,
+        action: TaskControlAction,
+    ) -> Result<(), TaskError> {
+        #[cfg(feature = "process-group")]
+        let use_process_group = self.config.use_process_group.unwrap_or_default();
+        #[cfg(not(feature = "process-group"))]
+        let use_process_group = false;
+
+        #[cfg(feature = "process-group")]
+        let active = self.group.lock().await.is_active();
+        #[cfg(not(feature = "process-group"))]
+        let active = false;
+        let process_id = match self.process_id.load(Ordering::SeqCst) {
+            0 => {
+                let msg = "No process ID available to perform action";
+                #[cfg(feature = "tracing")]
+                tracing::warn!(msg);
+                return Err(TaskError::Control(msg.to_string()));
+            }
+            n => n,
+        };
+        match action {
+            TaskControlAction::Terminate => {
+                if use_process_group && active {
+                    self.group.lock().await.terminate_group().map_err(|e| {
+                        let msg = format!("Failed to terminate process group: {}", e);
+                        #[cfg(feature = "tracing")]
+                        tracing::error!(error=%e, "{}", msg);
+                        TaskError::Control(msg)
+                    })?;
+                } else {
+                    terminate_process(process_id).map_err(|e| {
+                        let msg = format!("Failed to terminate process: {}", e);
+                        #[cfg(feature = "tracing")]
+                        tracing::error!(error=%e, "{}", msg);
+                        TaskError::Control(msg)
+                    })?;
+                }
+            }
+            TaskControlAction::Pause => todo!(),
+            TaskControlAction::Resume => todo!(),
+            TaskControlAction::Interrupt => todo!(),
+        }
+        Ok(())
+    }
+    pub(crate) async fn validate_config(
+        &mut self,
+        event_tx: &mpsc::Sender<TaskEvent>,
+    ) -> Result<(), TaskError> {
+        match self.config.validate() {
+            Ok(()) => Ok(()),
+            Err(e) => {
+                #[cfg(feature = "tracing")]
+                tracing::error!(error = %e, "Invalid task configuration");
+                let time = Self::set_state(
+                    self.state.clone(),
+                    TaskState::Finished,
+                    Some(self.finished_at.clone()),
+                );
+                let error_event = TaskEvent::Error { error: e.clone() };
+                Self::send_event(event_tx, error_event).await;
+
+                let finish_event = TaskEvent::Stopped {
+                    exit_code: None,
+                    finished_at: time,
+                    reason: TaskStopReason::Error(e.clone()),
+                };
+                Self::send_event(event_tx, finish_event).await;
+
+                return Err(e);
+            }
+        }
+    }
+    pub(crate) fn setup_command(&self) -> Command {
+        let mut cmd = Command::new(&self.config.command);
+
+        cmd.kill_on_drop(true);
+
+        // Setup additional arguments
+        if let Some(args) = &self.config.args {
+            cmd.args(args);
+        }
+
+        // Setup working directory with validation
+        if let Some(dir) = &self.config.working_dir {
+            cmd.current_dir(dir);
+        }
+
+        // Setup environment variables
+        if let Some(envs) = &self.config.env {
+            cmd.envs(envs);
+        }
+
+        // Setup stdio
+        cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(
+            if self.config.enable_stdin.unwrap_or_default() {
+                Stdio::piped()
+            } else {
+                Stdio::null()
+            },
+        );
+        cmd
+    }
 }
 
 impl TaskControl for TaskExecutor {
@@ -161,50 +267,6 @@ impl TaskControl for TaskExecutor {
         Ok(())
     }
 
-    fn perform_process_action(&mut self, action: TaskControlAction) -> Result<(), TaskError> {
-        #[cfg(feature = "process-group")]
-        let use_process_group = self.config.use_process_group.unwrap_or_default();
-        #[cfg(not(feature = "process-group"))]
-        let use_process_group = false;
-
-        #[cfg(feature = "process-group")]
-        let active = self.group.is_active();
-        #[cfg(not(feature = "process-group"))]
-        let active = false;
-        let process_id = match self.process_id.load(Ordering::SeqCst) {
-            0 => {
-                let msg = "No process ID available to perform action";
-                #[cfg(feature = "tracing")]
-                tracing::warn!(msg);
-                return Err(TaskError::Control(msg.to_string()));
-            }
-            n => n,
-        };
-        match action {
-            TaskControlAction::Terminate => {
-                if use_process_group && active {
-                    self.group.terminate_group().map_err(|e| {
-                        let msg = format!("Failed to terminate process group: {}", e);
-                        #[cfg(feature = "tracing")]
-                        tracing::error!(error=%e, "{}", msg);
-                        TaskError::Control(msg)
-                    })?;
-                } else {
-                    terminate_process(process_id).map_err(|e| {
-                        let msg = format!("Failed to terminate process: {}", e);
-                        #[cfg(feature = "tracing")]
-                        tracing::error!(error=%e, "{}", msg);
-                        TaskError::Control(msg)
-                    })?;
-                }
-            }
-            TaskControlAction::Pause => todo!(),
-            TaskControlAction::Resume => todo!(),
-            TaskControlAction::Interrupt => todo!(),
-        }
-        Ok(())
-    }
-
     #[cfg(feature = "signal")]
     fn send_signal(&self, signal: ProcessSignal) -> Result<(), TaskError> {
         todo!()
@@ -224,23 +286,23 @@ impl TaskStatusInfo for TaskExecutor {
     }
 
     fn get_create_at(&self) -> SystemTime {
-        let millis = self.created_at.load(Ordering::SeqCst);
-        UNIX_EPOCH + std::time::Duration::from_millis(millis)
+        let nanos = self.created_at.load(Ordering::SeqCst);
+        UNIX_EPOCH + std::time::Duration::from_nanos(nanos)
     }
 
     fn get_running_at(&self) -> Option<SystemTime> {
-        let millis = self.running_at.load(Ordering::SeqCst);
-        match millis {
+        let nanos = self.running_at.load(Ordering::SeqCst);
+        match nanos {
             0 => None,
-            n => Some(UNIX_EPOCH + std::time::Duration::from_millis(n)),
+            n => Some(UNIX_EPOCH + std::time::Duration::from_nanos(n)),
         }
     }
 
     fn get_finished_at(&self) -> Option<SystemTime> {
-        let millis = self.finished_at.load(Ordering::SeqCst);
-        match millis {
+        let nanos = self.finished_at.load(Ordering::SeqCst);
+        match nanos {
             0 => None,
-            n => Some(UNIX_EPOCH + std::time::Duration::from_millis(n)),
+            n => Some(UNIX_EPOCH + std::time::Duration::from_nanos(n)),
         }
     }
     fn get_exit_code(&self) -> Option<i32> {
@@ -248,6 +310,10 @@ impl TaskStatusInfo for TaskExecutor {
         if state != TaskState::Finished {
             return None;
         }
-        Some(self.exit_code.load(Ordering::SeqCst))
+        let exit_code = self.exit_code.load(Ordering::SeqCst);
+        match exit_code {
+            -1 => None,
+            n => Some(n),
+        }
     }
 }

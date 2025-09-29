@@ -1,6 +1,6 @@
-use std::{
-    os::windows::process,
-    sync::{Arc, atomic::AtomicU32},
+use std::sync::{
+    Arc,
+    atomic::{AtomicI32, AtomicU8, AtomicU32, AtomicU64},
 };
 
 use tokio::{
@@ -8,33 +8,38 @@ use tokio::{
     sync::{Mutex, mpsc},
 };
 
+#[cfg(feature = "process-group")]
+use crate::tasks::process::process_group::ProcessGroup;
 use crate::tasks::{
-    control::{TaskControl, TaskControlAction},
     error::TaskError,
     event::{TaskEvent, TaskStopReason},
     process::child::terminate_process,
     state::TaskState,
     tokio::executor::TaskExecutor,
 };
-
+pub(crate) struct ResultArgs {
+    pub(crate) event_tx: mpsc::Sender<TaskEvent>,
+    pub(crate) stop_reason: Arc<Mutex<Option<TaskStopReason>>>,
+    pub(crate) process_id: Arc<AtomicU32>,
+    pub(crate) state: Arc<AtomicU8>,
+    pub(crate) finished_at: Arc<AtomicU64>,
+    pub(crate) exit_code: Arc<AtomicI32>,
+    #[cfg(feature = "process-group")]
+    pub(crate) use_process_group: Option<bool>,
+    #[cfg(feature = "process-group")]
+    pub(crate) group: Arc<Mutex<ProcessGroup>>,
+}
 impl TaskExecutor {
-    pub(crate) async fn handle_result(
-        mut child: Child,
-        event_tx: &mpsc::Sender<TaskEvent>,
-        stop_reason: &Arc<Mutex<Option<TaskStopReason>>>,
-        process_id: Arc<AtomicU32>,
-    ) {
-        let reason = stop_reason.lock().await;
-        let reason = match *reason {
+    pub(crate) async fn handle_result(mut child: Child, args: ResultArgs) {
+        let reason = args.stop_reason.lock().await.clone();
+        let reason = match reason {
             Some(r) => r,
             None => {
                 // This should not happen, but just in case
                 let msg = "Task finished without a stop reason";
                 #[cfg(feature = "tracing")]
                 tracing::warn!(msg);
-                let r = TaskStopReason::Error(TaskError::Channel(msg.to_string()));
-                *reason = Some(r.clone());
-                r
+                TaskStopReason::Error(TaskError::Channel(msg.to_string()))
             }
         };
 
@@ -69,7 +74,7 @@ impl TaskExecutor {
                         }
                     }
                     // Try to terminate by process ID if available
-                    let process_id = process_id.load(std::sync::atomic::Ordering::SeqCst);
+                    let process_id = args.process_id.load(std::sync::atomic::Ordering::SeqCst);
                     if process_id != 0 {
                         #[cfg(feature = "tracing")]
                         tracing::info!("Trying to terminate process ID {}", process_id);
@@ -87,15 +92,29 @@ impl TaskExecutor {
         }
         // If configured to use process group, ensure all child processes are terminated
         #[cfg(feature = "process-group")]
-        if self.config.use_process_group.unwrap_or_default() {
-            let _ = self.perform_process_action(TaskControlAction::Terminate);
+        if args.use_process_group.unwrap_or_default() {
+            if let Err(e) = args.group.lock().await.terminate_group() {
+                let msg = format!("Failed to terminate process group: {}", e);
+                #[cfg(feature = "tracing")]
+                tracing::error!(error=%e, "{}", msg);
+                let error = TaskError::Control(msg);
+                let event = TaskEvent::Error { error };
+                Self::send_event(&args.event_tx, event).await;
+            };
         }
-        let time = self.set_state(TaskState::Finished);
+        let time = Self::set_state(args.state, TaskState::Finished, Some(args.finished_at));
+        let exit_code = match args.exit_code.load(std::sync::atomic::Ordering::SeqCst) {
+            -1 => None,
+            code => Some(code),
+        };
+        args.process_id
+            .store(0, std::sync::atomic::Ordering::SeqCst);
         let event = TaskEvent::Stopped {
-            exit_code: self.exit_code,
+            exit_code,
             reason: reason,
             finished_at: time,
         };
-        self.send_event(event_tx, event).await;
+
+        Self::send_event(&args.event_tx, event).await;
     }
 }

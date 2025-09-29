@@ -1,4 +1,4 @@
-use std::{process::Stdio, sync::atomic::Ordering};
+use std::sync::atomic::Ordering;
 
 use tokio::{
     process::{Child, Command},
@@ -12,13 +12,13 @@ use crate::tasks::{
     event::{TaskEvent, TaskStopReason, TaskTerminateReason},
     state::TaskState,
     tokio::{
-        coordinate::handler::{output::OutputArgs, timeout},
+        coordinate::handler::{output::OutputArgs, result::ResultArgs},
         executor::TaskExecutor,
     },
 };
 
 impl TaskExecutor {
-    pub async fn start_coordinate(
+    pub async fn coordinate_start(
         &mut self,
         event_tx: mpsc::Sender<TaskEvent>,
     ) -> Result<(), TaskError> {
@@ -47,11 +47,13 @@ impl TaskExecutor {
         *self.internal_terminate_tx.lock().await = Some(internal_terminate_tx);
 
         let (stdout_args, stderr_args) = self.get_std_output_args(&event_tx);
+        let result_args = self.get_result_args(&event_tx);
         let timeout_ms = self.config.timeout_ms.clone();
         let internal_terminate_tx = self.internal_terminate_tx.clone();
         let stop_reason = self.stop_reason.clone();
         let exit_code = self.exit_code.clone();
-        let handle = tokio::spawn(async move {
+
+        tokio::spawn(async move {
             let mut stop = false;
             loop {
                 if stop {
@@ -66,67 +68,9 @@ impl TaskExecutor {
                     result = child.wait() => Self::handle_wait_result(result, &stop_reason, &exit_code, &mut stop).await,
                 }
             }
-            Self::handle_result(child, &event_tx, &stop_reason).await;
+            Self::handle_result(child, result_args).await;
         });
         Ok(())
-    }
-    async fn validate_config(
-        &mut self,
-        event_tx: &mpsc::Sender<TaskEvent>,
-    ) -> Result<(), TaskError> {
-        match self.config.validate() {
-            Ok(()) => Ok(()),
-            Err(e) => {
-                #[cfg(feature = "tracing")]
-                tracing::error!(error = %e, "Invalid task configuration");
-                let time = Self::set_state(
-                    self.state.clone(),
-                    TaskState::Finished,
-                    Some(self.finished_at.clone()),
-                );
-                let error_event = TaskEvent::Error { error: e.clone() };
-                Self::send_event(event_tx, error_event).await;
-
-                let finish_event = TaskEvent::Stopped {
-                    exit_code: None,
-                    finished_at: time,
-                    reason: TaskStopReason::Error(e.clone()),
-                };
-                Self::send_event(event_tx, finish_event).await;
-
-                return Err(e);
-            }
-        }
-    }
-    fn setup_command(&self) -> Command {
-        let mut cmd = Command::new(&self.config.command);
-
-        cmd.kill_on_drop(true);
-
-        // Setup additional arguments
-        if let Some(args) = &self.config.args {
-            cmd.args(args);
-        }
-
-        // Setup working directory with validation
-        if let Some(dir) = &self.config.working_dir {
-            cmd.current_dir(dir);
-        }
-
-        // Setup environment variables
-        if let Some(envs) = &self.config.env {
-            cmd.envs(envs);
-        }
-
-        // Setup stdio
-        cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(
-            if self.config.enable_stdin.unwrap_or_default() {
-                Stdio::piped()
-            } else {
-                Stdio::null()
-            },
-        );
-        cmd
     }
 
     fn get_std_output_args(&self, event_tx: &mpsc::Sender<TaskEvent>) -> (OutputArgs, OutputArgs) {
@@ -160,7 +104,21 @@ impl TaskExecutor {
         };
         (stdout_args, stderr_args)
     }
+    fn get_result_args(&self, event_tx: &mpsc::Sender<TaskEvent>) -> ResultArgs {
+        ResultArgs {
+            event_tx: event_tx.clone(),
+            stop_reason: self.stop_reason.clone(),
+            process_id: self.process_id.clone(),
+            state: self.state.clone(),
+            finished_at: self.finished_at.clone(),
+            exit_code: self.exit_code.clone(),
 
+            #[cfg(feature = "process-group")]
+            use_process_group: self.config.use_process_group.clone(),
+            #[cfg(feature = "process-group")]
+            group: self.group.clone(),
+        }
+    }
     async fn spawn_child(
         &mut self,
         mut cmd: Command,

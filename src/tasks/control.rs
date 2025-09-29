@@ -8,9 +8,6 @@ use crate::tasks::signal::ProcessSignal;
 pub trait TaskControl {
     fn terminate_task(&mut self, reason: TaskTerminateReason) -> Result<(), TaskError>;
 
-    /// Perform a control action on the child process.
-    fn perform_process_action(&mut self, action: TaskControlAction) -> Result<(), TaskError>;
-
     #[cfg(feature = "signal")]
     fn send_signal(&self, signal: ProcessSignal) -> Result<(), TaskError>;
 }
