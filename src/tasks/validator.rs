@@ -299,21 +299,21 @@ impl ConfigValidator {
     /// # Returns
     ///
     /// `true` if obvious injection patterns are detected, `false` otherwise.
-    fn contains_obvious_injection(input: &str) -> bool {
-        // Only block patterns that are clearly malicious, not functional shell features
-        let obvious_injection_patterns = [
-            "\0",         // Null bytes
-            "\x00",       // Null bytes (hex)
-            "\r\n",       // CRLF injection
-            "eval(",      // Direct eval calls
-            "exec(",      // Direct exec calls
-            "os.system(", // Direct Python code execution
-        ];
+    // fn contains_obvious_injection(input: &str) -> bool {
+    //     // Only block patterns that are clearly malicious, not functional shell features
+    //     let obvious_injection_patterns = [
+    //         "\0",         // Null bytes
+    //         "\x00",       // Null bytes (hex)
+    //         "\r\n",       // CRLF injection
+    //         "eval(",      // Direct eval calls
+    //         "exec(",      // Direct exec calls
+    //         "os.system(", // Direct Python code execution
+    //     ];
 
-        obvious_injection_patterns
-            .iter()
-            .any(|pattern| input.contains(pattern))
-    }
+    //     obvious_injection_patterns
+    //         .iter()
+    //         .any(|pattern| input.contains(pattern))
+    // }
 
     /// Validates command with strict security rules for untrusted input sources.
     ///
