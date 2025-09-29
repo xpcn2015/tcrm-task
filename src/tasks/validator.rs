@@ -163,7 +163,7 @@ impl ConfigValidator {
 
         // Check if path exists
         if !path.exists() {
-            return Err(TaskError::InvalidConfiguration(format!(
+            return Err(TaskError::IO(format!(
                 "Working directory does not exist: {dir}"
             )));
         }
