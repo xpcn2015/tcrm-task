@@ -12,9 +12,13 @@ impl TaskExecutor {
                 "Cannot send stdin, task is not running".to_string(),
             ));
         }
+        let mut input: String = input.into();
+        if !input.ends_with('\n') {
+            input.push('\n');
+        }
         if let Some(stdin) = &mut self.stdin.as_mut() {
             #[allow(clippy::used_underscore_binding)]
-            if let Err(_e) = stdin.write_all(input.into().as_bytes()).await {
+            if let Err(_e) = stdin.write_all(input.as_bytes()).await {
                 let msg = "Failed to write to child stdin";
                 #[cfg(feature = "tracing")]
                 tracing::warn!(error=%_e, msg);
@@ -34,14 +38,15 @@ impl TaskExecutor {
         child: &mut Child,
         event_tx: &mpsc::Sender<TaskEvent>,
     ) -> Result<(), TaskError> {
-        if self.config.enable_stdin.unwrap_or_default() {
+        if !self.config.enable_stdin.unwrap_or_default() {
             return Ok(());
         }
+
         if let Some(stdin) = child.stdin.take() {
             self.stdin = Some(stdin);
             Ok(())
         } else {
-            let msg = "Failed to take stdin of child process";
+            let msg = "Failed to take stdin out of child process";
             #[cfg(feature = "tracing")]
             tracing::error!(msg);
 
