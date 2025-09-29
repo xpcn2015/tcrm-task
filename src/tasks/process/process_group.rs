@@ -100,7 +100,9 @@ impl ProcessGroup {
                 command.pre_exec(|| {
                     // Create a new session, making this process the session leader
                     // and creating a new process group
-                    if libc::setsid() == -1 {
+
+                    use nix::unistd::setsid;
+                    if setsid().is_err() {
                         return Err(std::io::Error::last_os_error());
                     }
                     Ok(())
@@ -110,12 +112,7 @@ impl ProcessGroup {
                 process_group_id: None,
             };
 
-            Ok((
-                command,
-                ProcessGroup {
-                    inner: Arc::new(Mutex::new(inner)),
-                },
-            ))
+            Ok((command, ProcessGroup { inner: inner }))
         }
         #[cfg(windows)]
         {
@@ -181,10 +178,10 @@ impl ProcessGroup {
     ///
     /// # Arguments
     /// * `child` - The spawned child process to assign
-    pub fn assign_child(&self, child_id: u32) -> Result<(), ProcessGroupError> {
+    pub fn assign_child(&mut self, child_id: u32) -> Result<(), ProcessGroupError> {
         #[cfg(unix)]
         {
-            self.inner.process_group_id = child_id as i32;
+            self.inner.process_group_id = Some(child_id as i32);
             Ok(())
         }
         #[cfg(windows)]
@@ -247,19 +244,21 @@ impl ProcessGroup {
             use nix::unistd::Pid;
 
             if let Some(pgid) = self.inner.process_group_id {
+                use nix::errno::Errno;
+
                 match killpg(Pid::from_raw(pgid), Signal::SIGTERM) {
                     Ok(_) => Ok(()),
-                    Err(nix::Error::Sys(nix::errno::Errno::ESRCH)) => Ok(()), // Already terminated
-                    Err(nix::Error::Sys(nix::errno::Errno::EPERM)) => {
-                        Err(ProcessGroupError::SignalFailed(format!(
+                    Err(e) => match e {
+                        Errno::ESRCH => Ok(()), // Already terminated
+                        Errno::EPERM => Err(ProcessGroupError::SignalFailed(format!(
                             "Permission denied to terminate process group {}",
                             pgid
-                        )))
-                    }
-                    Err(e) => Err(ProcessGroupError::SignalFailed(format!(
-                        "Failed to send SIGTERM to process group {}: {}",
-                        pgid, e
-                    ))),
+                        ))),
+                        _ => Err(ProcessGroupError::SignalFailed(format!(
+                            "Failed to send SIGTERM to process group {}: {}",
+                            pgid, e
+                        ))),
+                    },
                 }
             } else {
                 Err(ProcessGroupError::SignalFailed(

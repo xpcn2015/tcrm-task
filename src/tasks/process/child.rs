@@ -1,6 +1,7 @@
 pub fn terminate_process(pid: u32) -> Result<(), std::io::Error> {
     #[cfg(unix)]
     {
+        use nix::errno::Errno;
         use nix::sys::signal::{Signal, kill};
         use nix::unistd::Pid;
 
@@ -15,18 +16,20 @@ pub fn terminate_process(pid: u32) -> Result<(), std::io::Error> {
 
         match kill(Pid::from_raw(pid), Signal::SIGTERM) {
             Ok(_) => Ok(()),
-            Err(nix::Error::Sys(nix::errno::Errno::ESRCH)) => Err(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!("Process with PID {} does not exist", pid),
-            )),
-            Err(nix::Error::Sys(nix::errno::Errno::EPERM)) => Err(std::io::Error::new(
-                std::io::ErrorKind::PermissionDenied,
-                format!("Permission denied to terminate PID {}", pid),
-            )),
-            Err(e) => Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Failed to send SIGTERM to PID {}: {}", pid, e),
-            )),
+            Err(e) => match e {
+                Errno::ESRCH => Err(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    format!("Process with PID {} does not exist", pid),
+                )),
+                Errno::EPERM => Err(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    format!("Permission denied to terminate PID {}", pid),
+                )),
+                _ => Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("Failed to send SIGTERM to PID {}: {}", pid, e),
+                )),
+            },
         }
     }
 
