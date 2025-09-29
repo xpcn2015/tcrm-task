@@ -3,6 +3,7 @@ use std::time::Duration;
 use tokio::{sync::mpsc, time::timeout};
 
 use crate::tasks::config::TaskConfig;
+use crate::tasks::error::TaskError;
 use crate::tasks::{
     config::StreamSource,
     control::TaskStatusInfo,
@@ -15,12 +16,14 @@ use crate::tasks::{
     },
 };
 #[tokio::test]
-async fn echo_command() {
+async fn valid() {
     let (tx, mut rx) = mpsc::channel::<TaskEvent>(64);
     #[cfg(windows)]
-    let config = TaskConfig::new("powershell").args(["-Command", "echo hello"]);
+    let config = TaskConfig::new("powershell")
+        .args(["-Command", "$line = Read-Host; Write-Output $line"])
+        .enable_stdin(true);
     #[cfg(unix)]
-    let config = TaskConfig::new("echo").args(["hello"]);
+    let config = TaskConfig::new("head").args(["-n", "1"]).enable_stdin(true);
 
     #[cfg(feature = "process-group")]
     let config = config.use_process_group(false);
@@ -31,6 +34,7 @@ async fn echo_command() {
     let mut started = false;
     let mut output_received = false;
     let mut stopped = false;
+    executor.send_stdin("สวัสดี 你好 how are you?").await.unwrap();
 
     while let Ok(Some(event)) = timeout(Duration::from_secs(5), rx.recv()).await {
         match event {
@@ -47,7 +51,7 @@ async fn echo_command() {
             }
             TaskEvent::Output { line, src } => {
                 output_received = true;
-                assert_eq!(line, "hello");
+                assert_eq!(line, "สวัสดี 你好 how are you?");
                 assert_eq!(src, StreamSource::Stdout);
             }
             TaskEvent::Stopped {
@@ -76,31 +80,27 @@ async fn echo_command() {
     assert!(output_received);
     assert!(stopped);
 }
-
 #[tokio::test]
-async fn env_echo() {
+async fn ignore() {
     let (tx, mut rx) = mpsc::channel::<TaskEvent>(64);
-
-    let mut env = std::collections::HashMap::new();
-    env.insert("TEST_VAR".to_string(), "test_value_123".to_string());
-
     #[cfg(windows)]
-    let config = TaskConfig::new("cmd")
-        .args(["/C", "echo %TEST_VAR%"])
-        .env(env);
+    let config =
+        TaskConfig::new("powershell").args(["-Command", "$line = Read-Host; Write-Output $line"]);
     #[cfg(unix)]
-    let config = TaskConfig::new("printenv").args(["TEST_VAR"]).env(env);
+    let config = TaskConfig::new("head").args(["-n", "1"]);
 
     #[cfg(feature = "process-group")]
     let config = config.use_process_group(false);
 
     let mut executor = TaskExecutor::new(config);
     executor.coordinate_start(tx).await.unwrap();
-    let mut started = false;
-    let mut output_received = false;
-    let mut stopped = false;
 
-    while let Ok(Some(event)) = timeout(Duration::from_secs(5), rx.recv()).await {
+    let mut started = false;
+    let mut stopped = false;
+    let result = executor.send_stdin("สวัสดี 你好 how are you?").await;
+    assert!(matches!(result.unwrap_err(), TaskError::Control(_)));
+
+    while let Ok(Some(event)) = timeout(Duration::from_secs(1), rx.recv()).await {
         match event {
             TaskEvent::Started {
                 process_id,
@@ -114,9 +114,7 @@ async fn env_echo() {
                 assert_eq!(running_at, executor.get_running_at().unwrap());
             }
             TaskEvent::Output { line, src } => {
-                output_received = true;
-                assert_eq!(line, "test_value_123");
-                assert_eq!(src, StreamSource::Stdout);
+                panic!("Unexpected output: {} from {:?}", line, src);
             }
             TaskEvent::Stopped {
                 exit_code,
@@ -141,6 +139,5 @@ async fn env_echo() {
     }
 
     assert!(started);
-    assert!(output_received);
     assert!(stopped);
 }
