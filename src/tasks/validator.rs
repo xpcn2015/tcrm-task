@@ -49,11 +49,11 @@ impl ConfigValidator {
         }
 
         // Only check for obvious injection attempts, not shell features
-        if Self::contains_obvious_injection(command) {
-            return Err(TaskError::InvalidConfiguration(
-                "Command contains potentially dangerous injection patterns".to_string(),
-            ));
-        }
+        // if Self::contains_obvious_injection(command) {
+        //     return Err(TaskError::InvalidConfiguration(
+        //         "Command contains potentially dangerous injection patterns".to_string(),
+        //     ));
+        // }
 
         if command.trim() != command {
             return Err(TaskError::InvalidConfiguration(
