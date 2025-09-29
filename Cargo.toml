@@ -48,7 +48,6 @@ windows = { version = "0.62", features = [
 default = ["tokio", "process-group", "tokio-coordinate"]
 tokio = ["dep:tokio", "dep:futures"]
 tokio-coordinate = ["tokio", "dep:nix", "dep:windows"]
-tokio-concurrent = ["tokio"]
 std = []
 flatbuffers = ["dep:flatbuffers"]
 serde = ["dep:serde"]

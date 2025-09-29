@@ -1,4 +1,3 @@
-pub(crate) mod handler;
 pub mod start;
 
 #[cfg(test)]

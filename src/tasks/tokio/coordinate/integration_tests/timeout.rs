@@ -5,7 +5,6 @@ use tokio::{sync::mpsc, time::timeout};
 use crate::tasks::config::TaskConfig;
 use crate::tasks::event::TaskTerminateReason;
 use crate::tasks::{
-    config::StreamSource,
     control::TaskStatusInfo,
     event::{TaskEvent, TaskStopReason},
     tokio::{
