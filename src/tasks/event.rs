@@ -21,31 +21,35 @@ use crate::tasks::{config::StreamSource, error::TaskError};
 ///
 /// ## Basic Event Processing
 /// ```rust
-/// use tcrm_task::tasks::{config::TaskConfig, tokio::spawn::spawner::TaskSpawner, event::TaskEvent};
+/// use tcrm_task::tasks::{config::TaskConfig, tokio::executor::TaskExecutor, event::TaskEvent};
 /// use tokio::sync::mpsc;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     #[cfg(windows)]
 ///     let config = TaskConfig::new("cmd").args(["/C", "echo", "hello", "world"]);
-///     let mut spawner = TaskSpawner::new("demo".to_string(), config);
+///     #[cfg(unix)]
+///     let config = TaskConfig::new("echo").args(["hello", "world"]);
+///     
+///     let mut executor = TaskExecutor::new(config);
 ///     
 ///     let (tx, mut rx) = mpsc::channel(100);
-///     spawner.start_direct(tx).await?;
+///     executor.coordinate_start(tx).await?;
 ///
 ///     while let Some(event) = rx.recv().await {
 ///         match event {
-///             TaskEvent::Started { task_name } => {
-///                 println!("Task '{}' started", task_name);
+///             TaskEvent::Started { process_id, .. } => {
+///                 println!("Process started with ID: {}", process_id);
 ///             }
-///             TaskEvent::Output { task_name, line, src } => {
-///                 println!("Task '{}' output: {}", task_name, line);
+///             TaskEvent::Output { line, .. } => {
+///                 println!("Output: {}", line);
 ///             }
-///             TaskEvent::Stopped { task_name, exit_code, reason } => {
-///                 println!("Task '{}' stopped with code {:?}", task_name, exit_code);
+///             TaskEvent::Stopped { exit_code, .. } => {
+///                 println!("Process stopped with code {:?}", exit_code);
 ///                 break;
 ///             }
-///             TaskEvent::Error { task_name, error } => {
-///                 eprintln!("Task '{}' error: {}", task_name, error);
+///             TaskEvent::Error { error } => {
+///                 eprintln!("Error: {}", error);
 ///                 break;
 ///             }
 ///             _ => {}
@@ -60,26 +64,33 @@ use crate::tasks::{config::StreamSource, error::TaskError};
 /// ```rust
 /// use tcrm_task::tasks::{
 ///     config::{TaskConfig, StreamSource},
-///     tokio::spawn::spawner::TaskSpawner,
+///     tokio::executor::TaskExecutor,
 ///     event::TaskEvent
 /// };
 /// use tokio::sync::mpsc;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     #[cfg(windows)]
 ///     let config = TaskConfig::new("cmd")
 ///         .args(["/C", "echo", "Server listening"])
 ///         .ready_indicator("Server listening")
 ///         .ready_indicator_source(StreamSource::Stdout);
+///     
+///     #[cfg(unix)]
+///     let config = TaskConfig::new("echo")
+///         .args(["Server listening"])
+///         .ready_indicator("Server listening")
+///         .ready_indicator_source(StreamSource::Stdout);
 ///
-///     let mut spawner = TaskSpawner::new("server".to_string(), config);
+///     let mut executor = TaskExecutor::new(config);
 ///     let (tx, mut rx) = mpsc::channel(100);
-///     spawner.start_direct(tx).await?;
+///     executor.coordinate_start(tx).await?;
 ///
 ///     while let Some(event) = rx.recv().await {
 ///         match event {
-///             TaskEvent::Ready { task_name } => {
-///                 println!("Server '{}' is ready for requests!", task_name);
+///             TaskEvent::Ready => {
+///                 println!("Server is ready for requests!");
 ///                 // Server is now ready - can start sending requests
 ///                 break;
 ///             }
@@ -155,16 +166,16 @@ pub enum TaskEvent {
 /// # Examples
 ///
 /// ```rust
-/// use tcrm_task::tasks::{event::TaskEventStopReason, event::TaskTerminateReason};
+/// use tcrm_task::tasks::{event::TaskStopReason, event::TaskTerminateReason};
 ///
 /// // Natural completion
-/// let reason = TaskEventStopReason::Finished;
+/// let reason = TaskStopReason::Finished;
 ///
 /// // Terminated due to timeout
-/// let reason = TaskEventStopReason::Terminated(TaskTerminateReason::Timeout);
+/// let reason = TaskStopReason::Terminated(TaskTerminateReason::Timeout);
 ///
 /// // Terminated due to error
-/// let reason = TaskEventStopReason::Error("Process crashed".to_string());
+/// let reason = TaskStopReason::Error(tcrm_task::tasks::error::TaskError::IO("Process crashed".to_string()));
 /// ```
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq)]
@@ -190,22 +201,26 @@ pub enum TaskStopReason {
 /// ```rust
 /// use tcrm_task::tasks::{
 ///     config::TaskConfig,
-///     tokio::spawn::spawner::TaskSpawner,
+///     tokio::executor::TaskExecutor,
 ///     event::TaskTerminateReason
 /// };
 /// use tokio::sync::mpsc;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let config = TaskConfig::new("cmd").args(["/C", "ping", "127.0.0.1", "-n", "5"]); // 5 second sleep
-///     let mut spawner = TaskSpawner::new("long-task".to_string(), config);
+///     #[cfg(windows)]
+///     let config = TaskConfig::new("cmd").args(["/C", "timeout", "/t", "5"]); // 5 second sleep
+///     #[cfg(unix)]
+///     let config = TaskConfig::new("sleep").args(["5"]); // 5 second sleep
+///     
+///     let mut executor = TaskExecutor::new(config);
 ///     
 ///     let (tx, _rx) = mpsc::channel(100);
-///     spawner.start_direct(tx).await?;
+///     executor.coordinate_start(tx).await?;
 ///     
 ///     // Terminate after 1 second
 ///     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-///     spawner.send_terminate_signal(TaskTerminateReason::Timeout).await?;
+///     // Note: termination would be done via TaskControl trait
 ///     
 ///     Ok(())
 /// }
@@ -215,22 +230,26 @@ pub enum TaskStopReason {
 /// ```rust
 /// use tcrm_task::tasks::{
 ///     config::TaskConfig,
-///     tokio::spawn::spawner::TaskSpawner,
+///     tokio::executor::TaskExecutor,
 ///     event::TaskTerminateReason
 /// };
 /// use tokio::sync::mpsc;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     #[cfg(windows)]
 ///     let config = TaskConfig::new("cmd").args(["/C", "echo", "running"]);
-///     let mut spawner = TaskSpawner::new("daemon".to_string(), config);
+///     #[cfg(unix)]
+///     let config = TaskConfig::new("echo").args(["running"]);
+///     
+///     let mut executor = TaskExecutor::new(config);
 ///     
 ///     let (tx, _rx) = mpsc::channel(100);
-///     spawner.start_direct(tx).await?;
+///     executor.coordinate_start(tx).await?;
 ///     
 ///     // Cleanup shutdown reason
 ///     let reason = TaskTerminateReason::Cleanup;
-///     spawner.send_terminate_signal(reason).await?;
+///     // Note: termination would be done via TaskControl trait
 ///     
 ///     Ok(())
 /// }

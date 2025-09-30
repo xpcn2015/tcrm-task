@@ -71,7 +71,7 @@ tracing-max_level_trace = ["tracing/max_level_trace"]
 
 [dev-dependencies]
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
-criterion = { version = "0.7", features = ["html_reports"] }
+criterion = { version = "0.7", features = ["html_reports", "async_tokio"] }
 serde_json = "1.0"
 futures = "0.3"
 
@@ -89,6 +89,6 @@ name = "task_config"
 harness = false
 
 [[bench]]
-name = "task_spawner"
+name = "task_executor"
 harness = false
-required-features = ["tokio"]
+required-features = ["tokio", "tokio-coordinate"]

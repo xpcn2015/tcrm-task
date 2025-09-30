@@ -9,6 +9,16 @@ use crate::tasks::{
 use std::os::unix::process::ExitStatusExt;
 
 impl TaskExecutor {
+    /// Handles the result of waiting for child process completion.
+    ///
+    /// Processes the outcome of the child process, extracts exit codes and
+    /// signal information, and updates the task context with the final status.
+    ///
+    /// # Arguments
+    ///
+    /// * `shared_context` - Shared task execution context
+    /// * `result` - Result from waiting on the child process
+    /// * `process_exited` - Mutable reference to mark that the process has exited
     pub(crate) async fn handle_wait_result(
         shared_context: Arc<TaskExecutorContext>,
         result: Result<ExitStatus, std::io::Error>,

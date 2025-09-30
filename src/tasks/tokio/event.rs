@@ -10,12 +10,29 @@ use crate::tasks::{
 };
 
 impl TaskExecutor {
+    /// Sends a task event through the event channel.
+    ///
+    /// Attempts to send the event and logs a warning if the channel is closed.
+    ///
+    /// # Arguments
+    ///
+    /// * `event_tx` - Channel for sending task events  
+    /// * `event` - The event to send
     pub(crate) async fn send_event(event_tx: &mpsc::Sender<TaskEvent>, event: TaskEvent) {
         if (event_tx.send(event.clone()).await).is_err() {
             #[cfg(feature = "tracing")]
             tracing::warn!(event = ?event, "Event channel closed");
         }
     }
+    /// Sends an error event and transitions task to finished state.
+    ///
+    /// Used when a critical error occurs that requires terminating the task.
+    /// Sends both an error event and a stopped event to signal completion.
+    ///
+    /// # Arguments
+    ///
+    /// * `error` - The error that occurred
+    /// * `event_tx` - Channel for sending task events
     pub(crate) async fn send_error_event_and_stop(
         &mut self,
         error: TaskError,

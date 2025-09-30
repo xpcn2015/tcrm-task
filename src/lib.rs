@@ -1,73 +1,50 @@
 //! # tcrm-task
 //!
-//! A Rust library for executing and managing system processes.
-//! Built for developers who need process execution with
-//! validation and real-time event monitoring.
+//! A process execution library.
 //!
 //! ## Features
 //!
 //! - **Real-time Events**: Monitor process output, state changes, and lifecycle events
-//! - **Timeout Management**: Configurable timeouts for process execution
-//! - **Stdin Support**: Send input to running processes
-//! - **Ready Indicators**: Detect when long-running processes are ready to accept requests
-//! - **Serialization**: Optional serde and flatbuffers support for persistence
+//! - **Timeout**: Configurable process execution timeouts
+//! - **Ready Indicators**: Detect when long-running processes are ready to accept requests via output matching
+//! - **Process control**: Cross-platform signal sending and process control
+//! - **Process Groups**: Optional feature for managing all child processes via groups/job objects
 //!
 //! ## Quick Start
 //!
 //! ```rust
-//! use tcrm_task::tasks::{config::TaskConfig, tokio::spawn::spawner::TaskSpawner};
+//! use tcrm_task::tasks::{config::TaskConfig, tokio::executor::TaskExecutor};
 //! use tokio::sync::mpsc;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     // Create a simple command configuration
-//!     let config = TaskConfig::new("cmd")
-//!         .args(["/C", "echo", "Hello, World!"]);
+//!     // Create and validate configuration
+//!     #[cfg(windows)]
+//!     let config = TaskConfig::new("cmd").args(["/C", "echo", "Hello, World!"]);
+//!     #[cfg(unix)]
+//!     let config = TaskConfig::new("echo").args(["Hello, World!"]);
 //!
-//!     // Validate the configuration
-//!     config.validate()?;
-//!
-//!     // Create a spawner and execute the task
+//!     // Create executor and event channel
+//!     let mut executor = TaskExecutor::new(config);
 //!     let (tx, mut rx) = mpsc::channel(100);
-//!     let mut spawner = TaskSpawner::new("hello".to_string(), config);
 //!     
-//!     spawner.start_direct(tx).await?;
+//!     // Spawns a new asynchronous task
+//!     executor.coordinate_start(tx).await?;
 //!
 //!     // Process events
 //!     while let Some(event) = rx.recv().await {
-//!         println!("Event: {:?}", event);
-//!     }
-//!
-//!     Ok(())
-//! }
-//! ```
-//!
-//! ## Advanced Usage
-//!
-//! ### Long-running Process with Ready Indicator
-//!
-//! ```rust
-//! use tcrm_task::tasks::{config::{TaskConfig, StreamSource}, tokio::spawn::spawner::TaskSpawner};
-//! use tokio::sync::mpsc;
-//!
-//! #[tokio::main]
-//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     let config = TaskConfig::new("cmd")
-//!         .args(["/C", "echo", "Server listening on"])
-//!         .ready_indicator("Server listening on")
-//!         .ready_indicator_source(StreamSource::Stdout)
-//!         .timeout_ms(30000);
-//!
-//!     let (tx, mut rx) = mpsc::channel(100);
-//!     let mut spawner = TaskSpawner::new("server".to_string(), config);
-//!     
-//!     spawner.start_direct(tx).await?;
-//!
-//!     // Wait for ready event
-//!     while let Some(event) = rx.recv().await {
-//!         if matches!(event, tcrm_task::tasks::event::TaskEvent::Ready { .. }) {
-//!             println!("Server is ready!");
-//!             break;
+//!         match event {
+//!             tcrm_task::tasks::event::TaskEvent::Started { process_id, .. } => {
+//!                 println!("Process started with ID: {}", process_id);
+//!             }
+//!             tcrm_task::tasks::event::TaskEvent::Output { line, .. } => {
+//!                 println!("Output: {}", line);
+//!             }
+//!             tcrm_task::tasks::event::TaskEvent::Stopped { exit_code, .. } => {
+//!                 println!("Process finished with exit code: {:?}", exit_code);
+//!                 break;
+//!             }
+//!             _ => {}
 //!         }
 //!     }
 //!
@@ -75,44 +52,117 @@
 //! }
 //! ```
 //!
-//! ### Process with Environment Variables and Working Directory
+//! ### Long-running Process with Ready Indicator
 //!
 //! ```rust
-//! use tcrm_task::tasks::{config::TaskConfig, tokio::spawn::spawner::TaskSpawner};
-//! use std::collections::HashMap;
+//! use tcrm_task::tasks::{
+//!     config::{TaskConfig, StreamSource},
+//!     tokio::executor::TaskExecutor,
+//!     event::TaskEvent
+//! };
+//! use tokio::sync::mpsc;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     let mut env = HashMap::new();
-//!     env.insert("RUST_LOG".to_string(), "debug".to_string());
-//!     env.insert("APP_ENV".to_string(), "production".to_string());
-//!
+//!     #[cfg(windows)]
 //!     let config = TaskConfig::new("cmd")
-//!         .args(["/C", "dir"])
-//!         .working_dir("C:\\")
-//!         .env(env)
-//!         .timeout_ms(300000); // 5 minutes
-//!
-//!     config.validate()?;
+//!         .args(["/C", "echo", "Server listening on port 3000"])
+//!         .ready_indicator("Server listening")
+//!         .ready_indicator_source(StreamSource::Stdout)
+//!         .timeout_ms(30000);
 //!     
-//!     // ... execute task
+//!     #[cfg(unix)]
+//!     let config = TaskConfig::new("echo")
+//!         .args(["Server listening on port 3000"])
+//!         .ready_indicator("Server listening")
+//!         .ready_indicator_source(StreamSource::Stdout)
+//!         .timeout_ms(30000);
+//!
+//!     let mut executor = TaskExecutor::new(config);
+//!     let (tx, mut rx) = mpsc::channel(100);
+//!     
+//!     executor.coordinate_start(tx).await?;
+//!
+//!     // Wait for ready event
+//!     while let Some(event) = rx.recv().await {
+//!         match event {
+//!             TaskEvent::Ready => {
+//!                 println!("Server is ready for requests!");
+//!                 break;
+//!             }
+//!             TaskEvent::Output { line, .. } => {
+//!                 println!("Server log: {}", line);
+//!             }
+//!             TaskEvent::Error { error } => {
+//!                 eprintln!("Error: {}", error);
+//!                 break;
+//!             }
+//!             _ => {}
+//!         }
+//!     }
+//!
 //!     Ok(())
 //! }
 //! ```
 //!
-//! ## Validation
+//! ### Process Control and Termination
 //!
-//! This library includes validation to prevent:
-//! - Path traversal  
-//! - Null byte
+//! ```rust
+//! use tcrm_task::tasks::{
+//!     config::TaskConfig,
+//!     tokio::executor::TaskExecutor,
+//!     control::TaskControl,
+//!     event::TaskTerminateReason
+//! };
+//! use tokio::sync::mpsc;
 //!
-//! All configurations are validated before execution using the built-in validator.
+//! #[tokio::main]
+//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     #[cfg(windows)]
+//!     let config = TaskConfig::new("cmd")
+//!         .args(["/C", "timeout", "/t", "10"])
+//!         .timeout_ms(5000); // 5 second timeout
+//!     
+//!     #[cfg(unix)]    
+//!     let config = TaskConfig::new("sleep")
+//!         .args(["10"])
+//!         .timeout_ms(5000); // 5 second timeout
 //!
-//! ## Optional Features
+//!     let mut executor = TaskExecutor::new(config);
+//!     let (tx, mut rx) = mpsc::channel(100);
+//!     
+//!     executor.coordinate_start(tx).await?;
 //!
-//! - `serde`: Enable serialization support for all types
-//! - `flatbuffers`: Enable `FlatBuffers` serialization for high-performance scenarios
-//! - `tracing`: Enable structured logging integration
+//!     // Terminate after 2 seconds
+//!     tokio::spawn(async move {
+//!         tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+//!         let _ = executor.terminate_task(TaskTerminateReason::UserRequested);
+//!     });
+//!
+//!     // Process events until completion
+//!     while let Some(event) = rx.recv().await {
+//!         match event {
+//!             tcrm_task::tasks::event::TaskEvent::Stopped { reason, .. } => {
+//!                 println!("Process stopped: {:?}", reason);
+//!                 break;
+//!             }
+//!             _ => {}
+//!         }
+//!     }
+//!
+//!     Ok(())
+//! }
+//! ```
+//!
+//! ## Features
+//!
+//! - `tokio`: Async runtime support (default)
+//! - `tokio-coordinate`: Full coordination module (default)
+//! - `process-group`: Process group management (default)
+//! - `signal`: Sending signals to processes
+//! - `serde`: Serialization support for all types
+//! - `flatbuffers`: High-performance serialization
+//! - `tracing`: Structured logging integration
 
 #[cfg(feature = "flatbuffers")]
 pub mod flatbuffers;

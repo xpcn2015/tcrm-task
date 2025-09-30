@@ -1,3 +1,36 @@
+/// Terminate a process by process ID
+///
+/// Attempts to gracefully terminate a process using platform-specific methods.
+/// On Unix systems, sends SIGTERM signal. On Windows, uses TerminateProcess.
+///
+/// # Arguments
+///
+/// * `pid` - The process ID to terminate
+///
+/// # Returns
+///
+/// - `Ok(())` if the process was terminated successfully
+/// - `Err(std::io::Error)` if termination failed
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The process does not exist (no such process)
+/// - Permission denied
+/// - Invalid process ID
+/// - Platform-specific termination failed
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use tcrm_task::tasks::process::child::terminate_process;
+///
+/// let pid = 1234;
+/// match terminate_process(pid) {
+///     Ok(()) => println!("Process terminated successfully"),
+///     Err(e) => eprintln!("Failed to terminate process: {}", e),
+/// }
+/// ```
 pub fn terminate_process(pid: u32) -> Result<(), std::io::Error> {
     #[cfg(unix)]
     {

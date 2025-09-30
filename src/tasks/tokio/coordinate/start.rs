@@ -9,6 +9,114 @@ use crate::tasks::{
 };
 
 impl TaskExecutor {
+    /// Start coordinated process execution with event monitoring
+    ///
+    /// This is the main execution method that spawns the process, sets up event monitoring,
+    /// and manages the complete process lifecycle. It handles stdout/stderr streaming,
+    /// timeout management, termination signals, and process cleanup in a coordinated
+    /// async event loop.
+    ///
+    /// # Arguments
+    ///
+    /// * `event_tx` - Channel sender for emitting [`TaskEvent`]s during process execution
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` - Process coordination started successfully
+    /// * `Err(TaskError)` - Configuration validation or process spawning failed
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TaskError`] for:
+    /// - [`TaskError::InvalidConfiguration`] - Configuration validation failed
+    /// - [`TaskError::IO`] - Process spawning failed
+    /// - [`TaskError::Handle`] - Process handle or watcher setup failed
+    ///
+    /// # Events Emitted
+    ///
+    /// During execution, the following events are sent via `event_tx`:
+    /// - [`TaskEvent::Started`] - Process spawned successfully
+    /// - [`TaskEvent::Output`] - Lines from stdout/stderr
+    /// - [`TaskEvent::Ready`] - Ready indicator detected (if configured)
+    /// - [`TaskEvent::Stopped`] - Process completed with exit code
+    /// - [`TaskEvent::Error`] - Errors during execution
+    ///
+    /// # Examples
+    ///
+    /// ## Basic Usage
+    /// ```rust
+    /// use tcrm_task::tasks::{config::TaskConfig, tokio::executor::TaskExecutor};
+    /// use tokio::sync::mpsc;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     #[cfg(windows)]
+    ///     let config = TaskConfig::new("cmd").args(["/C", "echo", "test"]);
+    ///     #[cfg(unix)]
+    ///     let config = TaskConfig::new("echo").args(["test"]);
+    ///     
+    ///     config.validate()?;
+    ///     
+    ///     let mut executor = TaskExecutor::new(config);
+    ///     let (tx, mut rx) = mpsc::channel(100);
+    ///     
+    ///     // Start coordination - returns immediately, process runs in background
+    ///     executor.coordinate_start(tx).await?;
+    ///     
+    ///     // Process events until completion
+    ///     while let Some(event) = rx.recv().await {
+    ///         println!("Event: {:?}", event);
+    ///         if matches!(event, tcrm_task::tasks::event::TaskEvent::Stopped { .. }) {
+    ///             break;
+    ///         }
+    ///     }
+    ///     
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// ## With Ready Indicator
+    /// ```rust
+    /// use tcrm_task::tasks::{
+    ///     config::{TaskConfig, StreamSource},
+    ///     tokio::executor::TaskExecutor,
+    ///     event::TaskEvent
+    /// };
+    /// use tokio::sync::mpsc;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     #[cfg(windows)]
+    ///     let config = TaskConfig::new("cmd")
+    ///         .args(["/C", "echo", "Server ready"])
+    ///         .ready_indicator("Server ready")
+    ///         .ready_indicator_source(StreamSource::Stdout);
+    ///     
+    ///     #[cfg(unix)]
+    ///     let config = TaskConfig::new("echo")
+    ///         .args(["Server ready"])
+    ///         .ready_indicator("Server ready")
+    ///         .ready_indicator_source(StreamSource::Stdout);
+    ///     
+    ///     let mut executor = TaskExecutor::new(config);
+    ///     let (tx, mut rx) = mpsc::channel(100);
+    ///     
+    ///     executor.coordinate_start(tx).await?;
+    ///     
+    ///     while let Some(event) = rx.recv().await {
+    ///         match event {
+    ///             TaskEvent::Ready => {
+    ///                 println!("Process is ready!");
+    ///                 // Can now interact with the running process
+    ///             }
+    ///             TaskEvent::Stopped { .. } => break,
+    ///             _ => {}
+    ///         }
+    ///     }
+    ///     
+    ///     Ok(())
+    /// }
+    /// ```
     pub async fn coordinate_start(
         &mut self,
         event_tx: mpsc::Sender<TaskEvent>,

@@ -6,6 +6,19 @@ use crate::tasks::{
 };
 
 impl TaskExecutor {
+    /// Updates the task state and records appropriate timestamps.
+    ///
+    /// Sets the new state in the shared context and updates the corresponding
+    /// timestamp (running_at for Running state, finished_at for Finished state).
+    ///
+    /// # Arguments
+    ///
+    /// * `shared_context` - The shared task execution context
+    /// * `new_state` - The new state to set
+    ///
+    /// # Returns
+    ///
+    /// The timestamp when the state change occurred
     pub(crate) fn update_state(
         shared_context: &Arc<TaskExecutorContext>,
         new_state: TaskState,

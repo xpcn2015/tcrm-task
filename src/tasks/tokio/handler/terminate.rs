@@ -9,6 +9,17 @@ use crate::tasks::{
 };
 
 impl TaskExecutor {
+    /// Handles task termination requests.
+    ///
+    /// Processes termination signals and performs appropriate cleanup actions
+    /// such as killing the child process and setting termination flags.
+    ///
+    /// # Arguments
+    ///
+    /// * `shared_context` - Shared task execution context
+    /// * `child` - The child process to terminate
+    /// * `reason` - Result containing the termination reason or channel error
+    /// * `termination_requested` - Flag to mark that termination was requested
     pub(crate) async fn handle_terminate(
         shared_context: Arc<TaskExecutorContext>,
         child: &mut Child,

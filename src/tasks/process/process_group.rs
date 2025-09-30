@@ -1,8 +1,23 @@
 //! Cross-platform process group management for killing entire process trees
-//! and propagating signals like pause/resume.//!
+//! and propagating signals like pause/resume.
+//!
 //! This module provides utilities to manage process groups on Unix systems
 //! and job objects on Windows to ensure that when a parent process is killed,
 //! all its children and grandchildren are also terminated.
+//!
+//! # Example
+//!
+//! ```rust,no_run
+//! use tcrm_task::tasks::process::process_group::ProcessGroup;
+//! use tokio::process::Command;
+//!
+//! let mut group = ProcessGroup::new();
+//! let mut cmd = Command::new("echo");
+//! cmd.arg("hello");
+//!
+//! let configured_cmd = group.create_with_command(cmd).unwrap();
+//! // Command is now configured to run in the process group
+//! ```
 
 use thiserror::Error;
 use tokio::process::Command;
@@ -57,6 +72,20 @@ pub enum ProcessGroupError {
 }
 
 impl ProcessGroup {
+    /// Create a new, inactive process group
+    ///
+    /// # Returns
+    ///
+    /// A new `ProcessGroup` instance that is not yet active
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use tcrm_task::tasks::process::process_group::ProcessGroup;
+    ///
+    /// let group = ProcessGroup::new();
+    /// assert!(!group.is_active());
+    /// ```
     pub fn new() -> Self {
         Self {
             inner: ProcessGroupInner {
@@ -69,6 +98,21 @@ impl ProcessGroup {
             },
         }
     }
+
+    /// Check if the process group is active
+    ///
+    /// # Returns
+    ///
+    /// `true` if the process group has been created and is active, `false` otherwise
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use tcrm_task::tasks::process::process_group::ProcessGroup;
+    ///
+    /// let group = ProcessGroup::new();
+    /// assert!(!group.is_active());
+    /// ```
     pub fn is_active(&self) -> bool {
         #[cfg(unix)]
         {
@@ -84,6 +128,34 @@ impl ProcessGroup {
         }
     }
     /// Creates a new process group and configures the command to use it.
+    ///
+    /// This method prepares a Command to run as part of this process group. On Unix systems,
+    /// it configures the command to create a new session and process group using setsid().
+    /// On Windows, it configures the command to run in a new job object with appropriate
+    /// creation flags.
+    ///
+    /// # Arguments
+    ///
+    /// * `command` - The Command to configure for process group execution
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Command)` - The configured command ready for execution
+    /// * `Err(ProcessGroupError)` - If process group configuration fails
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use tcrm_task::tasks::process::process_group::ProcessGroup;
+    /// use tokio::process::Command;
+    ///
+    /// let mut group = ProcessGroup::new();
+    /// let mut cmd = Command::new("echo");
+    /// cmd.arg("hello");
+    ///
+    /// let configured_cmd = group.create_with_command(cmd).unwrap();
+    /// // Command is now configured to run in the process group
+    /// ```
     pub fn create_with_command(
         &mut self,
         #[allow(unused_mut)] mut command: Command,
@@ -148,22 +220,45 @@ impl ProcessGroup {
 
     /// Assigns a spawned child process to this process group/job.
     ///
-    /// # Windows Race Condition Warning
-    /// On Windows, there is an unavoidable race condition: if the spawned process creates child processes
-    /// before it is assigned to the job object, those children will not be part of the job and can escape
-    /// containment. This is a limitation of the Windows API. To minimize the risk, assign the process to the job
-    /// immediately after spawning, before it can create children. There is no supported way to make this atomic
-    /// with standard Rust APIs.
+    /// On Unix systems, this stores the process group ID. On Windows, this assigns
+    /// the process to the job object for group management.
     ///
     /// After assignment, all future children of the process will be contained in the job, unless the process has
     /// breakaway privileges (which are not enabled by default in this implementation).
     ///
-    /// For malware analysis or strong containment, be aware of this limitation.
-    ///
-    /// See: https://devblogs.microsoft.com/oldnewthing/20130405-00/?p=4743
-    ///
     /// # Arguments
-    /// * `child` - The spawned child process to assign
+    ///
+    /// * `child_id` - The process ID of the child to assign to this group
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` - If the assignment was successful
+    /// * `Err(ProcessGroupError)` - If assignment fails or the platform is unsupported
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use tcrm_task::tasks::process::process_group::ProcessGroup;
+    /// use std::process::Command;
+    ///
+    /// let mut group = ProcessGroup::new();
+    ///
+    /// // After spawning a process, assign it to the group
+    /// // let child = Command::new("echo").spawn()?;
+    /// // group.assign_child(child.id())?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    ///
+    /// # Windows Race Condition Note
+    /// On Windows, there is a well-known race condition: if a spawned process creates child processes
+    /// before it is assigned to the job object, those children will not be part of the job
+    /// and can escape containment.
+    ///
+    /// See: <https://devblogs.microsoft.com/oldnewthing/20130405-00/?p=4743>
+    ///
+    /// To avoid this issue, the process needs to be spawned in a suspended state,
+    /// assigned to the job object, and only then resuming it. This ensures that no
+    /// child processes can escape the job before assignment
     pub fn assign_child(&mut self, child_id: u32) -> Result<(), ProcessGroupError> {
         #[cfg(unix)]
         {
@@ -222,6 +317,27 @@ impl ProcessGroup {
     }
 
     /// Terminates all processes in the group/job.
+    ///
+    /// Sends a termination signal to all processes in the process group. On Unix systems,
+    /// this sends SIGTERM to the process group using killpg(). On Windows, this terminates
+    /// all processes in the job object.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` - If the termination signal was sent successfully or processes were already terminated
+    /// * `Err(ProcessGroupError)` - If termination fails due to permissions or other errors
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use tcrm_task::tasks::process::process_group::ProcessGroup;
+    ///
+    /// let mut group = ProcessGroup::new();
+    /// // ... spawn processes in the group ...
+    ///
+    /// // Terminate all processes in the group
+    /// group.terminate_group().unwrap();
+    /// ```
     pub fn terminate_group(&self) -> Result<(), ProcessGroupError> {
         #[cfg(unix)]
         {

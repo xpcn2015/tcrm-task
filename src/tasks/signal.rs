@@ -106,7 +106,37 @@ pub enum ProcessSignal {
     #[cfg(windows)]
     CtrlBreakEvent,
 }
-
+/// Send a signal to a process by process ID (Unix implementation)
+///
+/// # Arguments
+///
+/// * `signal` - The signal to send
+/// * `process_id` - The process ID to send the signal to
+///
+/// # Returns
+///
+/// - `Ok(())` if the signal was sent successfully
+/// - `Err(std::io::Error)` if the signal could not be sent
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The process does not exist
+/// - Permission denied
+/// - Invalid signal or process ID
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use tcrm_task::tasks::signal::{ProcessSignal, send_signal_to_process_id};
+///
+/// let pid = 1234;
+/// let result = send_signal_to_process_id(ProcessSignal::SIGTERM, pid);
+/// match result {
+///     Ok(()) => println!("Signal sent successfully"),
+///     Err(e) => eprintln!("Failed to send signal: {}", e),
+/// }
+/// ```
 #[cfg(unix)]
 pub fn send_signal_to_process_id(signal: ProcessSignal, process_id: u32) -> std::io::Result<()> {
     use nix::sys::signal::{Signal, kill};
@@ -131,6 +161,38 @@ pub fn send_signal_to_process_id(signal: ProcessSignal, process_id: u32) -> std:
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
 }
 
+/// Send a signal to a process by process ID (Windows implementation)
+///
+/// # Arguments
+///
+/// * `signal` - The signal to send (mapped to Windows console events or process termination)
+/// * `process_id` - The process ID to send the signal to
+///
+/// # Returns
+///
+/// - `Ok(())` if the signal was sent successfully
+/// - `Err(std::io::Error)` if the signal could not be sent
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The process does not exist
+/// - Permission denied
+/// - Invalid signal or process ID
+/// - Console event generation failed
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use tcrm_task::tasks::signal::{ProcessSignal, send_signal_to_process_id};
+///
+/// let pid = 1234;
+/// let result = send_signal_to_process_id(ProcessSignal::SIGTERM, pid);
+/// match result {
+///     Ok(()) => println!("Signal sent successfully"),
+///     Err(e) => eprintln!("Failed to send signal: {}", e),
+/// }
+/// ```
 #[cfg(windows)]
 pub fn send_signal_to_process_id(signal: ProcessSignal, process_id: u32) -> std::io::Result<()> {
     use windows::Win32::System::Console::{

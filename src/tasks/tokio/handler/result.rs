@@ -10,6 +10,16 @@ use crate::tasks::{
 };
 
 impl TaskExecutor {
+    /// Handles the final result of task execution.
+    ///
+    /// Processes the task completion, ensures proper cleanup (including
+    /// process group termination if configured), and sends the final
+    /// stopped event with the appropriate reason and exit code.
+    ///
+    /// # Arguments
+    ///
+    /// * `shared_context` - Shared task execution context
+    /// * `event_tx` - Channel for sending task events
     pub(crate) async fn handle_result(
         shared_context: Arc<TaskExecutorContext>,
         event_tx: &mpsc::Sender<TaskEvent>,

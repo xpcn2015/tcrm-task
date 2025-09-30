@@ -26,7 +26,6 @@ impl ConfigValidator {
     ///
     /// Returns a [`TaskError::InvalidConfiguration`] if:
     /// - Command is empty or contains only whitespace
-    /// - Command contains null bytes or obvious injection patterns
     /// - Command has leading or trailing whitespace
     /// - Command length exceeds maximum allowed length
     ///
@@ -34,10 +33,10 @@ impl ConfigValidator {
     /// ```rust
     /// use tcrm_task::tasks::validator::ConfigValidator;
     ///
-    /// let valid_command = "echo Hello";
+    /// let valid_command = "echo";
     /// assert!(ConfigValidator::validate_command(valid_command).is_ok());
     ///
-    /// let invalid_command = "\0";
+    /// let invalid_command = "";
     /// assert!(ConfigValidator::validate_command(invalid_command).is_err());
     /// ```
     pub fn validate_command(command: &str) -> Result<(), TaskError> {
@@ -267,6 +266,33 @@ impl ConfigValidator {
         Ok(())
     }
 
+    /// Validates ready indicator string
+    ///
+    /// # Arguments
+    ///
+    /// * `indicator` - The ready indicator string to validate
+    ///
+    /// # Returns
+    ///
+    /// - `Ok(())` if the indicator is valid
+    /// - `Err(TaskError::InvalidConfiguration)` if the indicator is invalid
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TaskError::InvalidConfiguration`] if:
+    /// - Indicator is empty
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use tcrm_task::tasks::validator::ConfigValidator;
+    ///
+    /// let valid_indicator = "ready";
+    /// assert!(ConfigValidator::validate_ready_indicator(valid_indicator).is_ok());
+    ///
+    /// let invalid_indicator = "";
+    /// assert!(ConfigValidator::validate_ready_indicator(invalid_indicator).is_err());
+    /// ```
     pub fn validate_ready_indicator(indicator: &str) -> Result<(), TaskError> {
         if indicator.is_empty() {
             return Err(TaskError::InvalidConfiguration(
@@ -276,7 +302,31 @@ impl ConfigValidator {
         Ok(())
     }
 
-    /// Validates timeout value (must be greater than 0 if present)
+    /// Validates timeout value.
+    ///
+    /// Ensures that the timeout value is greater than 0. A timeout of 0 would mean
+    /// immediate timeout, which is not useful for task execution.
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - The timeout value in milliseconds to validate
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` - If timeout is valid (greater than 0)
+    /// * `Err(TaskError)` - If timeout is 0
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use tcrm_task::tasks::validator::ConfigValidator;
+    ///
+    /// // Valid timeout
+    /// assert!(ConfigValidator::validate_timeout(&5000).is_ok());
+    ///
+    /// // Invalid timeout (0)
+    /// assert!(ConfigValidator::validate_timeout(&0).is_err());
+    /// ```
     pub fn validate_timeout(timeout: &u64) -> Result<(), TaskError> {
         if *timeout == 0 {
             return Err(TaskError::InvalidConfiguration(
@@ -299,21 +349,21 @@ impl ConfigValidator {
     /// # Returns
     ///
     /// `true` if obvious injection patterns are detected, `false` otherwise.
-    // fn contains_obvious_injection(input: &str) -> bool {
-    //     // Only block patterns that are clearly malicious, not functional shell features
-    //     let obvious_injection_patterns = [
-    //         "\0",         // Null bytes
-    //         "\x00",       // Null bytes (hex)
-    //         "\r\n",       // CRLF injection
-    //         "eval(",      // Direct eval calls
-    //         "exec(",      // Direct exec calls
-    //         "os.system(", // Direct Python code execution
-    //     ];
+    pub fn contains_obvious_injection(input: &str) -> bool {
+        // Only block patterns that are clearly malicious, not functional shell features
+        let obvious_injection_patterns = [
+            "\0",         // Null bytes
+            "\x00",       // Null bytes (hex)
+            "\r\n",       // CRLF injection
+            "eval(",      // Direct eval calls
+            "exec(",      // Direct exec calls
+            "os.system(", // Direct Python code execution
+        ];
 
-    //     obvious_injection_patterns
-    //         .iter()
-    //         .any(|pattern| input.contains(pattern))
-    // }
+        obvious_injection_patterns
+            .iter()
+            .any(|pattern| input.contains(pattern))
+    }
 
     /// Validates command with strict security rules for untrusted input sources.
     ///

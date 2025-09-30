@@ -18,17 +18,21 @@
 ///
 /// ## State Monitoring
 /// ```rust
-/// use tcrm_task::tasks::{config::TaskConfig, tokio::spawn::spawner::TaskSpawner, state::TaskState};
+/// use tcrm_task::tasks::{config::TaskConfig, tokio::executor::TaskExecutor, state::TaskState, control::TaskStatusInfo};
 ///
 /// #[tokio::main]
 /// async fn main() {
+///     #[cfg(windows)]
 ///     let config = TaskConfig::new("cmd").args(["/C", "echo", "hello"]);
-///     let spawner = TaskSpawner::new("test".to_string(), config);
+///     #[cfg(unix)]
+///     let config = TaskConfig::new("echo").args(["hello"]);
+///     
+///     let executor = TaskExecutor::new(config);
 ///     
 ///     // Initially pending
-///     assert_eq!(spawner.get_state().await, TaskState::Pending);
+///     assert_eq!(executor.get_state(), TaskState::Pending);
 ///     
-///     // After calling start_direct(), state will progress through:
+///     // After calling coordinate_start(), state will progress through:
 ///     // Pending → Initiating → Running → Finished
 /// }
 /// ```
@@ -37,17 +41,22 @@
 /// ```rust
 /// use tcrm_task::tasks::{
 ///     config::TaskConfig,
-///     tokio::spawn::spawner::TaskSpawner,
-///     state::TaskState
+///     tokio::executor::TaskExecutor,
+///     state::TaskState,
+///     control::TaskStatusInfo
 /// };
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     #[cfg(windows)]
 ///     let config = TaskConfig::new("cmd").args(["/C", "echo", "hello"]);
-///     let spawner = TaskSpawner::new("demo".to_string(), config);
+///     #[cfg(unix)]
+///     let config = TaskConfig::new("echo").args(["hello"]);
+///     
+///     let executor = TaskExecutor::new(config);
 ///
 ///     // Check initial state
-///     let state = spawner.get_state().await;
+///     let state = executor.get_state();
 ///     assert_eq!(state, TaskState::Pending);
 ///     println!("Task is in {:?} state", state);
 ///
@@ -90,7 +99,13 @@ pub enum TaskState {
     /// or encounters an error. No further state transitions occur.
     Finished = 4,
 
-    Invalid = 255, // Internal use only
+    /// Invalid state (should not occur)
+    ///
+    /// This state indicates an error in state management. It should not be
+    /// possible to reach this state during normal operation.
+    ///
+    /// Internal use only.
+    Invalid = 255,
 }
 impl From<u8> for TaskState {
     fn from(value: u8) -> Self {

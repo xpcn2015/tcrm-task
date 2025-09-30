@@ -34,19 +34,19 @@ use thiserror::Error;
 ///
 /// fn handle_event(event: TaskEvent) {
 ///     match event {
-///         TaskEvent::Error { task_name, error } => {
+///         TaskEvent::Error { error } => {
 ///             match error {
 ///                 TaskError::IO(msg) => {
-///                     eprintln!("Task '{}' IO error: {}", task_name, msg);
+///                     eprintln!("IO error: {}", msg);
 ///                 }
 ///                 TaskError::InvalidConfiguration(msg) => {
-///                     eprintln!("Task '{}' config error: {}", task_name, msg);
+///                     eprintln!("Config error: {}", msg);
 ///                 }
 ///                 TaskError::Channel(msg) => {
-///                     eprintln!("Task '{}' channel error: {}", task_name, msg);
+///                     eprintln!("Channel error: {}", msg);
 ///                 }
 ///                 _ => {
-///                     eprintln!("Task '{}' error: {}", task_name, error);
+///                     eprintln!("Other error: {}", error);
 ///                 }
 ///             }
 ///         }

@@ -9,6 +9,22 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 
 impl TaskExecutor {
+    /// Handles output from stdout/stderr streams.
+    ///
+    /// Processes each line of output from the child process, emits output events,
+    /// and checks for ready indicators. Returns true if the stream should be closed.
+    ///
+    /// # Arguments
+    ///
+    /// * `shared_context` - Shared task execution context
+    /// * `line` - Result containing the line read from the stream
+    /// * `event_tx` - Channel for sending task events
+    /// * `src` - Source of the output (stdout/stderr)
+    ///
+    /// # Returns
+    ///
+    /// * `true` - If the stream should be closed (EOF or error)
+    /// * `false` - If the stream should continue reading
     pub(crate) async fn handle_output(
         shared_context: Arc<TaskExecutorContext>,
         line: Result<Option<String>, std::io::Error>,

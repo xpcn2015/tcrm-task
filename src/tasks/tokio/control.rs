@@ -8,6 +8,9 @@ use crate::tasks::{
     tokio::executor::TaskExecutor,
 };
 
+#[cfg(feature = "signal")]
+use crate::tasks::signal::ProcessSignal;
+
 impl TaskControl for TaskExecutor {
     fn terminate_task(&mut self, reason: TaskTerminateReason) -> Result<(), TaskError> {
         let current_state = self.get_state();
@@ -32,7 +35,7 @@ impl TaskControl for TaskExecutor {
     }
 
     #[cfg(feature = "signal")]
-    fn send_signal(&self, signal: ProcessSignal) -> Result<(), TaskError> {
+    fn send_signal(&self, _signal: ProcessSignal) -> Result<(), TaskError> {
         todo!()
     }
 }
@@ -57,6 +60,7 @@ impl TaskStatusInfo for TaskExecutor {
     fn get_finished_at(&self) -> Option<SystemTime> {
         self.shared_context.get_finished_at()
     }
+
     fn get_exit_code(&self) -> Option<i32> {
         self.shared_context.get_exit_code()
     }
