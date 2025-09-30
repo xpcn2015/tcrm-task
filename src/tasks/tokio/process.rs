@@ -92,6 +92,8 @@ impl TaskExecutor {
                     exit_code: None,
                     finished_at: time,
                     reason: TaskStopReason::Error(error.clone()),
+                    #[cfg(unix)]
+                    signal: None,
                 };
                 Self::send_event(event_tx, finish_event).await;
 
@@ -255,6 +257,14 @@ impl TaskExecutor {
         {
             return Ok(cmd);
         }
+        let mut group = self.shared_context.group.lock().await;
+        let cmd = group.create_with_command(cmd).map_err(|e| {
+            let msg = format!("Failed to create process group: {}", e);
+            #[cfg(feature = "tracing")]
+            tracing::error!(error=%e, "{}", msg);
+
+            TaskError::Control(msg)
+        })?;
         Ok(cmd)
     }
 }

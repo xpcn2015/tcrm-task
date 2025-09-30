@@ -52,15 +52,24 @@ async fn valid() {
                 exit_code,
                 reason,
                 finished_at,
+                #[cfg(unix)]
+                signal,
             } => {
                 expected_completed_executor_state(&executor);
+
+                #[cfg(windows)]
+                assert_eq!(exit_code, Some(1));
+                #[cfg(unix)]
                 assert_eq!(exit_code, None);
+
                 assert_eq!(exit_code, executor.get_exit_code());
                 assert_eq!(finished_at, executor.get_finished_at().unwrap());
                 assert_eq!(
                     reason,
                     TaskStopReason::Terminated(TaskTerminateReason::Timeout)
                 );
+                #[cfg(unix)]
+                assert_eq!(signal, Some(9));
                 stopped_event = true;
             }
 

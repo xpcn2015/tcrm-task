@@ -85,22 +85,14 @@ impl ProcessGroup {
     }
     /// Creates a new process group and configures the command to use it.
     pub fn create_with_command(
+        &mut self,
         #[allow(unused_mut)] mut command: Command,
-    ) -> Result<(Command, Self), ProcessGroupError> {
+    ) -> Result<Command, ProcessGroupError> {
         #[cfg(unix)]
         {
             // Configure the command to create a new session and process group
-            // use nix::unistd::setsid;
-
-            // command.pre_exec(|| {
-            //     setsid().map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
-            //     Ok(())
-            // });
             unsafe {
                 command.pre_exec(|| {
-                    // Create a new session, making this process the session leader
-                    // and creating a new process group
-
                     use nix::unistd::setsid;
                     if setsid().is_err() {
                         return Err(std::io::Error::last_os_error());
@@ -108,11 +100,7 @@ impl ProcessGroup {
                     Ok(())
                 });
             }
-            let inner = ProcessGroupInner {
-                process_group_id: None,
-            };
-
-            Ok((command, ProcessGroup { inner: inner }))
+            Ok(command)
         }
         #[cfg(windows)]
         {
@@ -146,11 +134,9 @@ impl ProcessGroup {
                 }
                 ProcessGroupError::CreationFailed(format!("Failed to configure Job Object: {}", e))
             })?;
+            self.inner.job_handle = Some(SendHandle(job_handle));
 
-            let inner = ProcessGroupInner {
-                job_handle: Some(SendHandle(job_handle)),
-            };
-            Ok((command, ProcessGroup { inner }))
+            Ok(command)
         }
         #[cfg(not(any(unix, windows)))]
         {
@@ -214,7 +200,6 @@ impl ProcessGroup {
                 ));
             };
 
-            // Always close the process handle to prevent resource leaks
             unsafe {
                 let _ = CloseHandle(process_handle);
             }

@@ -61,12 +61,16 @@ async fn on_stdout() {
                 exit_code,
                 reason,
                 finished_at,
+                #[cfg(unix)]
+                signal,
             } => {
                 expected_completed_executor_state(&executor);
                 assert_eq!(exit_code, Some(0));
                 assert_eq!(exit_code, executor.get_exit_code());
                 assert_eq!(finished_at, executor.get_finished_at().unwrap());
                 assert_eq!(reason, TaskStopReason::Finished);
+                #[cfg(unix)]
+                assert_eq!(signal, None);
                 stopped = true;
             }
 
@@ -93,8 +97,8 @@ async fn on_stderr() {
         .ready_indicator("READY_INDICATOR".to_string())
         .ready_indicator_source(StreamSource::Stderr);
     #[cfg(unix)]
-    let config = TaskConfig::new("echo")
-        .args(["READY_INDICATOR", " >&2"])
+    let config = TaskConfig::new("sh")
+        .args(["-c", "echo READY_INDICATOR >&2"])
         .ready_indicator("READY_INDICATOR".to_string())
         .ready_indicator_source(StreamSource::Stderr);
 
@@ -131,12 +135,20 @@ async fn on_stderr() {
                 exit_code,
                 reason,
                 finished_at,
+                #[cfg(unix)]
+                signal,
             } => {
                 expected_completed_executor_state(&executor);
+                #[cfg(windows)]
                 assert_eq!(exit_code, Some(1));
+                #[cfg(unix)]
+                assert_eq!(exit_code, Some(0));
+
                 assert_eq!(exit_code, executor.get_exit_code());
                 assert_eq!(finished_at, executor.get_finished_at().unwrap());
                 assert_eq!(reason, TaskStopReason::Finished);
+                #[cfg(unix)]
+                assert_eq!(signal, None);
                 stopped = true;
             }
 
@@ -200,12 +212,16 @@ async fn src_mismatch() {
                 exit_code,
                 reason,
                 finished_at,
+                #[cfg(unix)]
+                signal,
             } => {
                 expected_completed_executor_state(&executor);
                 assert_eq!(exit_code, Some(0));
                 assert_eq!(exit_code, executor.get_exit_code());
                 assert_eq!(finished_at, executor.get_finished_at().unwrap());
                 assert_eq!(reason, TaskStopReason::Finished);
+                #[cfg(unix)]
+                assert_eq!(signal, None);
                 stopped = true;
             }
 

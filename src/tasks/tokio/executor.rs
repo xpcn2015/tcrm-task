@@ -48,6 +48,8 @@ impl TaskExecutor {
                     exit_code: None,
                     finished_at: time,
                     reason: TaskStopReason::Error(e.clone()),
+                    #[cfg(unix)]
+                    signal: None,
                 };
                 Self::send_event(event_tx, finish_event).await;
 

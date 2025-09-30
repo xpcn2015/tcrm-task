@@ -26,6 +26,9 @@ pub(crate) struct TaskExecutorContext {
     ready_flag: AtomicBool,
     internal_terminate_tx: Mutex<Option<oneshot::Sender<TaskTerminateReason>>>,
 
+    #[cfg(unix)]
+    terminate_signal_code: AtomicI32,
+
     #[cfg(feature = "process-group")]
     pub(crate) group: Mutex<ProcessGroup>,
 }
@@ -47,10 +50,27 @@ impl TaskExecutorContext {
             ready_flag: AtomicBool::new(false),
             internal_terminate_tx: Mutex::new(None),
 
+            #[cfg(unix)]
+            terminate_signal_code: AtomicI32::new(0),
+
             #[cfg(feature = "process-group")]
             group: Mutex::new(ProcessGroup::new()),
         }
     }
+
+    #[cfg(unix)]
+    pub(crate) fn get_terminate_signal_code(&self) -> Option<i32> {
+        let code = self
+            .terminate_signal_code
+            .load(std::sync::atomic::Ordering::SeqCst);
+        if code == 0 { None } else { Some(code) }
+    }
+    #[cfg(unix)]
+    pub(crate) fn set_terminate_signal_code(&self, code: Option<i32>) {
+        self.terminate_signal_code
+            .store(code.unwrap_or(0), std::sync::atomic::Ordering::SeqCst);
+    }
+
     pub(crate) async fn send_terminate_signal(&self, reason: TaskTerminateReason) {
         let mut guard = self.internal_terminate_tx.lock().await;
         if let Some(tx) = guard.take() {

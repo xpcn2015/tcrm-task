@@ -53,6 +53,8 @@ async fn exit_with_error() {
                 exit_code,
                 reason,
                 finished_at,
+                #[cfg(unix)]
+                signal,
             } => {
                 stopped_event = true;
                 expected_stopped_executor_state(&executor);
@@ -60,6 +62,8 @@ async fn exit_with_error() {
                 assert_eq!(exit_code, executor.get_exit_code());
                 assert_eq!(finished_at, executor.get_finished_at().unwrap());
                 assert!(matches!(reason, TaskStopReason::Finished));
+                #[cfg(unix)]
+                assert_eq!(signal, None);
             }
 
             TaskEvent::Error { error } => {

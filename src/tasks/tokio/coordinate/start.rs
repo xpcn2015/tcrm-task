@@ -37,22 +37,49 @@ impl TaskExecutor {
         let shared_context = self.shared_context.clone();
 
         tokio::spawn(async move {
-            let mut stop = false;
+            let mut process_exited = false;
+            let mut termination_requested = false;
+            let mut stdout_eof = false;
+            let mut stderr_eof = false;
+            let mut timeout_triggered = false;
             loop {
-                if stop {
+                // Exit conditions
+                if process_exited && stdout_eof && stderr_eof {
+                    break;
+                }
+
+                // Force exit if termination was requested and streams are taking too long
+                if termination_requested && stdout_eof && stderr_eof {
                     break;
                 }
                 tokio::select! {
-                    line = stdout.next_line() => Self::handle_output(shared_context.clone(), line, &event_tx, StreamSource::Stdout).await,
-                    line = stderr.next_line() => Self::handle_output(shared_context.clone(), line, &event_tx, StreamSource::Stderr).await,
-                    _ = Self::set_timeout_from_config(shared_context.clone()) => Self::handle_timeout(shared_context.clone()).await,
-                    reason = &mut terminate_rx => Self::handle_terminate(shared_context.clone(), reason, &mut stop).await,
-                    reason = &mut internal_terminate_rx => Self::handle_terminate(shared_context.clone(), reason, &mut stop).await,
-                    result = child.wait() => Self::handle_wait_result(shared_context.clone(), result,&mut stop).await,
+                    line = stdout.next_line(), if !stdout_eof =>
+                        stdout_eof = Self::handle_output(shared_context.clone(), line, &event_tx, StreamSource::Stdout).await,
+                    line = stderr.next_line(), if !stderr_eof =>
+                        stderr_eof = Self::handle_output(shared_context.clone(), line, &event_tx, StreamSource::Stderr).await,
+
+                    _ = Self::set_timeout_from_config(shared_context.clone(), &mut timeout_triggered) => Self::handle_timeout(shared_context.clone()).await,
+
+                    reason = Self::await_oneshot(&mut terminate_rx, termination_requested) =>
+                        Self::handle_terminate(shared_context.clone(), &mut child, reason, &mut termination_requested).await,
+                    reason = Self::await_oneshot(&mut internal_terminate_rx, termination_requested) =>
+                        Self::handle_terminate(shared_context.clone(), &mut child, reason, &mut termination_requested).await,
+
+                    result = child.wait() => Self::handle_wait_result(shared_context.clone(), result,&mut process_exited).await,
                 }
             }
-            Self::handle_result(shared_context.clone(), child, &event_tx).await;
+            Self::handle_result(shared_context.clone(), &event_tx).await;
         });
         Ok(())
+    }
+    async fn await_oneshot<T>(
+        rx: &mut oneshot::Receiver<T>,
+        termination_requested: bool,
+    ) -> Result<T, oneshot::error::RecvError> {
+        if termination_requested {
+            std::future::pending().await
+        } else {
+            rx.await
+        }
     }
 }

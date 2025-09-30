@@ -48,6 +48,8 @@ async fn empty_command() {
                 exit_code,
                 reason,
                 finished_at,
+                #[cfg(unix)]
+                signal,
             } => {
                 stopped_event = true;
                 expected_stopped_executor_state(&executor);
@@ -58,6 +60,8 @@ async fn empty_command() {
                     reason,
                     TaskStopReason::Error(TaskError::InvalidConfiguration(_))
                 ));
+                #[cfg(unix)]
+                assert_eq!(signal, None);
             }
 
             TaskEvent::Error { error } => {
@@ -108,6 +112,8 @@ async fn command_not_found() {
                 exit_code,
                 reason,
                 finished_at,
+                #[cfg(unix)]
+                signal,
             } => {
                 stopped_event = true;
                 expected_stopped_executor_state(&executor);
@@ -115,6 +121,8 @@ async fn command_not_found() {
                 assert_eq!(exit_code, executor.get_exit_code());
                 assert_eq!(finished_at, executor.get_finished_at().unwrap());
                 assert!(matches!(reason, TaskStopReason::Error(TaskError::IO(_))));
+                #[cfg(unix)]
+                assert_eq!(signal, None);
             }
 
             TaskEvent::Error { error } => {
@@ -172,6 +180,8 @@ async fn not_exist_dir() {
                 exit_code,
                 reason,
                 finished_at,
+                #[cfg(unix)]
+                signal,
             } => {
                 stopped_event = true;
                 expected_stopped_executor_state(&executor);
@@ -179,6 +189,8 @@ async fn not_exist_dir() {
                 assert_eq!(exit_code, executor.get_exit_code());
                 assert_eq!(finished_at, executor.get_finished_at().unwrap());
                 assert!(matches!(reason, TaskStopReason::Error(TaskError::IO(_))));
+                #[cfg(unix)]
+                assert_eq!(signal, None);
             }
 
             TaskEvent::Error { error } => {
@@ -233,6 +245,8 @@ async fn zero_timeout() {
                 exit_code,
                 reason,
                 finished_at,
+                #[cfg(unix)]
+                signal,
             } => {
                 stopped_event = true;
                 expected_stopped_executor_state(&executor);
@@ -243,6 +257,8 @@ async fn zero_timeout() {
                     reason,
                     TaskStopReason::Error(TaskError::InvalidConfiguration(_))
                 ));
+                #[cfg(unix)]
+                assert_eq!(signal, None);
             }
 
             TaskEvent::Error { error } => {

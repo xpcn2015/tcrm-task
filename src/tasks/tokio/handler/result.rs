@@ -1,11 +1,10 @@
 use std::sync::Arc;
 
-use tokio::{process::Child, sync::mpsc};
+use tokio::sync::mpsc;
 
 use crate::tasks::{
     error::TaskError,
     event::{TaskEvent, TaskStopReason},
-    process::child::terminate_process,
     state::TaskState,
     tokio::{context::TaskExecutorContext, executor::TaskExecutor},
 };
@@ -13,7 +12,6 @@ use crate::tasks::{
 impl TaskExecutor {
     pub(crate) async fn handle_result(
         shared_context: Arc<TaskExecutorContext>,
-        mut child: Child,
         event_tx: &mpsc::Sender<TaskEvent>,
     ) {
         let reason = shared_context.get_stop_reason().await;
@@ -28,58 +26,6 @@ impl TaskExecutor {
             }
         };
 
-        if matches!(reason, TaskStopReason::Terminated(_)) {
-            match child.kill().await {
-                Ok(_) => {
-                    // Successfully
-                }
-                Err(e) => {
-                    use std::io::ErrorKind;
-                    match e.kind() {
-                        // Already exited: continue silently
-                        ErrorKind::InvalidInput => {
-                            // This usually means the process is already dead
-                            #[cfg(feature = "tracing")]
-                            tracing::debug!("Child process already exited, nothing to kill");
-                        }
-                        // Permission denied
-                        ErrorKind::PermissionDenied => {
-                            #[cfg(feature = "tracing")]
-                            tracing::warn!("Permission denied when killing child process: {:?}", e);
-                        }
-                        // OS refuses (e.g., ESRCH, EPERM, etc.)
-                        ErrorKind::NotFound => {
-                            #[cfg(feature = "tracing")]
-                            tracing::warn!("OS refused to kill child process (NotFound): {:?}", e);
-                        }
-                        // Process ignores signal (not directly detectable, but log)
-                        _ => {
-                            #[cfg(feature = "tracing")]
-                            tracing::warn!("Failed to kill child process: {:?}", e);
-                        }
-                    }
-                    // Try to terminate by process ID if available
-                    match shared_context.get_process_id() {
-                        Some(process_id) => {
-                            #[cfg(feature = "tracing")]
-                            tracing::info!("Trying to terminate process ID {}", process_id);
-                            if let Err(_e) = terminate_process(process_id) {
-                                #[cfg(feature = "tracing")]
-                                tracing::warn!(
-                                    "Failed to terminate process ID {}: {:?}",
-                                    process_id,
-                                    _e
-                                );
-                            };
-                        }
-                        None => {
-                            #[cfg(feature = "tracing")]
-                            tracing::warn!("No process ID available to terminate");
-                        }
-                    }
-                }
-            }
-        }
         // If configured to use process group, ensure all child processes are terminated
         #[cfg(feature = "process-group")]
         if shared_context.config.use_process_group.unwrap_or_default() {
@@ -101,6 +47,8 @@ impl TaskExecutor {
             exit_code,
             reason: reason,
             finished_at: time,
+            #[cfg(unix)]
+            signal: shared_context.get_terminate_signal_code(),
         };
 
         Self::send_event(&event_tx, event).await;

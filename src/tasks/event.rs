@@ -132,6 +132,8 @@ pub enum TaskEvent {
         /// Reason the process stopped
         reason: TaskStopReason,
         finished_at: SystemTime,
+        #[cfg(unix)]
+        signal: Option<i32>,
     },
 
     /// An error occurred during task execution

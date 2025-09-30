@@ -14,12 +14,12 @@ impl TaskExecutor {
         line: Result<Option<String>, std::io::Error>,
         event_tx: &mpsc::Sender<TaskEvent>,
         src: StreamSource,
-    ) {
+    ) -> bool {
         let line = match line {
             Ok(Some(l)) => l,
             Ok(None) => {
                 // EOF reached
-                return;
+                return true;
             }
             Err(e) => {
                 let msg = format!("Error reading stdout: {}", e);
@@ -37,7 +37,7 @@ impl TaskExecutor {
                 shared_context
                     .send_terminate_signal(TaskTerminateReason::InternalError)
                     .await;
-                return;
+                return true;
             }
         };
         let event = TaskEvent::Output {
@@ -47,15 +47,15 @@ impl TaskExecutor {
         Self::send_event(event_tx, event).await;
 
         if shared_context.get_ready_flag() {
-            return;
+            return false;
         }
 
         if shared_context.config.ready_indicator_source != Some(src) {
-            return;
+            return false;
         }
         let ready_indicator = match &shared_context.config.ready_indicator {
             Some(text) => text,
-            None => return,
+            None => return false,
         };
 
         if line.contains(ready_indicator) {
@@ -63,5 +63,6 @@ impl TaskExecutor {
             shared_context.set_state(TaskState::Ready);
             Self::send_event(event_tx, TaskEvent::Ready).await;
         }
+        return false;
     }
 }
