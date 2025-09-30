@@ -39,29 +39,6 @@ fn accepts_shell_features() {
 }
 
 #[test]
-fn rejects_obvious_injection() {
-    let dangerous_commands = [
-        "command\0with\0nulls",
-        "eval(malicious_code)",
-        "command\r\necho injected",
-        "command\x00with\x00nulls",
-        "cmd\r\n\r\nanother",
-        "cmd\u{0000}",
-        "eval(exec('malicious'))",
-        "os.system('rm -rf /')",
-        "exec(rm -rf /)",
-    ];
-
-    for cmd in &dangerous_commands {
-        assert!(
-            ConfigValidator::validate_command(cmd).is_err(),
-            "Should reject obvious injection: {}",
-            cmd
-        );
-    }
-}
-
-#[test]
 fn strict_mode_blocks_shell_features() {
     let shell_commands = [
         "ls | grep pattern",

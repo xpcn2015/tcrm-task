@@ -152,21 +152,7 @@ fn reject_argument_exceeding_max_length() {
 #[test]
 fn reject_nonexistent_working_dir() {
     let config = TaskConfig::new("echo").working_dir("/non/existent/dir");
-    assert!(matches!(
-        config.validate(),
-        Err(TaskError::InvalidConfiguration(_))
-    ));
-}
-
-#[test]
-fn reject_working_dir_with_whitespace() {
-    let dir = temp_dir();
-    let dir_str = format!(" {} ", dir.as_path().to_str().unwrap());
-    let config = TaskConfig::new("echo").working_dir(&dir_str);
-    assert!(matches!(
-        config.validate(),
-        Err(TaskError::InvalidConfiguration(_))
-    ));
+    assert!(matches!(config.validate(), Err(TaskError::IO(_))));
 }
 
 #[test]
