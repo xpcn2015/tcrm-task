@@ -14,6 +14,23 @@ use crate::tasks::{
 };
 
 impl TaskExecutor {
+    /// Tries to store the process ID from a spawned child process.
+    ///
+    /// Validates that a process ID was successfully obtained and stores it
+    /// in the shared context for later use in process management.
+    ///
+    /// # Arguments
+    ///
+    /// * `pid` - Optional process ID from the spawned child
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(u32)` - The validated process ID
+    /// * `Err(TaskError)` - If no process ID was provided
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TaskError::Handle`] if the process ID is None
     pub(crate) fn try_store_process_id(&self, pid: Option<u32>) -> Result<u32, TaskError> {
         let Some(pid) = pid else {
             let msg = "Failed to get process id";
@@ -27,16 +44,52 @@ impl TaskExecutor {
         self.shared_context.set_process_id(pid);
         Ok(pid)
     }
+    /// Spawns a child process and handles the result.
+    ///
+    /// Attempts to spawn the configured command and stores the process ID.
+    /// If spawning fails, appropriate error events are sent.
+    ///
+    /// On Windows with process groups enabled, spawns the process in a suspended state,
+    /// assigns it to the job object, then resumes it to avoid the race condition where
+    /// child processes could escape the job object.
+    ///
+    /// # Arguments
+    ///
+    /// * `cmd` - The configured command to spawn
+    /// * `event_tx` - Channel for sending task events
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Child)` - The spawned child process
+    /// * `Err(TaskError)` - If spawning fails
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TaskError::IO`] if process spawning fails
     pub(crate) async fn spawn_child(
         &mut self,
         mut cmd: Command,
         event_tx: &mpsc::Sender<TaskEvent>,
     ) -> Result<Child, TaskError> {
+        let use_pg = self
+            .shared_context
+            .config
+            .use_process_group
+            .unwrap_or_default();
+
+        // On Windows, if process groups are enabled, spawn suspended to avoid race condition
+        #[cfg(all(windows, feature = "process-group"))]
+        if use_pg {
+            const CREATE_SUSPENDED: u32 = 0x00000004;
+            cmd.creation_flags(CREATE_SUSPENDED);
+        }
         match cmd.spawn() {
-            Ok(child) => {
+            Ok(mut child) => {
                 let pid = match self.try_store_process_id(child.id()) {
                     Ok(pid) => pid,
                     Err(e) => {
+                        let _ = child.kill().await;
+
                         self.send_error_event_and_stop(e.clone(), event_tx).await;
                         return Err(e);
                     }
@@ -44,18 +97,30 @@ impl TaskExecutor {
 
                 // Assign the child process to the process group if enabled
                 #[cfg(feature = "process-group")]
-                if self
-                    .shared_context
-                    .config
-                    .use_process_group
-                    .unwrap_or_default()
-                {
+                if use_pg {
                     let result = self.shared_context.group.lock().await.assign_child(pid);
                     if let Err(e) = result {
                         let msg = format!("Failed to add process to group: {}", e);
 
                         #[cfg(feature = "tracing")]
                         tracing::error!(error=%e, "Failed to add process to group");
+
+                        let _ = child.kill().await;
+
+                        let error = TaskError::Handle(msg);
+                        self.send_error_event_and_stop(error.clone(), event_tx)
+                            .await;
+                        return Err(error);
+                    }
+                    // Resume the process on Windows if it was suspended
+                    #[cfg(all(windows, feature = "process-group"))]
+                    if let Err(e) = Self::resume_process(pid) {
+                        let msg = format!("Failed to resume process: {}", e);
+
+                        #[cfg(feature = "tracing")]
+                        tracing::error!(error=%e, "Failed to resume process");
+
+                        let _ = child.kill().await;
 
                         let error = TaskError::Handle(msg);
                         self.send_error_event_and_stop(error.clone(), event_tx)
@@ -101,6 +166,24 @@ impl TaskExecutor {
             }
         }
     }
+    /// Takes stdout and stderr readers from a child process.
+    ///
+    /// Extracts the stdout and stderr streams from the child process and
+    /// converts them into line readers for processing output.
+    ///
+    /// # Arguments
+    ///
+    /// * `child` - The child process to extract streams from
+    /// * `event_tx` - Channel for sending error events if extraction fails
+    ///
+    /// # Returns
+    ///
+    /// * `Ok((Lines<BufReader<ChildStdout>>, Lines<BufReader<ChildStderr>>))` - The stdout and stderr line readers
+    /// * `Err(TaskError)` - If stream extraction fails
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TaskError::Handle`] if stdout or stderr streams cannot be taken
     pub(crate) async fn take_std_output_reader(
         &mut self,
         child: &mut Child,
@@ -138,6 +221,27 @@ impl TaskExecutor {
 
         Ok((stdout, stderr))
     }
+
+    /// Stores the stdin handle from a child process for later use.
+    ///
+    /// Extracts and stores the stdin stream from the child process if stdin
+    /// is enabled in the task configuration. This allows sending input to
+    /// the process later via the send_stdin method.
+    ///
+    /// # Arguments
+    ///
+    /// * `child` - The child process to extract stdin from
+    /// * `event_tx` - Channel for sending error events if extraction fails
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` - Stdin stored successfully or not required
+    /// * `Err(TaskError)` - If stdin extraction fails when required
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TaskError::Handle`] if stdin cannot be taken from the child process
+    /// when stdin is enabled in the configuration
     pub(crate) async fn store_stdin(
         &mut self,
         child: &mut Child,
@@ -162,6 +266,24 @@ impl TaskExecutor {
             Err(TaskError::IO(msg.to_string()))
         }
     }
+    /// Sends input to the process's stdin.
+    ///
+    /// Writes the provided input to the process's stdin stream. The input
+    /// will be automatically terminated with a newline if it doesn't already end with one.
+    ///
+    /// # Arguments
+    ///
+    /// * `input` - The input string to send to stdin
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` - If the input was sent successfully
+    /// * `Err(TaskError)` - If sending fails or the task is not running
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TaskError::Control`] if the task is not in a running state,
+    /// or [`TaskError::IO`] if writing to stdin fails
     pub async fn send_stdin(&mut self, input: impl Into<String>) -> Result<(), TaskError> {
         let state = self.get_state();
         if !matches!(state, TaskState::Running | TaskState::Ready) {
@@ -191,6 +313,24 @@ impl TaskExecutor {
         Ok(())
     }
 
+    /// Performs process control actions on the running task.
+    ///
+    /// Executes control actions like termination, pause, resume, or interrupt
+    /// on the running process or process group, depending on configuration.
+    ///
+    /// # Arguments
+    ///
+    /// * `action` - The control action to perform on the process
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` - Action performed successfully
+    /// * `Err(TaskError)` - If the action fails or process is not available
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TaskError::Control`] if the process is not in a controllable state
+    /// or if the requested action is not supported
     pub async fn perform_process_action(
         &mut self,
         action: TaskControlAction,
@@ -247,6 +387,24 @@ impl TaskExecutor {
         Ok(())
     }
 
+    /// Sets up process group configuration for the command.
+    ///
+    /// Configures the command to run in a process group if process group
+    /// support is enabled in the task configuration. This allows for
+    /// coordinated termination of process trees.
+    ///
+    /// # Arguments
+    ///
+    /// * `cmd` - The command to configure for process group execution
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Command)` - The configured command ready for spawning
+    /// * `Err(TaskError)` - If process group setup fails
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TaskError::Control`] if process group creation fails
     #[cfg(feature = "process-group")]
     pub(crate) async fn setup_process_group(&self, cmd: Command) -> Result<Command, TaskError> {
         if !self
@@ -266,5 +424,72 @@ impl TaskExecutor {
             TaskError::Control(msg)
         })?;
         Ok(cmd)
+    }
+
+    #[cfg(all(windows, feature = "process-group"))]
+    /// Resumes a suspended process by resuming its primary thread.
+    ///
+    /// On Windows, when a process is spawned in a suspended state (to safely assign it to a job object),
+    /// this function finds the first thread belonging to the process and resumes it, allowing the process to run.
+    ///
+    /// # Arguments
+    ///
+    /// * `pid` - The process ID of the process to resume
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` - If the process was successfully resumed
+    /// * `Err(String)` - If resuming the process fails or no threads are found
+    ///
+    /// # Errors
+    ///
+    /// Returns an error string if the thread snapshot cannot be created, no threads are found for the process,
+    /// or if resuming the thread fails.
+    fn resume_process(pid: u32) -> Result<(), String> {
+        use windows::Win32::Foundation::CloseHandle;
+        use windows::Win32::System::Diagnostics::ToolHelp::{
+            CreateToolhelp32Snapshot, TH32CS_SNAPTHREAD, THREADENTRY32, Thread32First, Thread32Next,
+        };
+        use windows::Win32::System::Threading::{OpenThread, ResumeThread, THREAD_SUSPEND_RESUME};
+
+        unsafe {
+            // Take a snapshot of all threads in the system
+            let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0)
+                .map_err(|e| format!("Failed to create thread snapshot: {}", e))?;
+
+            let mut thread_entry = THREADENTRY32 {
+                dwSize: std::mem::size_of::<THREADENTRY32>() as u32,
+                ..Default::default()
+            };
+
+            let mut found = false;
+
+            // Find the first (and typically only) thread belonging to the process
+            if Thread32First(snapshot, &mut thread_entry).is_ok() {
+                loop {
+                    if thread_entry.th32OwnerProcessID == pid {
+                        if let Ok(thread_handle) =
+                            OpenThread(THREAD_SUSPEND_RESUME, false, thread_entry.th32ThreadID)
+                        {
+                            ResumeThread(thread_handle);
+                            let _ = CloseHandle(thread_handle);
+                            found = true;
+                        }
+                    }
+
+                    if Thread32Next(snapshot, &mut thread_entry).is_err() {
+                        break;
+                    }
+                }
+            }
+
+            let _ = CloseHandle(snapshot);
+
+            if !found {
+                return Err(format!("No threads found for process {}", pid));
+            }
+        }
+
+        Ok(())
     }
 }
