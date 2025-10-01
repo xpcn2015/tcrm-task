@@ -51,7 +51,7 @@ impl TaskExecutor {
                 let error_event = TaskEvent::Error { error };
                 Self::send_event(event_tx, error_event).await;
                 shared_context
-                    .send_terminate_signal(TaskTerminateReason::InternalError)
+                    .send_terminate_oneshot(TaskTerminateReason::InternalError)
                     .await;
                 return true;
             }

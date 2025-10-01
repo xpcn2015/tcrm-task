@@ -11,8 +11,7 @@ use crate::tasks::{
 impl TaskExecutor {
     /// Handles task termination requests.
     ///
-    /// Processes termination signals and performs appropriate cleanup actions
-    /// such as killing the child process and setting termination flags.
+    /// Processes termination signals and kills the child process.
     ///
     /// # Arguments
     ///

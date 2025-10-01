@@ -108,6 +108,13 @@ pub enum TaskError {
     #[error("Invalid configuration: {0}")]
     InvalidConfiguration(String),
 
+    /// Control operation failed
+    ///
+    /// Errors related to controlling or managing the task's execution.
+    /// This can include failures to pause, resume, or stop the task.
+    ///
+    /// # Common Causes
+    /// - Failed to send control signal to process
     #[error("Control error: {0}")]
     Control(String),
 }

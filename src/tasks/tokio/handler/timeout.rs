@@ -42,7 +42,7 @@ impl TaskExecutor {
     /// * `shared_context` - Shared task execution context
     pub(crate) async fn handle_timeout(shared_context: Arc<TaskExecutorContext>) {
         shared_context
-            .send_terminate_signal(TaskTerminateReason::Timeout)
+            .send_terminate_oneshot(TaskTerminateReason::Timeout)
             .await;
     }
 }

@@ -4,8 +4,7 @@ use crate::tasks::{error::TaskError, validator::ConfigValidator};
 
 /// Configuration for a task to be executed.
 ///
-/// `TaskConfig` defines all parameters needed to execute a system process securely.
-/// It includes the command, arguments, environment setup, timeouts, and monitoring options.
+/// `TaskConfig` defines all parameters needed to execute a process.
 ///
 /// # Examples
 ///
@@ -81,6 +80,7 @@ impl Default for TaskConfig {
             enable_stdin: Some(false),
             ready_indicator: None,
             ready_indicator_source: Some(StreamSource::Stdout),
+            #[cfg(feature = "process-group")]
             use_process_group: Some(true),
         }
     }
@@ -97,8 +97,8 @@ impl TaskConfig {
     /// ```rust
     /// use tcrm_task::tasks::config::TaskConfig;
     ///
-    /// let config = TaskConfig::new("echo");
-    /// let config2 = TaskConfig::new("node".to_string());
+    /// let config1 = TaskConfig::new("echo");
+    /// let config2 = TaskConfig::new("Powershell").args(["-Command", "echo"]);
     /// ```
     pub fn new(command: impl Into<String>) -> Self {
         TaskConfig {
@@ -318,12 +318,10 @@ impl TaskConfig {
     /// Validate the configuration
     ///
     /// Validates all configuration parameters.
-    /// This method should be called before executing the task to ensure
-    /// safe operation.
     ///
     /// # Validation Checks
     /// - all fields length limits
-    /// - **Command**: Must not be empty, contain shell injection patterns
+    /// - **Command**: Must not be empty
     /// - **Arguments**: Must not contain null bytes or shell injection patterns  
     /// - **Working Directory**: Must exist and be a valid directory
     /// - **Environment Variables**: Keys must not contain spaces, '=', or null bytes
@@ -339,7 +337,7 @@ impl TaskConfig {
     ///
     /// Returns a [`TaskError`] if any validation check fails:
     /// - [`TaskError::InvalidConfiguration`] for configuration errors
-    /// - [`TaskError::IO`] for working directory validation failures
+    /// - [`TaskError::IO`] for working directory path not found
     ///
     /// # Examples
     ///

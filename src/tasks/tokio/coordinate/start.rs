@@ -9,12 +9,12 @@ use crate::tasks::{
 };
 
 impl TaskExecutor {
-    /// Start coordinated process execution with event monitoring
+    /// Start execution in a coordinated async event loop.  
     ///
     /// This is the main execution method that spawns the process, sets up event monitoring,
     /// and manages the complete process lifecycle. It handles stdout/stderr streaming,
     /// timeout management, termination signals, and process cleanup in a coordinated
-    /// async event loop.
+    /// async event loop using `tokio::select!``.
     ///
     /// # Arguments
     ///

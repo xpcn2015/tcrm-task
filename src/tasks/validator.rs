@@ -338,7 +338,7 @@ impl ConfigValidator {
 
     /// Checks for obvious injection attempts while allowing normal shell features.
     ///
-    /// This internal method identifies clearly malicious patterns without blocking
+    /// This method identifies clearly malicious patterns without blocking
     /// legitimate shell functionality. It focuses on patterns that are rarely used
     /// in normal command execution.
     ///

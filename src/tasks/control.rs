@@ -68,7 +68,7 @@ pub trait TaskStatusInfo {
     /// # Returns
     ///
     /// * `Some(u32)` - The process ID if the task is running
-    /// * `None` - If the task hasn't started yet or has finished
+    /// * `None` - If process hasn't started yet or has finished
     fn get_process_id(&self) -> Option<u32>;
 
     /// Gets the creation timestamp of the task.
@@ -159,6 +159,10 @@ pub struct TaskInformation {
     pub finished_at: Option<SystemTime>,
     /// Exit code of the task (if it has finished)
     pub exit_code: Option<i32>,
+
+    #[cfg(unix)]
+    /// Last received signal (if any) from process::ExitStatus
+    pub last_signal: Option<i32>,
 }
 
 /// Actions that can be performed on a task.

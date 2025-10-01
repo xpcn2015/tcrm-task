@@ -176,10 +176,9 @@ impl TaskExecutor {
             }
         }
     }
-    /// Sets up a command for execution based on the task configuration.
+    /// Setup a command for execution based on the task configuration.
     ///
-    /// Creates a tokio Command with all the configured parameters including
-    /// arguments, environment variables, working directory, and I/O redirection.
+    /// Creates a tokio Command with all the configured parameters in TaskConfig.
     ///
     /// # Returns
     ///
