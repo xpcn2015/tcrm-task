@@ -4,7 +4,7 @@ use tokio::{process::Child, sync::oneshot::error::RecvError};
 
 use crate::tasks::{
     event::{TaskStopReason, TaskTerminateReason},
-    process::child::terminate_process,
+    process::action::terminate::terminate_process,
     tokio::{context::TaskExecutorContext, executor::TaskExecutor},
 };
 

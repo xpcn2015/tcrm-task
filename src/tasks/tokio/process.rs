@@ -8,7 +8,7 @@ use crate::tasks::{
     control::{TaskControlAction, TaskStatusInfo},
     error::TaskError,
     event::{TaskEvent, TaskStopReason},
-    process::child::terminate_process,
+    process::action::terminate::terminate_process,
     state::TaskState,
     tokio::executor::TaskExecutor,
 };

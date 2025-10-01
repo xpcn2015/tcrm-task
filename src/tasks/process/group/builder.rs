@@ -1,26 +1,6 @@
-//! Cross-platform process group management for killing entire process trees
-//! and propagating signals like pause/resume.
-//!
-//! This module provides utilities to manage process groups on Unix systems
-//! and job objects on Windows to ensure that when a parent process is killed,
-//! all its children and grandchildren are also terminated.
-//!
-//! # Example
-//!
-//! ```rust,no_run
-//! use tcrm_task::tasks::process::process_group::ProcessGroup;
-//! use tokio::process::Command;
-//!
-//! let mut group = ProcessGroup::new();
-//! let mut cmd = Command::new("echo");
-//! cmd.arg("hello");
-//!
-//! let configured_cmd = group.create_with_command(cmd).unwrap();
-//! // Command is now configured to run in the process group
-//! ```
-
-use thiserror::Error;
 use tokio::process::Command;
+
+use crate::tasks::process::group::error::ProcessGroupError;
 
 /// A cross-platform wrapper for managing process groups/jobs.
 ///
@@ -33,43 +13,28 @@ use tokio::process::Command;
 /// - **Other platforms**: No special handling
 #[derive(Debug)]
 pub struct ProcessGroup {
-    inner: ProcessGroupInner,
+    pub(crate) inner: ProcessGroupInner,
 }
 
 #[derive(Debug)]
-struct ProcessGroupInner {
+pub(crate) struct ProcessGroupInner {
     #[cfg(unix)]
-    process_group_id: Option<i32>,
+    pub(crate) process_group_id: Option<i32>,
     #[cfg(windows)]
-    job_handle: Option<SendHandle>,
+    pub(crate) job_handle: Option<SendHandle>,
     #[cfg(not(any(unix, windows)))]
     _phantom: (),
 }
 
 #[cfg(windows)]
 #[derive(Debug)]
-struct SendHandle(windows::Win32::Foundation::HANDLE);
+pub(crate) struct SendHandle(pub(crate) windows::Win32::Foundation::HANDLE);
 
 #[cfg(windows)]
 unsafe impl Send for SendHandle {}
 
 #[cfg(windows)]
 unsafe impl Sync for SendHandle {}
-
-/// Error type for process group operations.
-#[derive(Error, Debug)]
-pub enum ProcessGroupError {
-    #[error("Failed to create process group/job: {0}")]
-    CreationFailed(String),
-    #[error("Failed to assign process to group/job: {0}")]
-    AssignmentFailed(String),
-    #[error("Failed to send signal to process group: {0}")]
-    SignalFailed(String),
-
-    #[cfg(not(any(unix, windows)))]
-    #[error("Unsupported platform: {0}")]
-    UnsupportedPlatform(String),
-}
 
 impl ProcessGroup {
     /// Create a new, inactive process group
@@ -312,89 +277,6 @@ impl ProcessGroup {
             let _ = child;
             Err(ProcessGroupError::UnsupportedPlatform(
                 "Process group assignment not available on this platform".to_string(),
-            ))
-        }
-    }
-
-    /// Terminates all processes in the group/job.
-    ///
-    /// Sends a termination signal to all processes in the process group. On Unix systems,
-    /// this sends SIGTERM to the process group using killpg(). On Windows, this terminates
-    /// all processes in the job object.
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(())` - If the termination signal was sent successfully or processes were already terminated
-    /// * `Err(ProcessGroupError)` - If termination fails due to permissions or other errors
-    ///
-    /// # Example
-    ///
-    /// ```rust,no_run
-    /// use tcrm_task::tasks::process::process_group::ProcessGroup;
-    ///
-    /// let mut group = ProcessGroup::new();
-    /// // ... spawn processes in the group ...
-    ///
-    /// // Terminate all processes in the group
-    /// group.terminate_group().unwrap();
-    /// ```
-    pub fn terminate_group(&self) -> Result<(), ProcessGroupError> {
-        #[cfg(unix)]
-        {
-            use nix::sys::signal::{Signal, killpg};
-            use nix::unistd::Pid;
-
-            if let Some(pgid) = self.inner.process_group_id {
-                use nix::errno::Errno;
-
-                match killpg(Pid::from_raw(pgid), Signal::SIGTERM) {
-                    Ok(_) => Ok(()),
-                    Err(e) => match e {
-                        Errno::ESRCH => Ok(()), // Already terminated
-                        Errno::EPERM => Err(ProcessGroupError::SignalFailed(format!(
-                            "Permission denied to terminate process group {}",
-                            pgid
-                        ))),
-                        _ => Err(ProcessGroupError::SignalFailed(format!(
-                            "Failed to send SIGTERM to process group {}: {}",
-                            pgid, e
-                        ))),
-                    },
-                }
-            } else {
-                Err(ProcessGroupError::SignalFailed(
-                    "No process group ID available".to_string(),
-                ))
-            }
-        }
-        #[cfg(windows)]
-        {
-            if let Some(SendHandle(job_handle)) = &self.inner.job_handle {
-                unsafe {
-                    use windows::Win32::Foundation::CloseHandle;
-                    use windows::Win32::System::JobObjects::TerminateJobObject;
-
-                    // Terminate all processes in the job object
-                    TerminateJobObject(*job_handle, 1).map_err(|e| {
-                        ProcessGroupError::SignalFailed(format!(
-                            "Failed to terminate job object: {}",
-                            e
-                        ))
-                    })?;
-
-                    let _ = CloseHandle(*job_handle);
-                }
-                Ok(())
-            } else {
-                Err(ProcessGroupError::SignalFailed(
-                    "No Job Object handle available".to_string(),
-                ))
-            }
-        }
-        #[cfg(not(any(unix, windows)))]
-        {
-            Err(ProcessGroupError::UnsupportedPlatform(
-                "Process group termination not available on this platform".to_string(),
             ))
         }
     }

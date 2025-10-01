@@ -6,7 +6,7 @@ use std::{
 use tokio::sync::{Mutex, oneshot};
 
 #[cfg(feature = "process-group")]
-use crate::tasks::process::process_group::ProcessGroup;
+use crate::tasks::process::group::builder::ProcessGroup;
 use crate::tasks::{
     config::TaskConfig,
     event::{TaskStopReason, TaskTerminateReason},
