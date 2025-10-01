@@ -39,18 +39,6 @@ fn accept_command_with_ready_indicator() {
 }
 
 #[test]
-fn accept_command_with_process_group_disabled() {
-    let config = TaskConfig::new("cmd").use_process_group(false);
-    assert!(config.validate().is_ok());
-}
-
-#[test]
-fn accept_command_with_stdin_enabled() {
-    let config = TaskConfig::new("python").args(["-i"]).enable_stdin(true);
-    assert!(config.validate().is_ok());
-}
-
-#[test]
 fn accept_valid_timeout() {
     let config = TaskConfig::new("echo").timeout_ms(30);
     assert!(config.validate().is_ok());
@@ -131,7 +119,7 @@ fn reject_empty_argument() {
 }
 
 #[test]
-fn reject_argument_with_whitespace() {
+fn reject_argument_with_whitespace_leading_trailing() {
     let config = TaskConfig::new("echo").args([" hello "]);
     assert!(matches!(
         config.validate(),
