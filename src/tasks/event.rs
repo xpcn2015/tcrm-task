@@ -15,6 +15,8 @@ use crate::tasks::{config::StreamSource, error::TaskError};
 /// 2. `Output` - Output lines from stdout/stderr (ongoing)
 /// 3. `Ready` - Ready indicator detected (optional, for long-running processes)
 /// 4. `Stopped` - Process has completed, with exit code and reason
+///    - Exit code is `Some(code)` for natural completion
+///    - Exit code is `None` for terminated processes (timeout, manual termination)
 /// 5. `Error` - Error related to task execution
 ///
 /// # Examples
@@ -45,7 +47,10 @@ use crate::tasks::{config::StreamSource, error::TaskError};
 ///                 println!("Output: {}", line);
 ///             }
 ///             TaskEvent::Stopped { exit_code, .. } => {
-///                 println!("Process stopped with code {:?}", exit_code);
+///                 match exit_code {
+///                     Some(code) => println!("Process completed with code {}", code),
+///                     None => println!("Process was terminated"),
+///                 }
 ///                 break;
 ///             }
 ///             TaskEvent::Error { error } => {
@@ -109,11 +114,14 @@ use crate::tasks::{config::StreamSource, error::TaskError};
 pub enum TaskEvent {
     /// Process has been successfully spawned and is running
     ///
-    /// This is the first event emitted after successful process creation.
+    /// This is the first event emitted after successful process spawning.
     /// The process is now running and other events will follow.
     Started {
+        /// Operating system process ID
         process_id: u32,
+        /// Timestamp when the process was created
         created_at: SystemTime,
+        /// Timestamp when the process started running
         running_at: SystemTime,
     },
 
@@ -128,7 +136,7 @@ pub enum TaskEvent {
         src: StreamSource,
     },
 
-    /// Process has signaled it's ready to accept requests
+    /// Process has signaled it's ready to work
     ///
     /// Only emitted for long-running processes that have a ready indicator configured.
     /// Indicates the process has completed initialization and is ready for work.
@@ -138,12 +146,21 @@ pub enum TaskEvent {
     ///
     /// The process has exited and all resources have been cleaned up.
     Stopped {
-        /// Exit code from the process (None if terminated)
+        /// Exit code from the process
+        ///
+        /// - `Some(code)` - Process completed naturally with exit code
+        /// - `None` - Process was terminated (timeout, user request, etc.)
+        ///
+        /// Note: Terminated processes do not provide exit codes to avoid
+        /// race conditions between termination and natural completion.
         exit_code: Option<i32>,
         /// Reason the process stopped
         reason: TaskStopReason,
+        /// Timestamp when the process finished
         finished_at: SystemTime,
+
         #[cfg(unix)]
+        /// Termination signal if the process was killed by a signal
         signal: Option<i32>,
     },
 
@@ -163,6 +180,12 @@ pub enum TaskEvent {
 /// Provides detailed information about why a process completed,
 /// whether due to natural completion, termination, or error.
 ///
+/// # Exit Code Relationship
+///
+/// - `Finished`: Process completed naturally - exit code is `Some(code)`
+/// - `Terminated(_)`: Process was killed - exit code is `None`
+/// - `Error(_)`: Process encountered an error - exit code behavior varies
+///
 /// # Examples
 ///
 /// ```rust
@@ -181,12 +204,21 @@ pub enum TaskEvent {
 #[derive(Debug, Clone, PartialEq)]
 pub enum TaskStopReason {
     /// Process completed normally with an exit code
+    ///
+    /// The process ran to completion and exited naturally.
+    /// Exit code will be `Some(code)` in the `TaskEvent::Stopped` event.
     Finished,
 
     /// Process was terminated for a specific reason
+    ///
+    /// The process was forcefully killed before natural completion.
+    /// Exit code will be `None` in the `TaskEvent::Stopped` event.
     Terminated(TaskTerminateReason),
 
     /// Process stopped due to an error
+    ///
+    /// An error occurred during execution or process management.
+    /// Exit code behavior varies depending on the type of error.
     Error(TaskError),
 }
 
@@ -220,7 +252,6 @@ pub enum TaskStopReason {
 ///     
 ///     // Terminate after 1 second
 ///     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-///     // Note: termination would be done via TaskControl trait
 ///     
 ///     Ok(())
 /// }
@@ -234,6 +265,7 @@ pub enum TaskStopReason {
 ///     event::TaskTerminateReason
 /// };
 /// use tokio::sync::mpsc;
+/// use crate::tcrm_task::tasks::control::TaskControl;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -247,10 +279,8 @@ pub enum TaskStopReason {
 ///     let (tx, _rx) = mpsc::channel(100);
 ///     executor.coordinate_start(tx).await?;
 ///     
-///     // Cleanup shutdown reason
-///     let reason = TaskTerminateReason::Cleanup;
-///     // Note: termination would be done via TaskControl trait
-///     
+///     let reason = TaskTerminateReason::UserRequested;
+///     executor.terminate_task(reason)?;
 ///     Ok(())
 /// }
 /// ```
@@ -281,5 +311,8 @@ pub enum TaskTerminateReason {
     UserRequested,
 
     /// Task was terminated due to internal error condition
+    ///
+    /// Indicates that the task encountered an unexpected error
+    /// that caused it to be terminated.
     InternalError,
 }

@@ -14,6 +14,12 @@ impl TaskExecutor {
     /// Processes the outcome of the child process, extracts exit codes and
     /// signal information, and updates the task context with the final status.
     ///
+    /// # Exit Code Behavior
+    ///
+    /// - **Normal completion**: Sets exit code from process status
+    /// - **Terminated processes**: Does not set exit code (remains `None`)
+    ///   - This applies to timeout terminations, user-requested terminations, etc.
+    ///
     /// # Arguments
     ///
     /// * `shared_context` - Shared task execution context
@@ -31,18 +37,28 @@ impl TaskExecutor {
         match result {
             Ok(status) => {
                 let exit_code = status.code();
-                shared_context.set_exit_code(exit_code);
-                if shared_context.get_stop_reason().await.is_none() {
+
+                // Check if termination was already requested (e.g., by timeout)
+                let stop_reason = shared_context.get_stop_reason().await;
+                let is_terminated = matches!(stop_reason, Some(TaskStopReason::Terminated(_)));
+
+                if !is_terminated {
+                    // Normal completion - set exit code and reason
+                    shared_context.set_exit_code(exit_code);
                     shared_context
                         .set_stop_reason(TaskStopReason::Finished)
                         .await;
+                } else {
+                    // Process was terminated - don't override exit code
+                    // (it should remain None for timeout terminations)
                 }
+
                 #[cfg(unix)]
                 if let Some(signal) = status.signal() {
                     shared_context.set_terminate_signal_code(Some(signal));
                 }
                 #[cfg(feature = "tracing")]
-                tracing::debug!(exit_code = ?exit_code, "Child process finished normally");
+                tracing::debug!(exit_code = ?exit_code, is_terminated, "Child process finished");
             }
             Err(e) => {
                 // Expected OS level error

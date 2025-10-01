@@ -18,11 +18,11 @@ use crate::tasks::{
 async fn valid() {
     let (tx, mut rx) = mpsc::channel::<TaskEvent>(64);
     #[cfg(windows)]
-    let config = TaskConfig::new("powershell").args(["-Command", "sleep 2"]);
+    let config = TaskConfig::new("powershell").args(["-Command", "sleep 10"]);
     #[cfg(unix)]
-    let config = TaskConfig::new("sleep").args(["2"]);
+    let config = TaskConfig::new("sleep").args(["10"]);
 
-    let config = config.timeout_ms(500);
+    let config = config.timeout_ms(100);
     #[cfg(feature = "process-group")]
     let config = config.use_process_group(false);
 
@@ -58,7 +58,7 @@ async fn valid() {
                 expected_completed_executor_state(&executor);
 
                 #[cfg(windows)]
-                assert_eq!(exit_code, Some(1));
+                assert_eq!(exit_code, None);
                 #[cfg(unix)]
                 assert_eq!(exit_code, None);
 

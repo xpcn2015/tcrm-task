@@ -27,6 +27,7 @@ pub(crate) struct TaskExecutorContext {
     running_at: AtomicU64,
     finished_at: AtomicU64,
     exit_code: AtomicI32,
+    exit_code_set: AtomicBool,
     stop_reason: Mutex<Option<TaskStopReason>>,
     ready_flag: AtomicBool,
     internal_terminate_tx: Mutex<Option<oneshot::Sender<TaskTerminateReason>>>,
@@ -62,7 +63,8 @@ impl TaskExecutorContext {
             created_at: AtomicU64::new(now_nanos),
             running_at: AtomicU64::new(0),
             finished_at: AtomicU64::new(0),
-            exit_code: AtomicI32::new(-1),
+            exit_code: AtomicI32::new(0),
+            exit_code_set: AtomicBool::new(false),
             stop_reason: Mutex::new(None),
             ready_flag: AtomicBool::new(false),
             internal_terminate_tx: Mutex::new(None),
@@ -104,15 +106,15 @@ impl TaskExecutorContext {
             .store(code.unwrap_or(0), std::sync::atomic::Ordering::SeqCst);
     }
 
-    /// Sends a termination signal through the internal channel.
+    /// Sends a termination signal through the internal oneshot channel.
     ///
-    /// Attempts to send a termination reason through the internal termination
+    /// Attempts to send a termination reason through the internal oneshot
     /// channel if it exists and hasn't been used yet.
     ///
     /// # Arguments
     ///
     /// * `reason` - The reason for termination
-    pub(crate) async fn send_terminate_signal(&self, reason: TaskTerminateReason) {
+    pub(crate) async fn send_terminate_oneshot(&self, reason: TaskTerminateReason) {
         let mut guard = self.internal_terminate_tx.lock().await;
         if let Some(tx) = guard.take() {
             if tx.send(reason.clone()).is_err() {
@@ -187,31 +189,53 @@ impl TaskExecutorContext {
     /// Gets the exit code of the finished task.
     ///
     /// Returns the process exit code if the task has finished execution.
-    /// Returns None if the task is still running or hasn't started.
+    /// For terminated processes (timeout, manual termination), this returns `None`
+    /// to avoid race conditions between termination and natural completion.
+    ///
+    /// # Exit Code Behavior
+    ///
+    /// - **Natural completion**: Returns `Some(exit_code)`
+    /// - **Terminated processes**: Returns `None` (timeout, user termination, etc.)
+    /// - **Running/Not started**: Returns `None`
     ///
     /// # Returns
     ///
-    /// * `Some(i32)` - The exit code if the task has finished
-    /// * `None` - If the task is not finished or exit code was not captured
+    /// * `Some(i32)` - The exit code if the task completed naturally
+    /// * `None` - If the task is not finished, was terminated, or exit code was not captured
     pub(crate) fn get_exit_code(&self) -> Option<i32> {
         let state = self.get_state();
         if state != TaskState::Finished {
             return None;
         }
-        let code = self.exit_code.load(std::sync::atomic::Ordering::SeqCst);
-        if code == -1 { None } else { Some(code) }
+        if self.exit_code_set.load(std::sync::atomic::Ordering::SeqCst) {
+            let code = self.exit_code.load(std::sync::atomic::Ordering::SeqCst);
+            Some(code)
+        } else {
+            None
+        }
     }
 
     /// Sets the exit code for the task.
     ///
     /// Stores the process exit code when the task finishes execution.
+    /// Setting `None` indicates the process was terminated and should not
+    /// provide an exit code in the final `TaskEvent::Stopped` event.
     ///
     /// # Arguments
     ///
-    /// * `code` - The exit code to store, or None if not available
+    /// * `code` - The exit code to store, or None if the process was terminated
     pub(crate) fn set_exit_code(&self, code: Option<i32>) {
-        self.exit_code
-            .store(code.unwrap_or(-1), std::sync::atomic::Ordering::SeqCst);
+        match code {
+            Some(c) => {
+                self.exit_code.store(c, std::sync::atomic::Ordering::SeqCst);
+                self.exit_code_set
+                    .store(true, std::sync::atomic::Ordering::SeqCst);
+            }
+            None => {
+                self.exit_code_set
+                    .store(false, std::sync::atomic::Ordering::SeqCst);
+            }
+        }
     }
 
     /// Gets the timestamp when the task started running.
