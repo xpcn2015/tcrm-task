@@ -59,12 +59,14 @@ fn config_builder_ready_indicator_stderr() {
     );
 }
 
+#[cfg(feature = "process-group")]
 #[test]
 fn process_group_disabled() {
     let config = TaskConfig::new("cmd").use_process_group(false);
     assert_eq!(config.use_process_group, Some(false));
 }
 
+#[cfg(feature = "process-group")]
 #[test]
 fn process_group_enabled_default() {
     let config = TaskConfig::new("cmd");
