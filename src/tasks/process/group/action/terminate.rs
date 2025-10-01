@@ -13,7 +13,7 @@ impl ProcessGroup {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use tcrm_task::tasks::process::process_group::ProcessGroup;
+    /// use tcrm_task::tasks::process::group::builder::ProcessGroup;
     /// let mut group = ProcessGroup::new();
     /// // ... spawn processes in the group ...
     /// group.terminate_group().unwrap();
@@ -56,7 +56,7 @@ impl ProcessGroup {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use tcrm_task::tasks::process::process_group::ProcessGroup;
+    /// use tcrm_task::tasks::process::group::builder::ProcessGroup;
     /// let mut group = ProcessGroup::new();
     /// // ... spawn processes in the group ...
     /// group.terminate_group().unwrap();
@@ -67,16 +67,16 @@ impl ProcessGroup {
 
         if let Some(SendHandle(job_handle)) = &self.inner.job_handle {
             unsafe {
-                use windows::Win32::Foundation::CloseHandle;
                 use windows::Win32::System::JobObjects::TerminateJobObject;
                 // Terminate all processes in the job object
+                // Note: Do NOT call CloseHandle here - the Drop implementation will handle it
+                // Calling CloseHandle here would cause a double-free when Drop is called
                 TerminateJobObject(*job_handle, 1).map_err(|e| {
                     ProcessGroupError::SignalFailed(format!(
                         "Failed to terminate job object: {}",
                         e
                     ))
                 })?;
-                let _ = CloseHandle(*job_handle);
             }
             Ok(())
         } else {

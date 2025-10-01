@@ -77,12 +77,6 @@ impl TaskExecutor {
             .use_process_group
             .unwrap_or_default();
 
-        // On Windows, if process groups are enabled, spawn suspended to avoid race condition
-        #[cfg(all(windows, feature = "process-group"))]
-        if use_pg {
-            const CREATE_SUSPENDED: u32 = 0x00000004;
-            cmd.creation_flags(CREATE_SUSPENDED);
-        }
         match cmd.spawn() {
             Ok(mut child) => {
                 let pid = match self.try_store_process_id(child.id()) {
@@ -114,18 +108,28 @@ impl TaskExecutor {
                     }
                     // Resume the process on Windows if it was suspended
                     #[cfg(all(windows, feature = "process-group"))]
-                    if let Err(e) = Self::resume_process(pid) {
-                        let msg = format!("Failed to resume process: {}", e);
+                    {
+                        let mut error = None;
+                        {
+                            let group = self.shared_context.group.lock().await;
+                            let result = group.resume_process(pid);
+                            if let Err(e) = result {
+                                let msg = format!("Failed to resume process: {}", e);
 
-                        #[cfg(feature = "tracing")]
-                        tracing::error!(error=%e, "Failed to resume process");
+                                #[cfg(feature = "tracing")]
+                                tracing::error!(error=%e, "Failed to resume process");
 
-                        let _ = child.kill().await;
+                                let _ = child.kill().await;
 
-                        let error = TaskError::Handle(msg);
-                        self.send_error_event_and_stop(error.clone(), event_tx)
-                            .await;
-                        return Err(error);
+                                error = Some(TaskError::Handle(msg));
+                            }
+                        }
+
+                        if let Some(error) = error {
+                            self.send_error_event_and_stop(error.clone(), event_tx)
+                                .await;
+                            return Err(error);
+                        }
                     }
                 }
 
@@ -380,9 +384,75 @@ impl TaskExecutor {
                     })?;
                 }
             }
-            TaskControlAction::Pause => todo!(),
-            TaskControlAction::Resume => todo!(),
-            TaskControlAction::Interrupt => todo!(),
+            TaskControlAction::Pause => {
+                if use_process_group && active {
+                    self.shared_context
+                        .group
+                        .lock()
+                        .await
+                        .pause_group()
+                        .map_err(|e| {
+                            let msg = format!("Failed to pause process group: {}", e);
+                            #[cfg(feature = "tracing")]
+                            tracing::error!(error=%e, "{}", msg);
+                            TaskError::Control(msg)
+                        })?;
+                } else {
+                    use crate::tasks::process::action::pause::pause_process;
+                    pause_process(process_id).map_err(|e| {
+                        let msg = format!("Failed to pause process: {}", e);
+                        #[cfg(feature = "tracing")]
+                        tracing::error!(error=%e, "{}", msg);
+                        TaskError::Control(msg)
+                    })?;
+                }
+            }
+            TaskControlAction::Resume => {
+                if use_process_group && active {
+                    self.shared_context
+                        .group
+                        .lock()
+                        .await
+                        .resume_group()
+                        .map_err(|e| {
+                            let msg = format!("Failed to resume process group: {}", e);
+                            #[cfg(feature = "tracing")]
+                            tracing::error!(error=%e, "{}", msg);
+                            TaskError::Control(msg)
+                        })?;
+                } else {
+                    use crate::tasks::process::action::resume::resume_process;
+                    resume_process(process_id).map_err(|e| {
+                        let msg = format!("Failed to resume process: {}", e);
+                        #[cfg(feature = "tracing")]
+                        tracing::error!(error=%e, "{}", msg);
+                        TaskError::Control(msg)
+                    })?;
+                }
+            }
+            TaskControlAction::Interrupt => {
+                if use_process_group && active {
+                    self.shared_context
+                        .group
+                        .lock()
+                        .await
+                        .interrupt_group()
+                        .map_err(|e| {
+                            let msg = format!("Failed to interrupt process group: {}", e);
+                            #[cfg(feature = "tracing")]
+                            tracing::error!(error=%e, "{}", msg);
+                            TaskError::Control(msg)
+                        })?;
+                } else {
+                    use crate::tasks::process::action::interrupt::interrupt_process;
+                    interrupt_process(process_id).map_err(|e| {
+                        let msg = format!("Failed to interrupt process: {}", e);
+                        #[cfg(feature = "tracing")]
+                        tracing::error!(error=%e, "{}", msg);
+                        TaskError::Control(msg)
+                    })?;
+                }
+            }
         }
         Ok(())
     }
@@ -424,72 +494,5 @@ impl TaskExecutor {
             TaskError::Control(msg)
         })?;
         Ok(cmd)
-    }
-
-    #[cfg(all(windows, feature = "process-group"))]
-    /// Resumes a suspended process by resuming its primary thread.
-    ///
-    /// On Windows, when a process is spawned in a suspended state (to safely assign it to a job object),
-    /// this function finds the first thread belonging to the process and resumes it, allowing the process to run.
-    ///
-    /// # Arguments
-    ///
-    /// * `pid` - The process ID of the process to resume
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(())` - If the process was successfully resumed
-    /// * `Err(String)` - If resuming the process fails or no threads are found
-    ///
-    /// # Errors
-    ///
-    /// Returns an error string if the thread snapshot cannot be created, no threads are found for the process,
-    /// or if resuming the thread fails.
-    fn resume_process(pid: u32) -> Result<(), String> {
-        use windows::Win32::Foundation::CloseHandle;
-        use windows::Win32::System::Diagnostics::ToolHelp::{
-            CreateToolhelp32Snapshot, TH32CS_SNAPTHREAD, THREADENTRY32, Thread32First, Thread32Next,
-        };
-        use windows::Win32::System::Threading::{OpenThread, ResumeThread, THREAD_SUSPEND_RESUME};
-
-        unsafe {
-            // Take a snapshot of all threads in the system
-            let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0)
-                .map_err(|e| format!("Failed to create thread snapshot: {}", e))?;
-
-            let mut thread_entry = THREADENTRY32 {
-                dwSize: std::mem::size_of::<THREADENTRY32>() as u32,
-                ..Default::default()
-            };
-
-            let mut found = false;
-
-            // Find the first (and typically only) thread belonging to the process
-            if Thread32First(snapshot, &mut thread_entry).is_ok() {
-                loop {
-                    if thread_entry.th32OwnerProcessID == pid {
-                        if let Ok(thread_handle) =
-                            OpenThread(THREAD_SUSPEND_RESUME, false, thread_entry.th32ThreadID)
-                        {
-                            ResumeThread(thread_handle);
-                            let _ = CloseHandle(thread_handle);
-                            found = true;
-                        }
-                    }
-
-                    if Thread32Next(snapshot, &mut thread_entry).is_err() {
-                        break;
-                    }
-                }
-            }
-
-            let _ = CloseHandle(snapshot);
-
-            if !found {
-                return Err(format!("No threads found for process {}", pid));
-            }
-        }
-
-        Ok(())
     }
 }

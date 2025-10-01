@@ -46,7 +46,7 @@ impl ProcessGroup {
     /// # Examples
     ///
     /// ```rust
-    /// use tcrm_task::tasks::process::process_group::ProcessGroup;
+    /// use tcrm_task::tasks::process::group::builder::ProcessGroup;
     ///
     /// let group = ProcessGroup::new();
     /// assert!(!group.is_active());
@@ -73,7 +73,7 @@ impl ProcessGroup {
     /// # Examples
     ///
     /// ```rust
-    /// use tcrm_task::tasks::process::process_group::ProcessGroup;
+    /// use tcrm_task::tasks::process::group::builder::ProcessGroup;
     ///
     /// let group = ProcessGroup::new();
     /// assert!(!group.is_active());
@@ -97,7 +97,7 @@ impl ProcessGroup {
     /// This method prepares a Command to run as part of this process group. On Unix systems,
     /// it configures the command to create a new session and process group using setsid().
     /// On Windows, it configures the command to run in a new job object with appropriate
-    /// creation flags.
+    /// creation flags and enables CREATE_SUSPENDED to avoid race conditions.
     ///
     /// # Arguments
     ///
@@ -108,10 +108,20 @@ impl ProcessGroup {
     /// * `Ok(Command)` - The configured command ready for execution
     /// * `Err(ProcessGroupError)` - If process group configuration fails
     ///
+    /// # Platform-Specific Behavior
+    ///
+    /// ## Windows Race Condition Mitigation
+    /// On Windows, the process is configured to start in a suspended state (CREATE_SUSPENDED).
+    /// After spawning, you must call `assign_child()` and then manually resume the process
+    /// to avoid the race condition where child processes can escape the job before assignment.
+    ///
+    /// ## Unix Behavior  
+    /// On Unix, the process starts normally in its own process group via setsid().
+    ///
     /// # Example
     ///
     /// ```rust,no_run
-    /// use tcrm_task::tasks::process::process_group::ProcessGroup;
+    /// use tcrm_task::tasks::process::group::builder::ProcessGroup;
     /// use tokio::process::Command;
     ///
     /// let mut group = ProcessGroup::new();
@@ -146,6 +156,7 @@ impl ProcessGroup {
                 CreateJobObjectW, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
                 JobObjectExtendedLimitInformation, SetInformationJobObject,
             };
+            use windows::Win32::System::Threading::CREATE_SUSPENDED;
             use windows::core::PCWSTR;
 
             // Create a Job Object for the process group
@@ -157,21 +168,30 @@ impl ProcessGroup {
             let mut job_info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
             job_info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
 
-            unsafe {
+            let set_info_result = unsafe {
                 SetInformationJobObject(
                     job_handle,
                     JobObjectExtendedLimitInformation,
                     &job_info as *const _ as *const std::ffi::c_void,
                     std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
                 )
-            }
-            .map_err(|e| {
+            };
+
+            if let Err(e) = set_info_result {
                 unsafe {
                     let _ = windows::Win32::Foundation::CloseHandle(job_handle);
                 }
-                ProcessGroupError::CreationFailed(format!("Failed to configure Job Object: {}", e))
-            })?;
+                return Err(ProcessGroupError::CreationFailed(format!(
+                    "Failed to configure Job Object: {}",
+                    e
+                )));
+            }
+
             self.inner.job_handle = Some(SendHandle(job_handle));
+
+            // Configure the command to start suspended to avoid race conditions
+            // This is essential to prevent child processes from escaping the job
+            command.creation_flags(CREATE_SUSPENDED.0);
 
             Ok(command)
         }
@@ -185,8 +205,9 @@ impl ProcessGroup {
 
     /// Assigns a spawned child process to this process group/job.
     ///
-    /// On Unix systems, this stores the process group ID. On Windows, this assigns
-    /// the process to the job object for group management.
+    /// On Unix systems, this stores the process group ID.
+    ///
+    /// On Windows, this assigns the process to the job object.
     ///
     /// After assignment, all future children of the process will be contained in the job, unless the process has
     /// breakaway privileges (which are not enabled by default in this implementation).
@@ -203,7 +224,7 @@ impl ProcessGroup {
     /// # Example
     ///
     /// ```rust
-    /// use tcrm_task::tasks::process::process_group::ProcessGroup;
+    /// use tcrm_task::tasks::process::group::builder::ProcessGroup;
     /// use std::process::Command;
     ///
     /// let mut group = ProcessGroup::new();
@@ -223,7 +244,7 @@ impl ProcessGroup {
     ///
     /// To avoid this issue, the process needs to be spawned in a suspended state,
     /// assigned to the job object, and only then resuming it. This ensures that no
-    /// child processes can escape the job before assignment
+    /// child processes can escape the job before assignment.
     pub fn assign_child(&mut self, child_id: u32) -> Result<(), ProcessGroupError> {
         #[cfg(unix)]
         {
@@ -274,11 +295,97 @@ impl ProcessGroup {
         }
         #[cfg(not(any(unix, windows)))]
         {
-            let _ = child;
+            let _ = child_id;
             Err(ProcessGroupError::UnsupportedPlatform(
                 "Process group assignment not available on this platform".to_string(),
             ))
         }
+    }
+
+    /// Resumes a suspended process (Windows only).
+    ///
+    /// This method should be called after `assign_child()` when using processes
+    /// spawned with CREATE_SUSPENDED to complete the race-condition-safe setup.
+    ///
+    /// # Arguments
+    ///
+    /// * `child_id` - The process ID of the child to resume
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` - If the process was resumed successfully
+    /// * `Err(ProcessGroupError)` - If resuming fails or the platform is unsupported
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use tcrm_task::tasks::process::group::builder::ProcessGroup;
+    /// use tokio::process::Command;
+    ///
+    /// let mut group = ProcessGroup::new();
+    /// let mut cmd = group.create_with_command(Command::new("echo")).unwrap();
+    /// let child = cmd.spawn().unwrap();
+    /// let pid = child.id().expect("Failed to get process ID");
+    /// group.assign_child(pid).unwrap();
+    /// group.resume_process(pid).unwrap(); // Windows only
+    /// ```
+    #[cfg(windows)]
+    pub fn resume_process(&self, child_id: u32) -> Result<(), ProcessGroupError> {
+        use windows::Win32::Foundation::CloseHandle;
+        use windows::Win32::System::Diagnostics::ToolHelp::{
+            CreateToolhelp32Snapshot, TH32CS_SNAPTHREAD, THREADENTRY32, Thread32First, Thread32Next,
+        };
+        use windows::Win32::System::Threading::{OpenThread, ResumeThread, THREAD_SUSPEND_RESUME};
+
+        unsafe {
+            // Take a snapshot of all threads in the system
+            let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0).map_err(|e| {
+                ProcessGroupError::SignalFailed(format!("Failed to create thread snapshot: {}", e))
+            })?;
+
+            let mut thread_entry = THREADENTRY32 {
+                dwSize: std::mem::size_of::<THREADENTRY32>() as u32,
+                ..Default::default()
+            };
+
+            let mut resumed_count = 0;
+
+            // Iterate through all threads and resume those belonging to the process
+            if Thread32First(snapshot, &mut thread_entry).is_ok() {
+                loop {
+                    if thread_entry.th32OwnerProcessID == child_id {
+                        let thread_handle =
+                            OpenThread(THREAD_SUSPEND_RESUME, false, thread_entry.th32ThreadID);
+                        if let Ok(handle) = thread_handle {
+                            ResumeThread(handle);
+                            let _ = CloseHandle(handle);
+                            resumed_count += 1;
+                        }
+                    }
+
+                    if Thread32Next(snapshot, &mut thread_entry).is_err() {
+                        break;
+                    }
+                }
+            }
+
+            let _ = CloseHandle(snapshot);
+
+            if resumed_count == 0 {
+                Err(ProcessGroupError::SignalFailed(format!(
+                    "No threads found to resume for process with PID {}",
+                    child_id
+                )))
+            } else {
+                Ok(())
+            }
+        }
+    }
+
+    /// No-op on non-Windows platforms.
+    #[cfg(not(windows))]
+    pub fn resume_process(&self, _child_id: u32) -> Result<(), ProcessGroupError> {
+        Ok(()) // No-op on Unix systems
     }
 }
 
