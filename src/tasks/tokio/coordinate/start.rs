@@ -184,9 +184,9 @@ impl TaskExecutor {
                     },
 
                     reason = Self::await_oneshot(&mut terminate_rx, termination_requested) =>
-                        Self::handle_terminate(shared_context.clone(), &mut child, reason, &mut termination_requested).await,
+                        Self::handle_terminate(shared_context.clone(), &mut child, reason, &mut termination_requested, &event_tx).await,
                     reason = Self::await_oneshot(&mut internal_terminate_rx, termination_requested) =>
-                        Self::handle_terminate(shared_context.clone(), &mut child, reason, &mut termination_requested).await,
+                        Self::handle_terminate(shared_context.clone(), &mut child, reason, &mut termination_requested, &event_tx).await,
 
                     result = child.wait() => Self::handle_wait_result(shared_context.clone(), result,&mut process_exited).await,
                 }

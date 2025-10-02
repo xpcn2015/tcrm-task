@@ -163,6 +163,7 @@ pub trait TaskStatusInfo {
 ///
 /// This structure contains all available information about a task's
 /// current state.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, PartialEq)]
 pub struct TaskInformation {
     /// Current state of the task

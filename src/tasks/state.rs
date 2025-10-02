@@ -109,7 +109,7 @@ pub enum TaskState {
     /// possible to reach this state during normal operation.
     ///
     /// Internal use only.
-    Invalid = 255,
+    Invalid = 127,
 }
 
 impl From<u8> for TaskState {
@@ -138,6 +138,7 @@ impl From<TaskState> for u8 {
 /// Represents the state of a spawned process during its lifecycle.
 ///
 /// `ProcessState` is used to track whether a process is running, paused, or stopped.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProcessState {
     /// The process is not running.
@@ -150,7 +151,7 @@ pub enum ProcessState {
     Pause = 2,
 
     /// Invalid state (should not occur).
-    Invalid = 255,
+    Invalid = 127,
 }
 
 impl From<u8> for ProcessState {

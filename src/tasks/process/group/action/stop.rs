@@ -64,7 +64,6 @@ impl ProcessGroup {
     #[cfg(windows)]
     pub fn stop_group(&self) -> Result<(), ProcessGroupError> {
         use crate::tasks::process::group::builder::SendHandle;
-
         if let Some(SendHandle(job_handle)) = &self.inner.job_handle {
             unsafe {
                 use windows::Win32::System::JobObjects::TerminateJobObject;
