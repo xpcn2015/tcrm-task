@@ -60,6 +60,7 @@ impl TaskExecutor {
             #[cfg(unix)]
             signal: shared_context.get_terminate_signal_code(),
         };
+        shared_context.clear_event_tx().await;
 
         Self::send_event(&event_tx, event).await;
     }

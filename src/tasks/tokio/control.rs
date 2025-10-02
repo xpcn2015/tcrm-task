@@ -170,15 +170,10 @@ impl ProcessControl for TaskExecutor {
                 }
             }
         }
-        self.event_tx
-            .send(TaskEvent::ProcessControl { action })
-            .await
-            .map_err(|e| {
-                let msg = format!("Failed to send ProcessControl event: {}", e);
-                #[cfg(feature = "tracing")]
-                tracing::error!(error=%e, "{}", msg);
-                TaskError::Channel(msg)
-            })?;
+        self.shared_context
+            .send_event(TaskEvent::ProcessControl { action })
+            .await?;
+
         Ok(())
     }
 }

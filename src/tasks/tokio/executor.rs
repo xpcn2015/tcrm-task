@@ -103,7 +103,6 @@ pub struct TaskExecutor {
     pub(crate) shared_context: Arc<TaskExecutorContext>,
     pub(crate) stdin: Option<ChildStdin>,
     pub(crate) terminate_tx: Option<oneshot::Sender<TaskTerminateReason>>,
-    pub(crate) event_tx: mpsc::Sender<TaskEvent>,
 }
 
 impl TaskExecutor {
@@ -112,6 +111,7 @@ impl TaskExecutor {
     /// # Arguments
     ///
     /// * `config` - Validated task configuration containing command, arguments, and options
+    /// * `event_tx` - Channel for sending task events
     ///
     /// # Examples
     ///
@@ -129,10 +129,9 @@ impl TaskExecutor {
     /// ```
     pub fn new(config: TaskConfig, event_tx: mpsc::Sender<TaskEvent>) -> Self {
         Self {
-            shared_context: Arc::new(TaskExecutorContext::new(config)),
+            shared_context: Arc::new(TaskExecutorContext::new(config, event_tx)),
             stdin: None,
             terminate_tx: None,
-            event_tx,
         }
     }
 
@@ -216,5 +215,27 @@ impl TaskExecutor {
             },
         );
         cmd
+    }
+
+    /// Configures whether to drop (close) the event channel when the task finishes.
+    ///
+    /// By default, the event channel (`event_tx`) is dropped when the task finishes,
+    /// signaling to receivers that no more events will be sent.
+    /// This method allows you to override that behavior,
+    /// which is useful if you want to keep the event channel open for multiple tasks
+    /// or for manual control.
+    ///
+    /// # Arguments
+    ///
+    /// * `drop` - If `true`, the event channel will be dropped when the task finishes (default behavior).
+    ///            If `false`, the event channel will remain open after task completion.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// executor.set_drop_event_tx_on_finished(false); // Keep event channel open after task finishes
+    /// ```
+    pub fn set_drop_event_tx_on_finished(&self, drop: bool) {
+        self.shared_context.set_drop_event_tx_on_finished(drop);
     }
 }

@@ -3,13 +3,14 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use tokio::sync::{Mutex, oneshot};
+use tokio::sync::{Mutex, mpsc, oneshot};
 
 #[cfg(feature = "process-group")]
 use crate::tasks::process::group::builder::ProcessGroup;
 use crate::tasks::{
     config::TaskConfig,
-    event::{TaskStopReason, TaskTerminateReason},
+    error::TaskError,
+    event::{TaskEvent, TaskStopReason, TaskTerminateReason},
     state::TaskState,
 };
 
@@ -32,6 +33,8 @@ pub(crate) struct TaskExecutorContext {
     stop_reason: Mutex<Option<TaskStopReason>>,
     ready_flag: AtomicBool,
     internal_terminate_tx: Mutex<Option<oneshot::Sender<TaskTerminateReason>>>,
+    event_tx: Mutex<Option<mpsc::Sender<TaskEvent>>>,
+    drop_event_tx_on_finished: AtomicBool,
 
     #[cfg(unix)]
     terminate_signal_code: AtomicI32,
@@ -48,11 +51,12 @@ impl TaskExecutorContext {
     /// # Arguments
     ///
     /// * `config` - The task configuration to use
+    /// * `event_tx` - Channel for sending task events
     ///
     /// # Returns
     ///
     /// A new `TaskExecutorContext` instance
-    pub(crate) fn new(config: TaskConfig) -> Self {
+    pub(crate) fn new(config: TaskConfig, event_tx: mpsc::Sender<TaskEvent>) -> Self {
         let now_nanos = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
@@ -70,6 +74,8 @@ impl TaskExecutorContext {
             stop_reason: Mutex::new(None),
             ready_flag: AtomicBool::new(false),
             internal_terminate_tx: Mutex::new(None),
+            event_tx: Mutex::new(Some(event_tx)),
+            drop_event_tx_on_finished: AtomicBool::new(true),
 
             #[cfg(unix)]
             terminate_signal_code: AtomicI32::new(0),
@@ -441,5 +447,92 @@ impl TaskExecutorContext {
     pub(crate) fn set_process_state(&self, new_state: crate::tasks::state::ProcessState) {
         self.process_state
             .store(new_state as u8, std::sync::atomic::Ordering::SeqCst);
+    }
+
+    /// Sends a task event through the event channel.
+    ///
+    /// Attempts to send a [`TaskEvent`] through the event channel if it exists.
+    ///
+    /// # Arguments
+    ///
+    /// * `event` - The [`TaskEvent`] to send through the event channel.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` if the event was sent successfully.
+    /// * `Err(TaskError::Channel)` if the event channel is missing or closed.
+    ///
+    /// # Behavior
+    ///
+    /// - If the event channel exists, the event is sent asynchronously.
+    /// - If the event channel is missing, returns a [`TaskError::Channel`] and logs a warning (if the `tracing` feature is enabled).
+    /// - If the event channel is closed, returns a [`TaskError::Channel`] and logs a warning (if the `tracing` feature is enabled).
+    ///
+    /// # Tracing
+    ///
+    /// If the `tracing` feature is enabled, warnings are logged for missing or closed event channels, including the event attempted to be sent.
+    ///
+    pub(crate) async fn send_event(&self, event: TaskEvent) -> Result<(), TaskError> {
+        let guard = self.event_tx.lock().await;
+        let tx = match guard.as_ref() {
+            Some(tx) => tx,
+            None => {
+                let msg = format!("Event channel missing when sending event: {:?}", event);
+
+                #[cfg(feature = "tracing")]
+                tracing::warn!("{}", msg.clone());
+
+                return Err(TaskError::Channel(msg));
+            }
+        };
+        match tx.send(event.clone()).await {
+            Ok(_) => Ok(()),
+            Err(_) => {
+                let msg = format!("Event channel closed when sending event: {:?}", event);
+
+                #[cfg(feature = "tracing")]
+                tracing::warn!("{}", msg.clone());
+
+                Err(TaskError::Channel(msg))
+            }
+        }
+    }
+
+    /// Gets a clone of the current event channel sender
+    ///
+    /// # Returns
+    ///
+    /// * `Some(mpsc::Sender<TaskEvent>)` - A clone of the event channel sender if it exists.
+    /// * `None` - If the event channel has been cleared or was never set.
+
+    pub(crate) async fn get_event_tx(&self) -> Option<mpsc::Sender<TaskEvent>> {
+        let guard = self.event_tx.lock().await;
+        guard.as_ref().cloned()
+    }
+
+    /// Clears (removes) the event channel sender from the context.
+    ///
+    /// After calling this, the event channel will be set to `None` and no further events can be sent.
+    /// This is typically used internally when the task finishes and the event channel should be dropped.
+    pub(crate) async fn clear_event_tx(&self) {
+        let mut guard = self.event_tx.lock().await;
+        *guard = None;
+    }
+    /// Configures whether to drop the event channel when the task finishes.
+    ///
+    /// Sets whether the event channel (`event_tx`) should be dropped (closed) automatically when the task finishes.
+    ///
+    /// # Arguments
+    ///
+    /// * `drop` - If `true`, the event channel will be dropped when the task finishes, signaling to receivers that no more events will be sent.
+    ///            If `false`, the event channel will remain open after task completion (useful for shared channels or long-lived event streams).
+    ///
+    /// # Behavior
+    ///
+    /// Dropping the event channel on task finish is the default behavior. Disabling this can be useful if multiple tasks share the same event channel
+    /// and you want to control its lifetime externally.
+    pub(crate) fn set_drop_event_tx_on_finished(&self, drop: bool) {
+        self.drop_event_tx_on_finished
+            .store(drop, std::sync::atomic::Ordering::SeqCst);
     }
 }

@@ -115,8 +115,18 @@ impl TaskExecutor {
     /// }
     /// ```
     pub async fn coordinate_start(&mut self) -> Result<(), TaskError> {
+        let event_tx = match self.shared_context.get_event_tx().await {
+            Some(tx) => tx,
+            None => {
+                let msg = "Event channel sender not available".to_string();
+                #[cfg(feature = "tracing")]
+                tracing::error!("{}", msg);
+                return Err(TaskError::Channel(msg));
+            }
+        };
+
         Self::update_state(&self.shared_context, TaskState::Initiating);
-        let event_tx = self.event_tx.clone();
+
         self.validate_config(&event_tx).await?;
 
         let cmd = self.setup_command();
