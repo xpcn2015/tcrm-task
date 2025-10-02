@@ -36,9 +36,11 @@ impl TaskExecutor {
             }
         };
 
-        // If configured to use process group, ensure all child processes are terminated
+        // Terminate if using process groups, and the task was not terminated by handle_terminate
         #[cfg(feature = "process-group")]
-        if shared_context.config.use_process_group.unwrap_or_default() {
+        if shared_context.config.use_process_group.unwrap_or_default()
+            && !matches!(reason, TaskStopReason::Terminated(_))
+        {
             if let Err(e) = shared_context.group.lock().await.stop_group() {
                 let msg = format!("Failed to terminate process group: {}", e);
 

@@ -1,9 +1,12 @@
 use std::sync::Arc;
 
-use tokio::{process::Child, sync::oneshot::error::RecvError};
+use tokio::{
+    process::Child,
+    sync::{mpsc, oneshot::error::RecvError},
+};
 
 use crate::tasks::{
-    event::{TaskStopReason, TaskTerminateReason},
+    event::{TaskEvent, TaskStopReason, TaskTerminateReason},
     process::action::stop::stop_process,
     tokio::{context::TaskExecutorContext, executor::TaskExecutor},
 };
@@ -24,6 +27,7 @@ impl TaskExecutor {
         child: &mut Child,
         reason: Result<TaskTerminateReason, RecvError>,
         termination_requested: &mut bool,
+        event_tx: &mpsc::Sender<TaskEvent>,
     ) {
         *termination_requested = true;
 
@@ -44,8 +48,23 @@ impl TaskExecutor {
             .await;
 
         match child.kill().await {
-            Ok(_) => {
-                // Successfully
+            Ok(_) =>
+            {
+                #[cfg(feature = "process-group")]
+                if shared_context.config.use_process_group.unwrap_or_default() {
+                    if let Err(e) = shared_context.group.lock().await.stop_group() {
+                        use crate::tasks::{error::TaskError, event::TaskEvent};
+
+                        let msg = format!("Failed to terminate process group: {}", e);
+
+                        #[cfg(feature = "tracing")]
+                        tracing::error!(error=%e, "{}", msg);
+
+                        let error = TaskError::Control(msg);
+                        let event = TaskEvent::Error { error };
+                        Self::send_event(&event_tx, event).await;
+                    };
+                }
             }
             Err(e) => {
                 use std::io::ErrorKind;
