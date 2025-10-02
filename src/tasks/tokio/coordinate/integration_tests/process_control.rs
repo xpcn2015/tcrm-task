@@ -40,7 +40,6 @@ async fn stop() {
     let mut stopped = false;
     let mut handle = None;
 
-    // Wait for the process to start
     while let Ok(Some(event)) = timeout(Duration::from_secs(5), rx.recv()).await {
         match event {
             TaskEvent::Started {
