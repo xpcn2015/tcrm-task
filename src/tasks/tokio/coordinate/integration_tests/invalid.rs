@@ -23,8 +23,8 @@ async fn empty_command() {
     #[cfg(feature = "process-group")]
     let config = config.use_process_group(false);
 
-    let mut executor = TaskExecutor::new(config);
-    let result = executor.coordinate_start(tx).await;
+    let mut executor = TaskExecutor::new(config, tx);
+    let result = executor.coordinate_start().await;
     assert!(matches!(result, Err(TaskError::InvalidConfiguration(_))));
     let mut error_event = false;
     let mut stopped_event = false;
@@ -71,6 +71,9 @@ async fn empty_command() {
             TaskEvent::Ready => {
                 panic!("Unexpected Ready event");
             }
+            TaskEvent::ProcessControl { action } => {
+                panic!("Unexpected ProcessControl event: {:?}", action);
+            }
         }
     }
 
@@ -87,8 +90,8 @@ async fn command_not_found() {
     #[cfg(feature = "process-group")]
     let config = config.use_process_group(false);
 
-    let mut executor = TaskExecutor::new(config);
-    let result = executor.coordinate_start(tx).await;
+    let mut executor = TaskExecutor::new(config, tx);
+    let result = executor.coordinate_start().await;
     assert!(matches!(result, Err(TaskError::IO(_))));
     let mut error_event = false;
     let mut stopped_event = false;
@@ -131,6 +134,9 @@ async fn command_not_found() {
             }
             TaskEvent::Ready => {
                 panic!("Unexpected Ready event");
+            }
+            TaskEvent::ProcessControl { action } => {
+                panic!("Unexpected ProcessControl event: {:?}", action);
             }
         }
     }
@@ -155,8 +161,8 @@ async fn not_exist_dir() {
     #[cfg(feature = "process-group")]
     let config = config.use_process_group(false);
 
-    let mut executor = TaskExecutor::new(config);
-    let result = executor.coordinate_start(tx).await;
+    let mut executor = TaskExecutor::new(config, tx);
+    let result = executor.coordinate_start().await;
     assert!(matches!(result, Err(TaskError::IO(_))));
     let mut error_event = false;
     let mut stopped_event = false;
@@ -200,6 +206,9 @@ async fn not_exist_dir() {
             TaskEvent::Ready => {
                 panic!("Unexpected Ready event");
             }
+            TaskEvent::ProcessControl { action } => {
+                panic!("Unexpected ProcessControl event: {:?}", action);
+            }
         }
     }
 
@@ -220,8 +229,8 @@ async fn zero_timeout() {
     #[cfg(feature = "process-group")]
     let config = config.use_process_group(false);
 
-    let mut executor = TaskExecutor::new(config);
-    let result = executor.coordinate_start(tx).await;
+    let mut executor = TaskExecutor::new(config, tx);
+    let result = executor.coordinate_start().await;
     assert!(matches!(result, Err(TaskError::InvalidConfiguration(_))));
     let mut error_event = false;
     let mut stopped_event = false;
@@ -267,6 +276,9 @@ async fn zero_timeout() {
             }
             TaskEvent::Ready => {
                 panic!("Unexpected Ready event");
+            }
+            TaskEvent::ProcessControl { action } => {
+                panic!("Unexpected ProcessControl event: {:?}", action);
             }
         }
     }

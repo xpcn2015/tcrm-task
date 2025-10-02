@@ -35,10 +35,10 @@ use crate::tasks::{config::StreamSource, error::TaskError};
 ///     #[cfg(unix)]
 ///     let config = TaskConfig::new("echo").args(["hello", "world"]);
 ///     
-///     let mut executor = TaskExecutor::new(config);
-///     
 ///     let (tx, mut rx) = mpsc::channel(100);
-///     executor.coordinate_start(tx).await?;
+///     let mut executor = TaskExecutor::new(config, tx);
+///     
+///     executor.coordinate_start().await?;
 ///
 ///     while let Some(event) = rx.recv().await {
 ///         match event {
@@ -90,9 +90,9 @@ use crate::tasks::{config::StreamSource, error::TaskError};
 ///         .ready_indicator("Server listening")
 ///         .ready_indicator_source(StreamSource::Stdout);
 ///
-///     let mut executor = TaskExecutor::new(config);
 ///     let (tx, mut rx) = mpsc::channel(100);
-///     executor.coordinate_start(tx).await?;
+///     let mut executor = TaskExecutor::new(config, tx);
+///     executor.coordinate_start().await?;
 ///
 ///     while let Some(event) = rx.recv().await {
 ///         match event {
@@ -279,10 +279,10 @@ pub enum TaskStopReason {
 ///     #[cfg(unix)]
 ///     let config = TaskConfig::new("sleep").args(["5"]); // 5 second sleep
 ///     
-///     let mut executor = TaskExecutor::new(config);
-///     
 ///     let (tx, _rx) = mpsc::channel(100);
-///     executor.coordinate_start(tx).await?;
+///     let mut executor = TaskExecutor::new(config, tx);
+///     
+///     executor.coordinate_start().await?;
 ///     
 ///     // Terminate after 1 second
 ///     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
@@ -308,10 +308,10 @@ pub enum TaskStopReason {
 ///     #[cfg(unix)]
 ///     let config = TaskConfig::new("echo").args(["running"]);
 ///     
-///     let mut executor = TaskExecutor::new(config);
-///     
 ///     let (tx, _rx) = mpsc::channel(100);
-///     executor.coordinate_start(tx).await?;
+///     let mut executor = TaskExecutor::new(config, tx);
+///     
+///     executor.coordinate_start().await?;
 ///     
 ///     let reason = TaskTerminateReason::UserRequested;
 ///     executor.terminate_task(reason)?;

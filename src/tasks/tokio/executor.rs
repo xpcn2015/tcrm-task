@@ -38,10 +38,10 @@ use crate::tasks::{
 ///     
 ///     config.validate()?;
 ///     
-///     let mut executor = TaskExecutor::new(config);
 ///     let (tx, mut rx) = mpsc::channel(100);
+///     let mut executor = TaskExecutor::new(config, tx);
 ///     
-///     executor.coordinate_start(tx).await?;
+///     executor.coordinate_start().await?;
 ///     
 ///     while let Some(event) = rx.recv().await {
 ///         match event {
@@ -78,10 +78,10 @@ use crate::tasks::{
 ///         .args(["10"])
 ///         .timeout_ms(5000);
 ///     
-///     let mut executor = TaskExecutor::new(config);
 ///     let (tx, mut rx) = mpsc::channel(100);
+///     let mut executor = TaskExecutor::new(config, tx);
 ///     
-///     executor.coordinate_start(tx).await?;
+///     executor.coordinate_start().await?;
 ///     
 ///     // Terminate after 2 seconds
 ///     tokio::spawn(async move {
@@ -117,13 +117,15 @@ impl TaskExecutor {
     ///
     /// ```rust
     /// use tcrm_task::tasks::{config::TaskConfig, tokio::executor::TaskExecutor};
+    /// use tokio::sync::mpsc;
     ///
     /// #[cfg(windows)]
     /// let config = TaskConfig::new("cmd").args(["/C", "dir"]);
     /// #[cfg(unix)]
     /// let config = TaskConfig::new("ls").args(["-la"]);
     ///
-    /// let executor = TaskExecutor::new(config);
+    /// let (tx, _rx) = mpsc::channel(100);
+    /// let executor = TaskExecutor::new(config, tx);
     /// ```
     pub fn new(config: TaskConfig, event_tx: mpsc::Sender<TaskEvent>) -> Self {
         Self {

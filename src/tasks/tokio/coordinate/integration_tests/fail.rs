@@ -27,8 +27,8 @@ async fn exit_with_error() {
     #[cfg(feature = "process-group")]
     let config = config.use_process_group(false);
 
-    let mut executor = TaskExecutor::new(config);
-    let result = executor.coordinate_start(tx).await;
+    let mut executor = TaskExecutor::new(config, tx);
+    let result = executor.coordinate_start().await;
     assert!(matches!(result, Ok(())));
     let mut started_event = false;
     let mut stopped_event = false;
@@ -71,6 +71,9 @@ async fn exit_with_error() {
             }
             TaskEvent::Ready => {
                 panic!("Unexpected Ready event");
+            }
+            TaskEvent::ProcessControl { action } => {
+                panic!("Unexpected ProcessControl event: {:?}", action);
             }
         }
     }

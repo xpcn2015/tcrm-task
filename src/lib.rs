@@ -25,11 +25,11 @@
 //!     let config = TaskConfig::new("echo").args(["Hello, World!"]);
 //!
 //!     // Create executor and event channel
-//!     let mut executor = TaskExecutor::new(config);
 //!     let (tx, mut rx) = mpsc::channel(100);
+//!     let mut executor = TaskExecutor::new(config, tx);
 //!     
 //!     // Spawns a new asynchronous task
-//!     executor.coordinate_start(tx).await?;
+//!     executor.coordinate_start().await?;
 //!
 //!     // Process events
 //!     while let Some(event) = rx.recv().await {
@@ -78,10 +78,10 @@
 //!         .ready_indicator_source(StreamSource::Stdout)
 //!         .timeout_ms(30000);
 //!
-//!     let mut executor = TaskExecutor::new(config);
 //!     let (tx, mut rx) = mpsc::channel(100);
+//!     let mut executor = TaskExecutor::new(config, tx);
 //!     
-//!     executor.coordinate_start(tx).await?;
+//!     executor.coordinate_start().await?;
 //!
 //!     // Wait for ready event
 //!     while let Some(event) = rx.recv().await {
@@ -128,10 +128,10 @@
 //!         .args(["10"])
 //!         .timeout_ms(5000); // 5 second timeout
 //!
-//!     let mut executor = TaskExecutor::new(config);
 //!     let (tx, mut rx) = mpsc::channel(100);
+//!     let mut executor = TaskExecutor::new(config, tx);
 //!     
-//!     executor.coordinate_start(tx).await?;
+//!     executor.coordinate_start().await?;
 //!
 //!     // Terminate after 2 seconds
 //!     tokio::spawn(async move {

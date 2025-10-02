@@ -31,8 +31,8 @@ async fn on_stdout() {
     #[cfg(feature = "process-group")]
     let config = config.use_process_group(false);
 
-    let mut executor = TaskExecutor::new(config);
-    executor.coordinate_start(tx).await.unwrap();
+    let mut executor = TaskExecutor::new(config, tx);
+    executor.coordinate_start().await.unwrap();
 
     let mut started = false;
     let mut output_received = false;
@@ -80,6 +80,9 @@ async fn on_stdout() {
             TaskEvent::Ready => {
                 ready_event = true;
             }
+            TaskEvent::ProcessControl { action } => {
+                panic!("Unexpected ProcessControl event: {:?}", action);
+            }
         }
     }
 
@@ -105,8 +108,8 @@ async fn on_stderr() {
     #[cfg(feature = "process-group")]
     let config = config.use_process_group(false);
 
-    let mut executor = TaskExecutor::new(config);
-    executor.coordinate_start(tx).await.unwrap();
+    let mut executor = TaskExecutor::new(config, tx);
+    executor.coordinate_start().await.unwrap();
 
     let mut started = false;
     let mut output_received = false;
@@ -158,6 +161,9 @@ async fn on_stderr() {
             TaskEvent::Ready => {
                 ready_event = true;
             }
+            TaskEvent::ProcessControl { action } => {
+                panic!("Unexpected ProcessControl event: {:?}", action);
+            }
         }
     }
 
@@ -183,8 +189,8 @@ async fn src_mismatch() {
     #[cfg(feature = "process-group")]
     let config = config.use_process_group(false);
 
-    let mut executor = TaskExecutor::new(config);
-    executor.coordinate_start(tx).await.unwrap();
+    let mut executor = TaskExecutor::new(config, tx);
+    executor.coordinate_start().await.unwrap();
 
     let mut started = false;
     let mut output_received = false;
@@ -230,6 +236,9 @@ async fn src_mismatch() {
             }
             TaskEvent::Ready => {
                 panic!("Should not emit Ready event when source mismatches");
+            }
+            TaskEvent::ProcessControl { action } => {
+                panic!("Unexpected ProcessControl event: {:?}", action);
             }
         }
     }

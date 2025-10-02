@@ -19,6 +19,7 @@
 /// ## State Monitoring
 /// ```rust
 /// use tcrm_task::tasks::{config::TaskConfig, tokio::executor::TaskExecutor, state::TaskState, control::TaskStatusInfo};
+/// use tokio::sync::mpsc;
 ///
 /// #[tokio::main]
 /// async fn main() {
@@ -27,7 +28,8 @@
 ///     #[cfg(unix)]
 ///     let config = TaskConfig::new("echo").args(["hello"]);
 ///     
-///     let executor = TaskExecutor::new(config);
+///     let (tx, _rx) = mpsc::channel(100);
+///     let executor = TaskExecutor::new(config, tx);
 ///     
 ///     // Initially pending
 ///     assert_eq!(executor.get_state(), TaskState::Pending);
@@ -45,6 +47,7 @@
 ///     state::TaskState,
 ///     control::TaskStatusInfo
 /// };
+/// use tokio::sync::mpsc;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -53,7 +56,8 @@
 ///     #[cfg(unix)]
 ///     let config = TaskConfig::new("echo").args(["hello"]);
 ///     
-///     let executor = TaskExecutor::new(config);
+///     let (tx, _rx) = mpsc::channel(100);
+///     let executor = TaskExecutor::new(config, tx);
 ///
 ///     // Check initial state
 ///     let state = executor.get_state();

@@ -54,11 +54,11 @@ impl TaskExecutor {
     ///     
     ///     config.validate()?;
     ///     
-    ///     let mut executor = TaskExecutor::new(config);
     ///     let (tx, mut rx) = mpsc::channel(100);
+    ///     let mut executor = TaskExecutor::new(config, tx);
     ///     
     ///     // Start coordination - returns immediately, process runs in background
-    ///     executor.coordinate_start(tx).await?;
+    ///     executor.coordinate_start().await?;
     ///     
     ///     // Process events until completion
     ///     while let Some(event) = rx.recv().await {
@@ -95,10 +95,10 @@ impl TaskExecutor {
     ///         .ready_indicator("Server ready")
     ///         .ready_indicator_source(StreamSource::Stdout);
     ///     
-    ///     let mut executor = TaskExecutor::new(config);
     ///     let (tx, mut rx) = mpsc::channel(100);
+    ///     let mut executor = TaskExecutor::new(config, tx);
     ///     
-    ///     executor.coordinate_start(tx).await?;
+    ///     executor.coordinate_start().await?;
     ///     
     ///     while let Some(event) = rx.recv().await {
     ///         match event {

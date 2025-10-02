@@ -32,10 +32,12 @@ pub trait TaskControl {
     /// use tcrm_task::tasks::event::TaskTerminateReason;
     /// use tcrm_task::tasks::config::TaskConfig;
     /// use tcrm_task::tasks::tokio::executor::TaskExecutor;
+    /// use tokio::sync::mpsc;
     ///
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let config = TaskConfig::new("echo".to_string());
-    /// let mut task = TaskExecutor::new(config);
+    /// let (tx, _rx) = mpsc::channel(100);
+    /// let mut task = TaskExecutor::new(config, tx);
     /// task.terminate_task(TaskTerminateReason::UserRequested)?;
     /// # Ok(())
     /// # }
@@ -129,10 +131,12 @@ pub trait TaskStatusInfo {
     /// use tcrm_task::tasks::control::TaskStatusInfo;
     /// use tcrm_task::tasks::config::TaskConfig;
     /// use tcrm_task::tasks::tokio::executor::TaskExecutor;
+    /// use tokio::sync::mpsc;
     ///
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let config = TaskConfig::new("echo".to_string());
-    /// let task = TaskExecutor::new(config);
+    /// let (tx, _rx) = mpsc::channel(100);
+    /// let task = TaskExecutor::new(config, tx);
     /// let info = task.get_information();
     /// println!("Task state: {:?}", info.state);
     /// if let Some(pid) = info.process_id {

@@ -25,8 +25,8 @@ async fn echo_command() {
     #[cfg(feature = "process-group")]
     let config = config.use_process_group(false);
 
-    let mut executor = TaskExecutor::new(config);
-    executor.coordinate_start(tx).await.unwrap();
+    let mut executor = TaskExecutor::new(config, tx);
+    executor.coordinate_start().await.unwrap();
 
     let mut started = false;
     let mut output_received = false;
@@ -73,6 +73,9 @@ async fn echo_command() {
             TaskEvent::Ready => {
                 panic!("Unexpected Ready event");
             }
+            TaskEvent::ProcessControl { action } => {
+                panic!("Unexpected ProcessControl event: {:?}", action);
+            }
         }
     }
 
@@ -98,8 +101,8 @@ async fn env_echo() {
     #[cfg(feature = "process-group")]
     let config = config.use_process_group(false);
 
-    let mut executor = TaskExecutor::new(config);
-    executor.coordinate_start(tx).await.unwrap();
+    let mut executor = TaskExecutor::new(config, tx);
+    executor.coordinate_start().await.unwrap();
     let mut started = false;
     let mut output_received = false;
     let mut stopped = false;
@@ -144,6 +147,9 @@ async fn env_echo() {
             }
             TaskEvent::Ready => {
                 panic!("Unexpected Ready event");
+            }
+            TaskEvent::ProcessControl { action } => {
+                panic!("Unexpected ProcessControl event: {:?}", action);
             }
         }
     }

@@ -18,7 +18,7 @@
 /// pause_process(pid).unwrap();
 /// ```
 #[cfg(unix)]
-pub fn pause_process(pid: u32) -> Result<(), std::io::Error> {
+pub(crate) fn pause_process(pid: u32) -> Result<(), std::io::Error> {
     use nix::errno::Errno;
     use nix::sys::signal::{Signal, kill};
     use nix::unistd::Pid;
@@ -81,7 +81,7 @@ pub fn pause_process(pid: u32) -> Result<(), std::io::Error> {
 /// pause_process(pid).unwrap();
 /// ```
 #[cfg(windows)]
-pub fn pause_process(pid: u32) -> Result<(), std::io::Error> {
+pub(crate) fn pause_process(pid: u32) -> Result<(), std::io::Error> {
     use windows::Win32::Foundation::CloseHandle;
     use windows::Win32::System::Diagnostics::ToolHelp::{
         CreateToolhelp32Snapshot, TH32CS_SNAPTHREAD, THREADENTRY32, Thread32First, Thread32Next,

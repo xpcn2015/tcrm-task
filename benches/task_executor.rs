@@ -20,10 +20,10 @@ fn criterion_benchmark(c: &mut Criterion) {
             let config = TaskConfig::new("echo").args(["benchmark_test"]);
 
             let config = config.use_process_group(false);
-            let mut executor = TaskExecutor::new(black_box(config));
             let (tx, mut rx) = mpsc::channel(100);
+            let mut executor = TaskExecutor::new(black_box(config), tx);
 
-            executor.coordinate_start(tx).await.unwrap();
+            executor.coordinate_start().await.unwrap();
 
             // Consume all events until completion
             while let Some(event) = rx.recv().await {
@@ -51,10 +51,10 @@ fn criterion_benchmark(c: &mut Criterion) {
                 TaskConfig::new("sh").args(["-c", "for i in $(seq 1 10); do echo $i; done"]);
 
             let config = config.use_process_group(false);
-            let mut executor = TaskExecutor::new(black_box(config));
             let (tx, mut rx) = mpsc::channel(100);
+            let mut executor = TaskExecutor::new(black_box(config), tx);
 
-            executor.coordinate_start(tx).await.unwrap();
+            executor.coordinate_start().await.unwrap();
 
             let mut output_count = 0;
             while let Some(event) = rx.recv().await {
@@ -88,10 +88,10 @@ fn criterion_benchmark(c: &mut Criterion) {
                 .ready_indicator_source(StreamSource::Stdout);
 
             let config = config.use_process_group(false);
-            let mut executor = TaskExecutor::new(black_box(config));
             let (tx, mut rx) = mpsc::channel(100);
+            let mut executor = TaskExecutor::new(black_box(config), tx);
 
-            executor.coordinate_start(tx).await.unwrap();
+            executor.coordinate_start().await.unwrap();
 
             let mut ready_detected = false;
             while let Some(event) = rx.recv().await {
@@ -127,7 +127,8 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("task_executor_creation", |b| {
         b.iter(|| {
             let config = TaskConfig::new("echo").args(["creation_test"]);
-            let executor = TaskExecutor::new(black_box(config));
+            let (tx, _rx) = mpsc::channel(100);
+            let executor = TaskExecutor::new(black_box(config), tx);
             black_box(executor);
         });
     });
@@ -149,10 +150,10 @@ fn criterion_benchmark(c: &mut Criterion) {
                         let config = TaskConfig::new("echo").args([format!("concurrent_{}", i)]);
 
                         let config = config.use_process_group(false);
-                        let mut executor = TaskExecutor::new(config);
                         let (tx, mut rx) = mpsc::channel(100);
+                        let mut executor = TaskExecutor::new(config, tx);
 
-                        executor.coordinate_start(tx).await.unwrap();
+                        executor.coordinate_start().await.unwrap();
 
                         while let Some(event) = rx.recv().await {
                             if matches!(event, tcrm_task::tasks::event::TaskEvent::Stopped { .. }) {
@@ -184,10 +185,10 @@ fn criterion_benchmark(c: &mut Criterion) {
                 .timeout_ms(5000); // 5 second timeout, won't trigger for echo
 
             let config = config.use_process_group(false);
-            let mut executor = TaskExecutor::new(black_box(config));
             let (tx, mut rx) = mpsc::channel(100);
+            let mut executor = TaskExecutor::new(black_box(config), tx);
 
-            executor.coordinate_start(tx).await.unwrap();
+            executor.coordinate_start().await.unwrap();
 
             while let Some(event) = rx.recv().await {
                 if matches!(event, tcrm_task::tasks::event::TaskEvent::Stopped { .. }) {

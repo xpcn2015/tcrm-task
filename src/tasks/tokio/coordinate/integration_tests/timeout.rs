@@ -26,8 +26,8 @@ async fn valid() {
     #[cfg(feature = "process-group")]
     let config = config.use_process_group(false);
 
-    let mut executor = TaskExecutor::new(config);
-    executor.coordinate_start(tx).await.unwrap();
+    let mut executor = TaskExecutor::new(config, tx);
+    executor.coordinate_start().await.unwrap();
 
     let mut started_event = false;
     let mut stopped_event = false;
@@ -78,6 +78,9 @@ async fn valid() {
             }
             TaskEvent::Ready => {
                 panic!("Unexpected Ready event");
+            }
+            TaskEvent::ProcessControl { action } => {
+                panic!("Unexpected ProcessControl event: {:?}", action);
             }
         }
     }
