@@ -103,6 +103,7 @@ pub struct TaskExecutor {
     pub(crate) shared_context: Arc<TaskExecutorContext>,
     pub(crate) stdin: Option<ChildStdin>,
     pub(crate) terminate_tx: Option<oneshot::Sender<TaskTerminateReason>>,
+    pub(crate) event_tx: mpsc::Sender<TaskEvent>,
 }
 
 impl TaskExecutor {
@@ -124,11 +125,12 @@ impl TaskExecutor {
     ///
     /// let executor = TaskExecutor::new(config);
     /// ```
-    pub fn new(config: TaskConfig) -> Self {
+    pub fn new(config: TaskConfig, event_tx: mpsc::Sender<TaskEvent>) -> Self {
         Self {
             shared_context: Arc::new(TaskExecutorContext::new(config)),
             stdin: None,
             terminate_tx: None,
+            event_tx,
         }
     }
 

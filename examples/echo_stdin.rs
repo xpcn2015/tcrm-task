@@ -12,12 +12,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(unix)]
     let config = TaskConfig::new("cat").enable_stdin(true).timeout_ms(10000);
 
-    config.validate()?;
-    let mut executor = TaskExecutor::new(config);
     let (event_tx, mut event_rx) = mpsc::channel::<TaskEvent>(100);
+    let mut executor = TaskExecutor::new(config, event_tx);
 
     // Start the process
-    executor.coordinate_start(event_tx).await?;
+    executor.coordinate_start().await?;
 
     // Send some input to stdin
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;

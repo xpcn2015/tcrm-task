@@ -4,7 +4,7 @@ use tokio::{process::Child, sync::oneshot::error::RecvError};
 
 use crate::tasks::{
     event::{TaskStopReason, TaskTerminateReason},
-    process::action::terminate::terminate_process,
+    process::action::stop::stop_process,
     tokio::{context::TaskExecutorContext, executor::TaskExecutor},
 };
 
@@ -77,7 +77,7 @@ impl TaskExecutor {
                     Some(process_id) => {
                         #[cfg(feature = "tracing")]
                         tracing::info!("Trying to terminate process ID {}", process_id);
-                        if let Err(_e) = terminate_process(process_id) {
+                        if let Err(_e) = stop_process(process_id) {
                             #[cfg(feature = "tracing")]
                             tracing::warn!(
                                 "Failed to terminate process ID {}: {:?}",

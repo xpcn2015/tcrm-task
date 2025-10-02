@@ -13,9 +13,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .args(["-c", "echo Hello!"])
         .timeout_ms(5000);
 
-    let mut executor = TaskExecutor::new(config);
     let (event_tx, mut event_rx) = mpsc::channel::<TaskEvent>(100);
-    executor.coordinate_start(event_tx).await?;
+    let mut executor = TaskExecutor::new(config, event_tx);
+    executor.coordinate_start().await?;
     while let Some(event) = event_rx.recv().await {
         match event {
             TaskEvent::Output { line, .. } => println!("Output: {}", line),

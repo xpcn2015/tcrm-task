@@ -1,13 +1,17 @@
 use std::time::SystemTime;
 
-use crate::tasks::{error::TaskError, event::TaskTerminateReason, state::TaskState};
+use crate::tasks::{
+    error::TaskError,
+    event::TaskTerminateReason,
+    state::{ProcessState, TaskState},
+};
 
 #[cfg(feature = "signal")]
 use crate::tasks::signal::ProcessSignal;
 
-/// Trait for controlling task execution.
+/// Trait for controlling process execution.
 ///
-/// This trait provides methods to control the lifecycle of a running task,
+/// This trait provides methods to control the lifecycle of a running process,
 /// including termination and signal handling.
 pub trait TaskControl {
     /// Terminates the task with the specified reason.
@@ -61,7 +65,15 @@ pub trait TaskStatusInfo {
     /// # Returns
     ///
     /// The current `TaskState` of the task
-    fn get_state(&self) -> TaskState;
+    fn get_task_state(&self) -> TaskState;
+
+    /// Gets the current state of the process.
+    ///
+    /// # Returns
+    ///
+    /// The current `ProcessState` of the process
+    #[cfg(feature = "process-control")]
+    fn get_process_state(&self) -> ProcessState;
 
     /// Gets the process ID of the running task.
     ///
@@ -131,7 +143,9 @@ pub trait TaskStatusInfo {
     /// ```
     fn get_information(&self) -> TaskInformation {
         TaskInformation {
-            state: self.get_state(),
+            task_state: self.get_task_state(),
+            #[cfg(feature = "process-control")]
+            process_state: self.get_process_state(),
             process_id: self.get_process_id(),
             created_at: self.get_create_at(),
             running_at: self.get_running_at(),
@@ -148,7 +162,10 @@ pub trait TaskStatusInfo {
 #[derive(Debug, PartialEq)]
 pub struct TaskInformation {
     /// Current state of the task
-    pub state: TaskState,
+    pub task_state: TaskState,
+    /// Current state of the process
+    #[cfg(feature = "process-control")]
+    pub process_state: ProcessState,
     /// Process ID if the task is running
     pub process_id: Option<u32>,
     /// When the task was created
@@ -163,19 +180,4 @@ pub struct TaskInformation {
     #[cfg(unix)]
     /// Last received signal (if any) from process::ExitStatus
     pub last_signal: Option<i32>,
-}
-
-/// Actions that can be performed on a task.
-///
-/// This enum defines the possible control actions that can be
-/// applied to a running task.
-pub enum TaskControlAction {
-    /// Terminate the task gracefully
-    Terminate,
-    /// Pause task execution (if supported)
-    Pause,
-    /// Resume paused task execution (if supported)
-    Resume,
-    /// Send interrupt signal to the task
-    Interrupt,
 }

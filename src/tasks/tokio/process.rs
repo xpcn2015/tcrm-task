@@ -5,10 +5,9 @@ use tokio::{
 };
 
 use crate::tasks::{
-    control::{TaskControlAction, TaskStatusInfo},
+    control::TaskStatusInfo,
     error::TaskError,
     event::{TaskEvent, TaskStopReason},
-    process::action::terminate::terminate_process,
     state::TaskState,
     tokio::executor::TaskExecutor,
 };
@@ -289,7 +288,7 @@ impl TaskExecutor {
     /// Returns [`TaskError::Control`] if the task is not in a running state,
     /// or [`TaskError::IO`] if writing to stdin fails
     pub async fn send_stdin(&mut self, input: impl Into<String>) -> Result<(), TaskError> {
-        let state = self.get_state();
+        let state = self.get_task_state();
         if !matches!(state, TaskState::Running | TaskState::Ready) {
             return Err(TaskError::Control(
                 "Cannot send stdin, task is not running".to_string(),
@@ -314,146 +313,6 @@ impl TaskExecutor {
             return Err(TaskError::Control(msg.to_string()));
         }
 
-        Ok(())
-    }
-
-    /// Performs process control actions on the running task.
-    ///
-    /// Executes control actions like termination, pause, resume, or interrupt
-    /// on the running process or process group, depending on configuration.
-    ///
-    /// # Arguments
-    ///
-    /// * `action` - The control action to perform on the process
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(())` - Action performed successfully
-    /// * `Err(TaskError)` - If the action fails or process is not available
-    ///
-    /// # Errors
-    ///
-    /// Returns [`TaskError::Control`] if the process is not in a controllable state
-    /// or if the requested action is not supported
-    pub async fn perform_process_action(
-        &mut self,
-        action: TaskControlAction,
-    ) -> Result<(), TaskError> {
-        #[cfg(feature = "process-group")]
-        let use_process_group = self
-            .shared_context
-            .config
-            .use_process_group
-            .unwrap_or_default();
-        #[cfg(not(feature = "process-group"))]
-        let use_process_group = false;
-
-        #[cfg(feature = "process-group")]
-        let active = self.shared_context.group.lock().await.is_active();
-        #[cfg(not(feature = "process-group"))]
-        let active = false;
-        let process_id = match self.shared_context.get_process_id() {
-            Some(n) => n,
-            None => {
-                let msg = "No process ID available to perform action";
-                #[cfg(feature = "tracing")]
-                tracing::warn!(msg);
-                return Err(TaskError::Control(msg.to_string()));
-            }
-        };
-        match action {
-            TaskControlAction::Terminate => {
-                if use_process_group && active {
-                    self.shared_context
-                        .group
-                        .lock()
-                        .await
-                        .terminate_group()
-                        .map_err(|e| {
-                            let msg = format!("Failed to terminate process group: {}", e);
-                            #[cfg(feature = "tracing")]
-                            tracing::error!(error=%e, "{}", msg);
-                            TaskError::Control(msg)
-                        })?;
-                } else {
-                    terminate_process(process_id).map_err(|e| {
-                        let msg = format!("Failed to terminate process: {}", e);
-                        #[cfg(feature = "tracing")]
-                        tracing::error!(error=%e, "{}", msg);
-                        TaskError::Control(msg)
-                    })?;
-                }
-            }
-            TaskControlAction::Pause => {
-                if use_process_group && active {
-                    self.shared_context
-                        .group
-                        .lock()
-                        .await
-                        .pause_group()
-                        .map_err(|e| {
-                            let msg = format!("Failed to pause process group: {}", e);
-                            #[cfg(feature = "tracing")]
-                            tracing::error!(error=%e, "{}", msg);
-                            TaskError::Control(msg)
-                        })?;
-                } else {
-                    use crate::tasks::process::action::pause::pause_process;
-                    pause_process(process_id).map_err(|e| {
-                        let msg = format!("Failed to pause process: {}", e);
-                        #[cfg(feature = "tracing")]
-                        tracing::error!(error=%e, "{}", msg);
-                        TaskError::Control(msg)
-                    })?;
-                }
-            }
-            TaskControlAction::Resume => {
-                if use_process_group && active {
-                    self.shared_context
-                        .group
-                        .lock()
-                        .await
-                        .resume_group()
-                        .map_err(|e| {
-                            let msg = format!("Failed to resume process group: {}", e);
-                            #[cfg(feature = "tracing")]
-                            tracing::error!(error=%e, "{}", msg);
-                            TaskError::Control(msg)
-                        })?;
-                } else {
-                    use crate::tasks::process::action::resume::resume_process;
-                    resume_process(process_id).map_err(|e| {
-                        let msg = format!("Failed to resume process: {}", e);
-                        #[cfg(feature = "tracing")]
-                        tracing::error!(error=%e, "{}", msg);
-                        TaskError::Control(msg)
-                    })?;
-                }
-            }
-            TaskControlAction::Interrupt => {
-                if use_process_group && active {
-                    self.shared_context
-                        .group
-                        .lock()
-                        .await
-                        .interrupt_group()
-                        .map_err(|e| {
-                            let msg = format!("Failed to interrupt process group: {}", e);
-                            #[cfg(feature = "tracing")]
-                            tracing::error!(error=%e, "{}", msg);
-                            TaskError::Control(msg)
-                        })?;
-                } else {
-                    use crate::tasks::process::action::interrupt::interrupt_process;
-                    interrupt_process(process_id).map_err(|e| {
-                        let msg = format!("Failed to interrupt process: {}", e);
-                        #[cfg(feature = "tracing")]
-                        tracing::error!(error=%e, "{}", msg);
-                        TaskError::Control(msg)
-                    })?;
-                }
-            }
-        }
         Ok(())
     }
 

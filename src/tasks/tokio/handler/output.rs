@@ -76,7 +76,7 @@ impl TaskExecutor {
 
         if line.contains(ready_indicator) {
             shared_context.set_ready_flag(true);
-            shared_context.set_state(TaskState::Ready);
+            shared_context.set_task_state(TaskState::Ready);
             Self::send_event(event_tx, TaskEvent::Ready).await;
         }
         return false;

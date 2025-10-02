@@ -107,7 +107,11 @@ pub enum TaskState {
     /// Internal use only.
     Invalid = 255,
 }
+
 impl From<u8> for TaskState {
+    /// Converts a `u8` value to a `TaskState` enum.
+    ///
+    /// Returns `TaskState::Invalid` for unknown values.
     fn from(value: u8) -> Self {
         match value {
             0 => TaskState::Pending,
@@ -121,7 +125,47 @@ impl From<u8> for TaskState {
 }
 
 impl From<TaskState> for u8 {
+    /// Converts a `TaskState` enum to its corresponding `u8` value.
     fn from(state: TaskState) -> Self {
+        state as u8
+    }
+}
+
+/// Represents the state of a spawned process during its lifecycle.
+///
+/// `ProcessState` is used to track whether a process is running, paused, or stopped.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProcessState {
+    /// The process is not running.
+    Stopped = 0,
+
+    /// The process is running.
+    Running = 1,
+
+    /// The process is paused.
+    Pause = 2,
+
+    /// Invalid state (should not occur).
+    Invalid = 255,
+}
+
+impl From<u8> for ProcessState {
+    /// Converts a `u8` value to a `ProcessState` enum.
+    ///
+    /// Returns `ProcessState::Stopped` for unknown values.
+    fn from(value: u8) -> Self {
+        match value {
+            0 => ProcessState::Stopped,
+            1 => ProcessState::Running,
+            2 => ProcessState::Pause,
+            _ => ProcessState::Invalid,
+        }
+    }
+}
+
+impl From<ProcessState> for u8 {
+    /// Converts a `ProcessState` enum to its corresponding `u8` value.
+    fn from(state: ProcessState) -> Self {
         state as u8
     }
 }

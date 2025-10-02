@@ -62,7 +62,7 @@ impl ProcessGroup {
     /// group.terminate_group().unwrap();
     /// ```
     #[cfg(windows)]
-    pub fn terminate_group(&self) -> Result<(), ProcessGroupError> {
+    pub fn stop_group(&self) -> Result<(), ProcessGroupError> {
         use crate::tasks::process::group::builder::SendHandle;
 
         if let Some(SendHandle(job_handle)) = &self.inner.job_handle {

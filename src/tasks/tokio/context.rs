@@ -21,7 +21,8 @@ use crate::tasks::{
 #[derive(Debug)]
 pub(crate) struct TaskExecutorContext {
     pub(crate) config: TaskConfig,
-    state: AtomicU8,
+    task_state: AtomicU8,
+    process_state: AtomicU8,
     process_id: AtomicU32,
     created_at: AtomicU64,
     running_at: AtomicU64,
@@ -58,7 +59,8 @@ impl TaskExecutorContext {
             .as_nanos() as u64;
         Self {
             config,
-            state: AtomicU8::new(0),
+            task_state: AtomicU8::new(0),
+            process_state: AtomicU8::new(0),
             process_id: AtomicU32::new(0),
             created_at: AtomicU64::new(now_nanos),
             running_at: AtomicU64::new(0),
@@ -203,7 +205,7 @@ impl TaskExecutorContext {
     /// * `Some(i32)` - The exit code if the task completed naturally
     /// * `None` - If the task is not finished, was terminated, or exit code was not captured
     pub(crate) fn get_exit_code(&self) -> Option<i32> {
-        let state = self.get_state();
+        let state = self.get_task_state();
         if state != TaskState::Finished {
             return None;
         }
@@ -376,8 +378,10 @@ impl TaskExecutorContext {
     /// # Returns
     ///
     /// The current `TaskState` of the task
-    pub(crate) fn get_state(&self) -> TaskState {
-        self.state.load(std::sync::atomic::Ordering::SeqCst).into()
+    pub(crate) fn get_task_state(&self) -> TaskState {
+        self.task_state
+            .load(std::sync::atomic::Ordering::SeqCst)
+            .into()
     }
 
     /// Sets the task state and returns the current timestamp.
@@ -391,8 +395,8 @@ impl TaskExecutorContext {
     /// # Returns
     ///
     /// The timestamp when the state change occurred
-    pub(crate) fn set_state(&self, new_state: TaskState) -> SystemTime {
-        self.state
+    pub(crate) fn set_task_state(&self, new_state: TaskState) -> SystemTime {
+        self.task_state
             .store(new_state as u8, std::sync::atomic::Ordering::SeqCst);
         let now = SystemTime::now();
         let nanos = now
@@ -412,5 +416,30 @@ impl TaskExecutorContext {
             _ => {}
         }
         now
+    }
+
+    /// Gets the current state of the process.
+    ///
+    /// Returns the current execution state of the process (Stopped, Running, or Pause).
+    ///
+    /// # Returns
+    ///
+    /// The current `ProcessState` of the process
+    pub(crate) fn get_process_state(&self) -> crate::tasks::state::ProcessState {
+        self.process_state
+            .load(std::sync::atomic::Ordering::SeqCst)
+            .into()
+    }
+
+    /// Sets the process state.
+    ///
+    /// Updates the process's execution state (Stopped, Running, or Pause).
+    ///
+    /// # Arguments
+    ///
+    /// * `new_state` - The new process state to set
+    pub(crate) fn set_process_state(&self, new_state: crate::tasks::state::ProcessState) {
+        self.process_state
+            .store(new_state as u8, std::sync::atomic::Ordering::SeqCst);
     }
 }

@@ -81,7 +81,7 @@ pub fn terminate_process(pid: u32) -> Result<(), std::io::Error> {
 /// terminate_process(pid).unwrap();
 /// ```
 #[cfg(windows)]
-pub fn terminate_process(pid: u32) -> Result<(), std::io::Error> {
+pub fn stop_process(pid: u32) -> Result<(), std::io::Error> {
     use windows::Win32::Foundation::CloseHandle;
     use windows::Win32::System::Threading::{OpenProcess, PROCESS_TERMINATE, TerminateProcess};
 

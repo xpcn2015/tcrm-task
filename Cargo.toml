@@ -45,7 +45,7 @@ windows = { version = "0.62", features = [
 ], optional = true }
 
 [features]
-default = ["tokio", "process-group", "tokio-coordinate"]
+default = ["tokio", "process-group", "tokio-coordinate", "process-control"]
 tokio = ["dep:tokio", "dep:futures"]
 tokio-coordinate = ["tokio", "dep:nix", "dep:windows"]
 std = []
@@ -54,6 +54,7 @@ serde = ["dep:serde"]
 tracing = ["dep:tracing"]
 signal = ["dep:nix", "dep:windows"]
 process-group = ["dep:nix", "dep:windows"]
+process-control = ["dep:nix", "dep:windows"]
 pty = ["dep:nix", "dep:windows"]
 tracing-release_max_level_off = ["tracing/release_max_level_off"]
 tracing-release_max_level_error = ["tracing/release_max_level_error"]

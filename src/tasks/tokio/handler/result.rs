@@ -39,7 +39,7 @@ impl TaskExecutor {
         // If configured to use process group, ensure all child processes are terminated
         #[cfg(feature = "process-group")]
         if shared_context.config.use_process_group.unwrap_or_default() {
-            if let Err(e) = shared_context.group.lock().await.terminate_group() {
+            if let Err(e) = shared_context.group.lock().await.stop_group() {
                 let msg = format!("Failed to terminate process group: {}", e);
 
                 #[cfg(feature = "tracing")]
@@ -50,7 +50,7 @@ impl TaskExecutor {
                 Self::send_event(&event_tx, event).await;
             };
         }
-        let time = shared_context.set_state(TaskState::Finished);
+        let time = shared_context.set_task_state(TaskState::Finished);
         let exit_code = shared_context.get_exit_code();
         shared_context.set_process_id(0);
         let event = TaskEvent::Stopped {

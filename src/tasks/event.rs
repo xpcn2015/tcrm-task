@@ -1,5 +1,7 @@
 use std::time::SystemTime;
 
+#[cfg(feature = "process-control")]
+use crate::tasks::process::control::ProcessControlAction;
 use crate::tasks::{config::StreamSource, error::TaskError};
 
 /// Events emitted during task execution lifecycle
@@ -112,12 +114,17 @@ use crate::tasks::{config::StreamSource, error::TaskError};
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq)]
 pub enum TaskEvent {
-    /// Process has been successfully spawned and is running
+    /// Process has been successfully spawned and is running.
     ///
     /// This is the first event emitted after successful process spawning.
     /// The process is now running and other events will follow.
+    ///
+    /// # Fields
+    /// * `process_id` - Operating system process ID of the spawned process
+    /// * `created_at` - Timestamp when the process was created
+    /// * `running_at` - Timestamp when the process started running
     Started {
-        /// Operating system process ID
+        /// Operating system process ID of the spawned process
         process_id: u32,
         /// Timestamp when the process was created
         created_at: SystemTime,
@@ -125,10 +132,14 @@ pub enum TaskEvent {
         running_at: SystemTime,
     },
 
-    /// Output line received from the process
+    /// Output line received from the process.
     ///
     /// Emitted for each line of output from stdout or stderr.
     /// Lines are buffered and emitted when complete (on newline).
+    ///
+    /// # Fields
+    /// * `line` - The output line (without trailing newline)
+    /// * `src` - Source stream (stdout or stderr)
     Output {
         /// The output line (without trailing newline)
         line: String,
@@ -136,15 +147,23 @@ pub enum TaskEvent {
         src: StreamSource,
     },
 
-    /// Process has signaled it's ready to work
+    /// task has signaled it's ready to work.
     ///
     /// Only emitted for long-running processes that have a ready indicator configured.
-    /// Indicates the process has completed initialization and is ready for work.
+    /// Indicates the task has completed initialization and is ready for work (e.g., server is listening).
     Ready,
 
-    /// Process has completed execution
+    /// Task has completed execution.
     ///
-    /// The process has exited and all resources have been cleaned up.
+    /// The task has exited and all resources have been cleaned up.
+    ///
+    /// # Fields
+    /// * `exit_code` - Exit code from the process
+    ///   - `Some(code)` - Process completed naturally with exit code
+    ///   - `None` - Process was terminated (timeout, user request, etc.)
+    /// * `reason` - Reason the process stopped
+    /// * `finished_at` - Timestamp when the process finished
+    /// * `signal` (Unix only) - Termination signal if the process was killed by a signal
     Stopped {
         /// Exit code from the process
         ///
@@ -164,14 +183,29 @@ pub enum TaskEvent {
         signal: Option<i32>,
     },
 
-    /// An error occurred during task execution
+    /// An error occurred during task execution.
     ///
     /// Emitted when errors occur during configuration validation,
-    /// process spawning, sending input/output
-    ///  
+    /// process spawning, or input/output operations.
+    ///
+    /// # Fields
+    /// * `error` - The specific error that occurred
     Error {
         /// The specific error that occurred
         error: TaskError,
+    },
+
+    /// Process control action event.
+    ///
+    /// Emitted when a process control action (pause, resume, stop) is performed
+    /// on the running process.
+    ///
+    /// # Fields
+    /// * `action` - The process control action that was performed (pause, resume, stop)
+    #[cfg(feature = "process-control")]
+    ProcessControl {
+        /// The process control action that was performed (pause, resume, stop)
+        action: ProcessControlAction,
     },
 }
 

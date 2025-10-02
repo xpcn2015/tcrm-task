@@ -54,10 +54,10 @@ async fn test_process_behavior(
     println!("Running test: {}", test_name);
 
     config.validate()?;
-    let mut executor = TaskExecutor::new(config);
     let (event_tx, mut event_rx) = mpsc::channel::<TaskEvent>(100);
+    let mut executor = TaskExecutor::new(config, event_tx);
 
-    executor.coordinate_start(event_tx).await?;
+    executor.coordinate_start().await?;
 
     while let Some(event) = event_rx.recv().await {
         match event {

@@ -1,10 +1,7 @@
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::oneshot;
 
 use crate::tasks::{
-    config::StreamSource,
-    error::TaskError,
-    event::{TaskEvent, TaskTerminateReason},
-    state::TaskState,
+    config::StreamSource, error::TaskError, event::TaskTerminateReason, state::TaskState,
     tokio::executor::TaskExecutor,
 };
 
@@ -117,11 +114,9 @@ impl TaskExecutor {
     ///     Ok(())
     /// }
     /// ```
-    pub async fn coordinate_start(
-        &mut self,
-        event_tx: mpsc::Sender<TaskEvent>,
-    ) -> Result<(), TaskError> {
+    pub async fn coordinate_start(&mut self) -> Result<(), TaskError> {
         Self::update_state(&self.shared_context, TaskState::Initiating);
+        let event_tx = self.event_tx.clone();
         self.validate_config(&event_tx).await?;
 
         let cmd = self.setup_command();
