@@ -154,7 +154,14 @@ impl TaskExecutor {
             let mut termination_requested = false;
             let mut stdout_eof = false;
             let mut stderr_eof = false;
+
+            // Create timeout future once outside the loop to prevent reset on each iteration.
+            // This fixes a critical bug where the timeout would never trigger if other select!
+            // branches (stdout/stderr) were frequently selected, causing the timeout future
+            // to be dropped and recreated on each iteration.
+            let mut timeout_future = Self::create_timeout_future(shared_context.clone());
             let mut timeout_triggered = false;
+
             loop {
                 // Exit conditions
                 if process_exited && stdout_eof && stderr_eof {
@@ -171,7 +178,10 @@ impl TaskExecutor {
                     line = stderr.next_line(), if !stderr_eof =>
                         stderr_eof = Self::handle_output(shared_context.clone(), line, &event_tx, StreamSource::Stderr).await,
 
-                    _ = Self::set_timeout_from_config(shared_context.clone(), &mut timeout_triggered) => Self::handle_timeout(shared_context.clone()).await,
+                    _ = &mut timeout_future, if !timeout_triggered => {
+                        timeout_triggered = true;
+                        Self::handle_timeout(shared_context.clone()).await;
+                    },
 
                     reason = Self::await_oneshot(&mut terminate_rx, termination_requested) =>
                         Self::handle_terminate(shared_context.clone(), &mut child, reason, &mut termination_requested).await,

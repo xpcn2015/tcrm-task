@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use futures::future::pending;
+use futures::future::{BoxFuture, pending};
 
 use crate::tasks::{
     event::TaskTerminateReason,
@@ -8,27 +8,25 @@ use crate::tasks::{
 };
 
 impl TaskExecutor {
-    /// Sets up a timeout based on the task configuration.
+    /// Creates a timeout future based on the task configuration.
     ///
-    /// Creates a sleep future that completes when the configured timeout
-    /// duration elapses. If no timeout is configured, this future will
-    /// never complete (pending forever).
+    /// Returns a pinned future that completes when the configured timeout
+    /// duration elapses. If no timeout is configured, returns a future
+    /// that never completes (pending forever).
+    ///
+    /// This future should be created once and reused across select! iterations
+    /// to prevent the timeout from being reset on each loop iteration.
     ///
     /// # Arguments
     ///
     /// * `shared_context` - Shared task execution context containing timeout configuration
-    /// * `timeout_triggered` - Mutable reference to track if timeout has been triggered
-    pub(crate) async fn set_timeout_from_config(
+    pub(crate) fn create_timeout_future(
         shared_context: Arc<TaskExecutorContext>,
-        timeout_triggered: &mut bool,
-    ) {
-        if let Some(ms) = shared_context.config.timeout_ms
-            && !*timeout_triggered
-        {
-            tokio::time::sleep(Duration::from_millis(ms)).await;
-            *timeout_triggered = true;
+    ) -> BoxFuture<'static, ()> {
+        if let Some(ms) = shared_context.config.timeout_ms {
+            Box::pin(tokio::time::sleep(Duration::from_millis(ms)))
         } else {
-            pending::<()>().await;
+            Box::pin(pending::<()>())
         }
     }
 
