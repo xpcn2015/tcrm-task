@@ -17,8 +17,7 @@ table TaskConfig {
   enable_stdin: bool = false;
   ready_indicator: string;
   ready_indicator_source: StreamSource = Stdout;
-  use_process_group: bool = false;
-
+  use_process_group: bool = true;
 }
 
 table EnvEntry {
@@ -33,9 +32,22 @@ enum TaskState: byte {
   Initiating = 1,
   Running = 2,
   Ready = 3,
-  Finished = 4
+  Finished = 4,
+  Invalid = 127
 }
 
+enum ProcessState: byte {
+  Stopped = 0,
+  Running = 1,
+  Pause = 2,
+  Invalid = 127
+}
+
+enum ProcessControlAction: byte {
+  Stop = 0,
+  Pause = 1,
+  Resume = 2
+}
 
 // Error
 
@@ -44,11 +56,12 @@ enum TaskErrorType: byte {
   Handle = 1,
   Channel = 2,
   InvalidConfiguration = 3,
+  Control = 4
 }
 
 table TaskError {
   kind: TaskErrorType;
-  message: string;
+  message: string (required);
 }
 
 // Event
@@ -58,6 +71,7 @@ enum TaskTerminateReason: byte {
   Cleanup = 1,
   DependenciesFinished = 2,
   UserRequested = 3,
+  InternalError = 4
 }
 
 union TaskEventStopReason {
@@ -66,50 +80,61 @@ union TaskEventStopReason {
   TerminatedCleanup: DummyTable,
   TerminatedDependenciesFinished: DummyTable,
   TerminatedUserRequested: DummyTable,
+  TerminatedInternalError: DummyTable,
   Error: ErrorStopReason
 }
+
 table DummyTable {}
 
 table ErrorStopReason {
   message: string (required);
 }
 
+// SystemTime representation (nanoseconds since UNIX_EPOCH)
+table SystemTime {
+  nanos_since_epoch: ulong;
+}
 
 union TaskEventUnion {
   Started: StartedEvent,
   Output: OutputEvent,
   Ready: ReadyEvent,
   Stopped: StoppedEvent,
-  Error: ErrorEvent
+  Error: ErrorEvent,
+  ProcessControl: ProcessControlEvent
 }
+
 table StartedEvent {
-  task_name: string (required);
+  process_id: uint;
+  created_at: SystemTime;
+  running_at: SystemTime;
 }
 
 table OutputEvent {
-  task_name: string (required);
   line: string (required);
   src: StreamSource = Stdout;
 }
 
 table ReadyEvent {
-  task_name: string (required);
 }
 
 table StoppedEvent {
-  task_name: string (required);
   exit_code: int;
   reason: TaskEventStopReason (required);
+  finished_at: SystemTime;
+  signal: int; // Unix only - termination signal
 }
 
 table ErrorEvent {
-  task_name: string (required);
   error: TaskError (required);
 }
 
+table ProcessControlEvent {
+  action: ProcessControlAction;
+}
 
 table TaskEvent {
-  event: TaskEventUnion;
+  event: TaskEventUnion (required);
 }
 
 root_type TaskEvent;

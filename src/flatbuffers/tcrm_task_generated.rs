@@ -86,10 +86,8 @@ pub mod tcrm {
             type Inner = Self;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                unsafe {
-                    let b = flatbuffers::read_scalar_at::<i8>(buf, loc);
-                    Self(b)
-                }
+                let b = flatbuffers::read_scalar_at::<i8>(buf, loc);
+                Self(b)
             }
         }
 
@@ -97,9 +95,7 @@ pub mod tcrm {
             type Output = StreamSource;
             #[inline]
             unsafe fn push(&self, dst: &mut [u8], _written_len: usize) {
-                unsafe {
-                    flatbuffers::emplace_scalar::<i8>(dst, self.0);
-                }
+                flatbuffers::emplace_scalar::<i8>(dst, self.0);
             }
         }
 
@@ -138,18 +134,19 @@ pub mod tcrm {
             since = "2.0.0",
             note = "Use associated constants instead. This will no longer be generated in 2021."
         )]
-        pub const ENUM_MAX_TASK_STATE: i8 = 4;
+        pub const ENUM_MAX_TASK_STATE: i8 = 127;
         #[deprecated(
             since = "2.0.0",
             note = "Use associated constants instead. This will no longer be generated in 2021."
         )]
         #[allow(non_camel_case_types)]
-        pub const ENUM_VALUES_TASK_STATE: [TaskState; 5] = [
+        pub const ENUM_VALUES_TASK_STATE: [TaskState; 6] = [
             TaskState::Pending,
             TaskState::Initiating,
             TaskState::Running,
             TaskState::Ready,
             TaskState::Finished,
+            TaskState::Invalid,
         ];
 
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
@@ -162,15 +159,17 @@ pub mod tcrm {
             pub const Running: Self = Self(2);
             pub const Ready: Self = Self(3);
             pub const Finished: Self = Self(4);
+            pub const Invalid: Self = Self(127);
 
             pub const ENUM_MIN: i8 = 0;
-            pub const ENUM_MAX: i8 = 4;
+            pub const ENUM_MAX: i8 = 127;
             pub const ENUM_VALUES: &'static [Self] = &[
                 Self::Pending,
                 Self::Initiating,
                 Self::Running,
                 Self::Ready,
                 Self::Finished,
+                Self::Invalid,
             ];
             /// Returns the variant's name or "" if unknown.
             pub fn variant_name(self) -> Option<&'static str> {
@@ -180,6 +179,7 @@ pub mod tcrm {
                     Self::Running => Some("Running"),
                     Self::Ready => Some("Ready"),
                     Self::Finished => Some("Finished"),
+                    Self::Invalid => Some("Invalid"),
                     _ => None,
                 }
             }
@@ -197,10 +197,8 @@ pub mod tcrm {
             type Inner = Self;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                unsafe {
-                    let b = flatbuffers::read_scalar_at::<i8>(buf, loc);
-                    Self(b)
-                }
+                let b = flatbuffers::read_scalar_at::<i8>(buf, loc);
+                Self(b)
             }
         }
 
@@ -208,9 +206,7 @@ pub mod tcrm {
             type Output = TaskState;
             #[inline]
             unsafe fn push(&self, dst: &mut [u8], _written_len: usize) {
-                unsafe {
-                    flatbuffers::emplace_scalar::<i8>(dst, self.0);
-                }
+                flatbuffers::emplace_scalar::<i8>(dst, self.0);
             }
         }
 
@@ -244,22 +240,217 @@ pub mod tcrm {
             since = "2.0.0",
             note = "Use associated constants instead. This will no longer be generated in 2021."
         )]
-        pub const ENUM_MIN_TASK_ERROR_TYPE: i8 = 0;
+        pub const ENUM_MIN_PROCESS_STATE: i8 = 0;
         #[deprecated(
             since = "2.0.0",
             note = "Use associated constants instead. This will no longer be generated in 2021."
         )]
-        pub const ENUM_MAX_TASK_ERROR_TYPE: i8 = 3;
+        pub const ENUM_MAX_PROCESS_STATE: i8 = 127;
         #[deprecated(
             since = "2.0.0",
             note = "Use associated constants instead. This will no longer be generated in 2021."
         )]
         #[allow(non_camel_case_types)]
-        pub const ENUM_VALUES_TASK_ERROR_TYPE: [TaskErrorType; 4] = [
+        pub const ENUM_VALUES_PROCESS_STATE: [ProcessState; 4] = [
+            ProcessState::Stopped,
+            ProcessState::Running,
+            ProcessState::Pause,
+            ProcessState::Invalid,
+        ];
+
+        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+        #[repr(transparent)]
+        pub struct ProcessState(pub i8);
+        #[allow(non_upper_case_globals)]
+        impl ProcessState {
+            pub const Stopped: Self = Self(0);
+            pub const Running: Self = Self(1);
+            pub const Pause: Self = Self(2);
+            pub const Invalid: Self = Self(127);
+
+            pub const ENUM_MIN: i8 = 0;
+            pub const ENUM_MAX: i8 = 127;
+            pub const ENUM_VALUES: &'static [Self] =
+                &[Self::Stopped, Self::Running, Self::Pause, Self::Invalid];
+            /// Returns the variant's name or "" if unknown.
+            pub fn variant_name(self) -> Option<&'static str> {
+                match self {
+                    Self::Stopped => Some("Stopped"),
+                    Self::Running => Some("Running"),
+                    Self::Pause => Some("Pause"),
+                    Self::Invalid => Some("Invalid"),
+                    _ => None,
+                }
+            }
+        }
+        impl core::fmt::Debug for ProcessState {
+            fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+                if let Some(name) = self.variant_name() {
+                    f.write_str(name)
+                } else {
+                    f.write_fmt(format_args!("<UNKNOWN {:?}>", self.0))
+                }
+            }
+        }
+        impl<'a> flatbuffers::Follow<'a> for ProcessState {
+            type Inner = Self;
+            #[inline]
+            unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+                let b = flatbuffers::read_scalar_at::<i8>(buf, loc);
+                Self(b)
+            }
+        }
+
+        impl flatbuffers::Push for ProcessState {
+            type Output = ProcessState;
+            #[inline]
+            unsafe fn push(&self, dst: &mut [u8], _written_len: usize) {
+                flatbuffers::emplace_scalar::<i8>(dst, self.0);
+            }
+        }
+
+        impl flatbuffers::EndianScalar for ProcessState {
+            type Scalar = i8;
+            #[inline]
+            fn to_little_endian(self) -> i8 {
+                self.0.to_le()
+            }
+            #[inline]
+            #[allow(clippy::wrong_self_convention)]
+            fn from_little_endian(v: i8) -> Self {
+                let b = i8::from_le(v);
+                Self(b)
+            }
+        }
+
+        impl<'a> flatbuffers::Verifiable for ProcessState {
+            #[inline]
+            fn run_verifier(
+                v: &mut flatbuffers::Verifier,
+                pos: usize,
+            ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
+                use self::flatbuffers::Verifiable;
+                i8::run_verifier(v, pos)
+            }
+        }
+
+        impl flatbuffers::SimpleToVerifyInSlice for ProcessState {}
+        #[deprecated(
+            since = "2.0.0",
+            note = "Use associated constants instead. This will no longer be generated in 2021."
+        )]
+        pub const ENUM_MIN_PROCESS_CONTROL_ACTION: i8 = 0;
+        #[deprecated(
+            since = "2.0.0",
+            note = "Use associated constants instead. This will no longer be generated in 2021."
+        )]
+        pub const ENUM_MAX_PROCESS_CONTROL_ACTION: i8 = 2;
+        #[deprecated(
+            since = "2.0.0",
+            note = "Use associated constants instead. This will no longer be generated in 2021."
+        )]
+        #[allow(non_camel_case_types)]
+        pub const ENUM_VALUES_PROCESS_CONTROL_ACTION: [ProcessControlAction; 3] = [
+            ProcessControlAction::Stop,
+            ProcessControlAction::Pause,
+            ProcessControlAction::Resume,
+        ];
+
+        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+        #[repr(transparent)]
+        pub struct ProcessControlAction(pub i8);
+        #[allow(non_upper_case_globals)]
+        impl ProcessControlAction {
+            pub const Stop: Self = Self(0);
+            pub const Pause: Self = Self(1);
+            pub const Resume: Self = Self(2);
+
+            pub const ENUM_MIN: i8 = 0;
+            pub const ENUM_MAX: i8 = 2;
+            pub const ENUM_VALUES: &'static [Self] = &[Self::Stop, Self::Pause, Self::Resume];
+            /// Returns the variant's name or "" if unknown.
+            pub fn variant_name(self) -> Option<&'static str> {
+                match self {
+                    Self::Stop => Some("Stop"),
+                    Self::Pause => Some("Pause"),
+                    Self::Resume => Some("Resume"),
+                    _ => None,
+                }
+            }
+        }
+        impl core::fmt::Debug for ProcessControlAction {
+            fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+                if let Some(name) = self.variant_name() {
+                    f.write_str(name)
+                } else {
+                    f.write_fmt(format_args!("<UNKNOWN {:?}>", self.0))
+                }
+            }
+        }
+        impl<'a> flatbuffers::Follow<'a> for ProcessControlAction {
+            type Inner = Self;
+            #[inline]
+            unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+                let b = flatbuffers::read_scalar_at::<i8>(buf, loc);
+                Self(b)
+            }
+        }
+
+        impl flatbuffers::Push for ProcessControlAction {
+            type Output = ProcessControlAction;
+            #[inline]
+            unsafe fn push(&self, dst: &mut [u8], _written_len: usize) {
+                flatbuffers::emplace_scalar::<i8>(dst, self.0);
+            }
+        }
+
+        impl flatbuffers::EndianScalar for ProcessControlAction {
+            type Scalar = i8;
+            #[inline]
+            fn to_little_endian(self) -> i8 {
+                self.0.to_le()
+            }
+            #[inline]
+            #[allow(clippy::wrong_self_convention)]
+            fn from_little_endian(v: i8) -> Self {
+                let b = i8::from_le(v);
+                Self(b)
+            }
+        }
+
+        impl<'a> flatbuffers::Verifiable for ProcessControlAction {
+            #[inline]
+            fn run_verifier(
+                v: &mut flatbuffers::Verifier,
+                pos: usize,
+            ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
+                use self::flatbuffers::Verifiable;
+                i8::run_verifier(v, pos)
+            }
+        }
+
+        impl flatbuffers::SimpleToVerifyInSlice for ProcessControlAction {}
+        #[deprecated(
+            since = "2.0.0",
+            note = "Use associated constants instead. This will no longer be generated in 2021."
+        )]
+        pub const ENUM_MIN_TASK_ERROR_TYPE: i8 = 0;
+        #[deprecated(
+            since = "2.0.0",
+            note = "Use associated constants instead. This will no longer be generated in 2021."
+        )]
+        pub const ENUM_MAX_TASK_ERROR_TYPE: i8 = 4;
+        #[deprecated(
+            since = "2.0.0",
+            note = "Use associated constants instead. This will no longer be generated in 2021."
+        )]
+        #[allow(non_camel_case_types)]
+        pub const ENUM_VALUES_TASK_ERROR_TYPE: [TaskErrorType; 5] = [
             TaskErrorType::IO,
             TaskErrorType::Handle,
             TaskErrorType::Channel,
             TaskErrorType::InvalidConfiguration,
+            TaskErrorType::Control,
         ];
 
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
@@ -271,14 +462,16 @@ pub mod tcrm {
             pub const Handle: Self = Self(1);
             pub const Channel: Self = Self(2);
             pub const InvalidConfiguration: Self = Self(3);
+            pub const Control: Self = Self(4);
 
             pub const ENUM_MIN: i8 = 0;
-            pub const ENUM_MAX: i8 = 3;
+            pub const ENUM_MAX: i8 = 4;
             pub const ENUM_VALUES: &'static [Self] = &[
                 Self::IO,
                 Self::Handle,
                 Self::Channel,
                 Self::InvalidConfiguration,
+                Self::Control,
             ];
             /// Returns the variant's name or "" if unknown.
             pub fn variant_name(self) -> Option<&'static str> {
@@ -287,6 +480,7 @@ pub mod tcrm {
                     Self::Handle => Some("Handle"),
                     Self::Channel => Some("Channel"),
                     Self::InvalidConfiguration => Some("InvalidConfiguration"),
+                    Self::Control => Some("Control"),
                     _ => None,
                 }
             }
@@ -304,10 +498,8 @@ pub mod tcrm {
             type Inner = Self;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                unsafe {
-                    let b = flatbuffers::read_scalar_at::<i8>(buf, loc);
-                    Self(b)
-                }
+                let b = flatbuffers::read_scalar_at::<i8>(buf, loc);
+                Self(b)
             }
         }
 
@@ -315,9 +507,7 @@ pub mod tcrm {
             type Output = TaskErrorType;
             #[inline]
             unsafe fn push(&self, dst: &mut [u8], _written_len: usize) {
-                unsafe {
-                    flatbuffers::emplace_scalar::<i8>(dst, self.0);
-                }
+                flatbuffers::emplace_scalar::<i8>(dst, self.0);
             }
         }
 
@@ -356,17 +546,18 @@ pub mod tcrm {
             since = "2.0.0",
             note = "Use associated constants instead. This will no longer be generated in 2021."
         )]
-        pub const ENUM_MAX_TASK_TERMINATE_REASON: i8 = 3;
+        pub const ENUM_MAX_TASK_TERMINATE_REASON: i8 = 4;
         #[deprecated(
             since = "2.0.0",
             note = "Use associated constants instead. This will no longer be generated in 2021."
         )]
         #[allow(non_camel_case_types)]
-        pub const ENUM_VALUES_TASK_TERMINATE_REASON: [TaskTerminateReason; 4] = [
+        pub const ENUM_VALUES_TASK_TERMINATE_REASON: [TaskTerminateReason; 5] = [
             TaskTerminateReason::Timeout,
             TaskTerminateReason::Cleanup,
             TaskTerminateReason::DependenciesFinished,
             TaskTerminateReason::UserRequested,
+            TaskTerminateReason::InternalError,
         ];
 
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
@@ -378,14 +569,16 @@ pub mod tcrm {
             pub const Cleanup: Self = Self(1);
             pub const DependenciesFinished: Self = Self(2);
             pub const UserRequested: Self = Self(3);
+            pub const InternalError: Self = Self(4);
 
             pub const ENUM_MIN: i8 = 0;
-            pub const ENUM_MAX: i8 = 3;
+            pub const ENUM_MAX: i8 = 4;
             pub const ENUM_VALUES: &'static [Self] = &[
                 Self::Timeout,
                 Self::Cleanup,
                 Self::DependenciesFinished,
                 Self::UserRequested,
+                Self::InternalError,
             ];
             /// Returns the variant's name or "" if unknown.
             pub fn variant_name(self) -> Option<&'static str> {
@@ -394,6 +587,7 @@ pub mod tcrm {
                     Self::Cleanup => Some("Cleanup"),
                     Self::DependenciesFinished => Some("DependenciesFinished"),
                     Self::UserRequested => Some("UserRequested"),
+                    Self::InternalError => Some("InternalError"),
                     _ => None,
                 }
             }
@@ -411,10 +605,8 @@ pub mod tcrm {
             type Inner = Self;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                unsafe {
-                    let b = flatbuffers::read_scalar_at::<i8>(buf, loc);
-                    Self(b)
-                }
+                let b = flatbuffers::read_scalar_at::<i8>(buf, loc);
+                Self(b)
             }
         }
 
@@ -422,9 +614,7 @@ pub mod tcrm {
             type Output = TaskTerminateReason;
             #[inline]
             unsafe fn push(&self, dst: &mut [u8], _written_len: usize) {
-                unsafe {
-                    flatbuffers::emplace_scalar::<i8>(dst, self.0);
-                }
+                flatbuffers::emplace_scalar::<i8>(dst, self.0);
             }
         }
 
@@ -463,19 +653,20 @@ pub mod tcrm {
             since = "2.0.0",
             note = "Use associated constants instead. This will no longer be generated in 2021."
         )]
-        pub const ENUM_MAX_TASK_EVENT_STOP_REASON: u8 = 6;
+        pub const ENUM_MAX_TASK_EVENT_STOP_REASON: u8 = 7;
         #[deprecated(
             since = "2.0.0",
             note = "Use associated constants instead. This will no longer be generated in 2021."
         )]
         #[allow(non_camel_case_types)]
-        pub const ENUM_VALUES_TASK_EVENT_STOP_REASON: [TaskEventStopReason; 7] = [
+        pub const ENUM_VALUES_TASK_EVENT_STOP_REASON: [TaskEventStopReason; 8] = [
             TaskEventStopReason::NONE,
             TaskEventStopReason::Finished,
             TaskEventStopReason::TerminatedTimeout,
             TaskEventStopReason::TerminatedCleanup,
             TaskEventStopReason::TerminatedDependenciesFinished,
             TaskEventStopReason::TerminatedUserRequested,
+            TaskEventStopReason::TerminatedInternalError,
             TaskEventStopReason::Error,
         ];
 
@@ -490,10 +681,11 @@ pub mod tcrm {
             pub const TerminatedCleanup: Self = Self(3);
             pub const TerminatedDependenciesFinished: Self = Self(4);
             pub const TerminatedUserRequested: Self = Self(5);
-            pub const Error: Self = Self(6);
+            pub const TerminatedInternalError: Self = Self(6);
+            pub const Error: Self = Self(7);
 
             pub const ENUM_MIN: u8 = 0;
-            pub const ENUM_MAX: u8 = 6;
+            pub const ENUM_MAX: u8 = 7;
             pub const ENUM_VALUES: &'static [Self] = &[
                 Self::NONE,
                 Self::Finished,
@@ -501,6 +693,7 @@ pub mod tcrm {
                 Self::TerminatedCleanup,
                 Self::TerminatedDependenciesFinished,
                 Self::TerminatedUserRequested,
+                Self::TerminatedInternalError,
                 Self::Error,
             ];
             /// Returns the variant's name or "" if unknown.
@@ -512,6 +705,7 @@ pub mod tcrm {
                     Self::TerminatedCleanup => Some("TerminatedCleanup"),
                     Self::TerminatedDependenciesFinished => Some("TerminatedDependenciesFinished"),
                     Self::TerminatedUserRequested => Some("TerminatedUserRequested"),
+                    Self::TerminatedInternalError => Some("TerminatedInternalError"),
                     Self::Error => Some("Error"),
                     _ => None,
                 }
@@ -530,10 +724,8 @@ pub mod tcrm {
             type Inner = Self;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                unsafe {
-                    let b = flatbuffers::read_scalar_at::<u8>(buf, loc);
-                    Self(b)
-                }
+                let b = flatbuffers::read_scalar_at::<u8>(buf, loc);
+                Self(b)
             }
         }
 
@@ -541,9 +733,7 @@ pub mod tcrm {
             type Output = TaskEventStopReason;
             #[inline]
             unsafe fn push(&self, dst: &mut [u8], _written_len: usize) {
-                unsafe {
-                    flatbuffers::emplace_scalar::<u8>(dst, self.0);
-                }
+                flatbuffers::emplace_scalar::<u8>(dst, self.0);
             }
         }
 
@@ -584,19 +774,20 @@ pub mod tcrm {
             since = "2.0.0",
             note = "Use associated constants instead. This will no longer be generated in 2021."
         )]
-        pub const ENUM_MAX_TASK_EVENT_UNION: u8 = 5;
+        pub const ENUM_MAX_TASK_EVENT_UNION: u8 = 6;
         #[deprecated(
             since = "2.0.0",
             note = "Use associated constants instead. This will no longer be generated in 2021."
         )]
         #[allow(non_camel_case_types)]
-        pub const ENUM_VALUES_TASK_EVENT_UNION: [TaskEventUnion; 6] = [
+        pub const ENUM_VALUES_TASK_EVENT_UNION: [TaskEventUnion; 7] = [
             TaskEventUnion::NONE,
             TaskEventUnion::Started,
             TaskEventUnion::Output,
             TaskEventUnion::Ready,
             TaskEventUnion::Stopped,
             TaskEventUnion::Error,
+            TaskEventUnion::ProcessControl,
         ];
 
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
@@ -610,9 +801,10 @@ pub mod tcrm {
             pub const Ready: Self = Self(3);
             pub const Stopped: Self = Self(4);
             pub const Error: Self = Self(5);
+            pub const ProcessControl: Self = Self(6);
 
             pub const ENUM_MIN: u8 = 0;
-            pub const ENUM_MAX: u8 = 5;
+            pub const ENUM_MAX: u8 = 6;
             pub const ENUM_VALUES: &'static [Self] = &[
                 Self::NONE,
                 Self::Started,
@@ -620,6 +812,7 @@ pub mod tcrm {
                 Self::Ready,
                 Self::Stopped,
                 Self::Error,
+                Self::ProcessControl,
             ];
             /// Returns the variant's name or "" if unknown.
             pub fn variant_name(self) -> Option<&'static str> {
@@ -630,6 +823,7 @@ pub mod tcrm {
                     Self::Ready => Some("Ready"),
                     Self::Stopped => Some("Stopped"),
                     Self::Error => Some("Error"),
+                    Self::ProcessControl => Some("ProcessControl"),
                     _ => None,
                 }
             }
@@ -647,10 +841,8 @@ pub mod tcrm {
             type Inner = Self;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                unsafe {
-                    let b = flatbuffers::read_scalar_at::<u8>(buf, loc);
-                    Self(b)
-                }
+                let b = flatbuffers::read_scalar_at::<u8>(buf, loc);
+                Self(b)
             }
         }
 
@@ -658,9 +850,7 @@ pub mod tcrm {
             type Output = TaskEventUnion;
             #[inline]
             unsafe fn push(&self, dst: &mut [u8], _written_len: usize) {
-                unsafe {
-                    flatbuffers::emplace_scalar::<u8>(dst, self.0);
-                }
+                flatbuffers::emplace_scalar::<u8>(dst, self.0);
             }
         }
 
@@ -703,10 +893,8 @@ pub mod tcrm {
             type Inner = TaskConfig<'a>;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                unsafe {
-                    Self {
-                        _tab: flatbuffers::Table::new(buf, loc),
-                    }
+                Self {
+                    _tab: flatbuffers::Table::new(buf, loc),
                 }
             }
         }
@@ -863,7 +1051,7 @@ pub mod tcrm {
                 // which contains a valid value in this slot
                 unsafe {
                     self._tab
-                        .get::<bool>(TaskConfig::VT_USE_PROCESS_GROUP, Some(false))
+                        .get::<bool>(TaskConfig::VT_USE_PROCESS_GROUP, Some(true))
                         .unwrap()
                 }
             }
@@ -941,7 +1129,7 @@ pub mod tcrm {
                     enable_stdin: false,
                     ready_indicator: None,
                     ready_indicator_source: StreamSource::Stdout,
-                    use_process_group: false,
+                    use_process_group: true,
                 }
             }
         }
@@ -1016,7 +1204,7 @@ pub mod tcrm {
                 self.fbb_.push_slot::<bool>(
                     TaskConfig::VT_USE_PROCESS_GROUP,
                     use_process_group,
-                    false,
+                    true,
                 );
             }
             #[inline]
@@ -1063,10 +1251,8 @@ pub mod tcrm {
             type Inner = EnvEntry<'a>;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                unsafe {
-                    Self {
-                        _tab: flatbuffers::Table::new(buf, loc),
-                    }
+                Self {
+                    _tab: flatbuffers::Table::new(buf, loc),
                 }
             }
         }
@@ -1208,10 +1394,8 @@ pub mod tcrm {
             type Inner = TaskError<'a>;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                unsafe {
-                    Self {
-                        _tab: flatbuffers::Table::new(buf, loc),
-                    }
+                Self {
+                    _tab: flatbuffers::Table::new(buf, loc),
                 }
             }
         }
@@ -1254,13 +1438,14 @@ pub mod tcrm {
                 }
             }
             #[inline]
-            pub fn message(&self) -> Option<&'a str> {
+            pub fn message(&self) -> &'a str {
                 // Safety:
                 // Created from valid Table for this object
                 // which contains a valid value in this slot
                 unsafe {
                     self._tab
                         .get::<flatbuffers::ForwardsUOffset<&str>>(TaskError::VT_MESSAGE, None)
+                        .unwrap()
                 }
             }
         }
@@ -1277,7 +1462,7 @@ pub mod tcrm {
                     .visit_field::<flatbuffers::ForwardsUOffset<&str>>(
                         "message",
                         Self::VT_MESSAGE,
-                        false,
+                        true,
                     )?
                     .finish();
                 Ok(())
@@ -1292,7 +1477,7 @@ pub mod tcrm {
             fn default() -> Self {
                 TaskErrorArgs {
                     kind: TaskErrorType::IO,
-                    message: None,
+                    message: None, // required field
                 }
             }
         }
@@ -1325,6 +1510,7 @@ pub mod tcrm {
             #[inline]
             pub fn finish(self) -> flatbuffers::WIPOffset<TaskError<'a>> {
                 let o = self.fbb_.end_table(self.start_);
+                self.fbb_.required(o, TaskError::VT_MESSAGE, "message");
                 flatbuffers::WIPOffset::new(o.value())
             }
         }
@@ -1348,10 +1534,8 @@ pub mod tcrm {
             type Inner = DummyTable<'a>;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                unsafe {
-                    Self {
-                        _tab: flatbuffers::Table::new(buf, loc),
-                    }
+                Self {
+                    _tab: flatbuffers::Table::new(buf, loc),
                 }
             }
         }
@@ -1434,10 +1618,8 @@ pub mod tcrm {
             type Inner = ErrorStopReason<'a>;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                unsafe {
-                    Self {
-                        _tab: flatbuffers::Table::new(buf, loc),
-                    }
+                Self {
+                    _tab: flatbuffers::Table::new(buf, loc),
                 }
             }
         }
@@ -1549,6 +1731,117 @@ pub mod tcrm {
                 ds.finish()
             }
         }
+        pub enum SystemTimeOffset {}
+        #[derive(Copy, Clone, PartialEq)]
+
+        pub struct SystemTime<'a> {
+            pub _tab: flatbuffers::Table<'a>,
+        }
+
+        impl<'a> flatbuffers::Follow<'a> for SystemTime<'a> {
+            type Inner = SystemTime<'a>;
+            #[inline]
+            unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+                Self {
+                    _tab: flatbuffers::Table::new(buf, loc),
+                }
+            }
+        }
+
+        impl<'a> SystemTime<'a> {
+            pub const VT_NANOS_SINCE_EPOCH: flatbuffers::VOffsetT = 4;
+
+            #[inline]
+            pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+                SystemTime { _tab: table }
+            }
+            #[allow(unused_mut)]
+            pub fn create<
+                'bldr: 'args,
+                'args: 'mut_bldr,
+                'mut_bldr,
+                A: flatbuffers::Allocator + 'bldr,
+            >(
+                _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
+                args: &'args SystemTimeArgs,
+            ) -> flatbuffers::WIPOffset<SystemTime<'bldr>> {
+                let mut builder = SystemTimeBuilder::new(_fbb);
+                builder.add_nanos_since_epoch(args.nanos_since_epoch);
+                builder.finish()
+            }
+
+            #[inline]
+            pub fn nanos_since_epoch(&self) -> u64 {
+                // Safety:
+                // Created from valid Table for this object
+                // which contains a valid value in this slot
+                unsafe {
+                    self._tab
+                        .get::<u64>(SystemTime::VT_NANOS_SINCE_EPOCH, Some(0))
+                        .unwrap()
+                }
+            }
+        }
+
+        impl flatbuffers::Verifiable for SystemTime<'_> {
+            #[inline]
+            fn run_verifier(
+                v: &mut flatbuffers::Verifier,
+                pos: usize,
+            ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
+                use self::flatbuffers::Verifiable;
+                v.visit_table(pos)?
+                    .visit_field::<u64>("nanos_since_epoch", Self::VT_NANOS_SINCE_EPOCH, false)?
+                    .finish();
+                Ok(())
+            }
+        }
+        pub struct SystemTimeArgs {
+            pub nanos_since_epoch: u64,
+        }
+        impl<'a> Default for SystemTimeArgs {
+            #[inline]
+            fn default() -> Self {
+                SystemTimeArgs {
+                    nanos_since_epoch: 0,
+                }
+            }
+        }
+
+        pub struct SystemTimeBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
+            fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
+            start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+        }
+        impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> SystemTimeBuilder<'a, 'b, A> {
+            #[inline]
+            pub fn add_nanos_since_epoch(&mut self, nanos_since_epoch: u64) {
+                self.fbb_
+                    .push_slot::<u64>(SystemTime::VT_NANOS_SINCE_EPOCH, nanos_since_epoch, 0);
+            }
+            #[inline]
+            pub fn new(
+                _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
+            ) -> SystemTimeBuilder<'a, 'b, A> {
+                let start = _fbb.start_table();
+                SystemTimeBuilder {
+                    fbb_: _fbb,
+                    start_: start,
+                }
+            }
+            #[inline]
+            pub fn finish(self) -> flatbuffers::WIPOffset<SystemTime<'a>> {
+                let o = self.fbb_.end_table(self.start_);
+                flatbuffers::WIPOffset::new(o.value())
+            }
+        }
+
+        impl core::fmt::Debug for SystemTime<'_> {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                let mut ds = f.debug_struct("SystemTime");
+                ds.field("nanos_since_epoch", &self.nanos_since_epoch());
+                ds.finish()
+            }
+        }
         pub enum StartedEventOffset {}
         #[derive(Copy, Clone, PartialEq)]
 
@@ -1560,16 +1853,16 @@ pub mod tcrm {
             type Inner = StartedEvent<'a>;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                unsafe {
-                    Self {
-                        _tab: flatbuffers::Table::new(buf, loc),
-                    }
+                Self {
+                    _tab: flatbuffers::Table::new(buf, loc),
                 }
             }
         }
 
         impl<'a> StartedEvent<'a> {
-            pub const VT_TASK_NAME: flatbuffers::VOffsetT = 4;
+            pub const VT_PROCESS_ID: flatbuffers::VOffsetT = 4;
+            pub const VT_CREATED_AT: flatbuffers::VOffsetT = 6;
+            pub const VT_RUNNING_AT: flatbuffers::VOffsetT = 8;
 
             #[inline]
             pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -1586,21 +1879,49 @@ pub mod tcrm {
                 args: &'args StartedEventArgs<'args>,
             ) -> flatbuffers::WIPOffset<StartedEvent<'bldr>> {
                 let mut builder = StartedEventBuilder::new(_fbb);
-                if let Some(x) = args.task_name {
-                    builder.add_task_name(x);
+                if let Some(x) = args.running_at {
+                    builder.add_running_at(x);
                 }
+                if let Some(x) = args.created_at {
+                    builder.add_created_at(x);
+                }
+                builder.add_process_id(args.process_id);
                 builder.finish()
             }
 
             #[inline]
-            pub fn task_name(&self) -> &'a str {
+            pub fn process_id(&self) -> u32 {
                 // Safety:
                 // Created from valid Table for this object
                 // which contains a valid value in this slot
                 unsafe {
                     self._tab
-                        .get::<flatbuffers::ForwardsUOffset<&str>>(StartedEvent::VT_TASK_NAME, None)
+                        .get::<u32>(StartedEvent::VT_PROCESS_ID, Some(0))
                         .unwrap()
+                }
+            }
+            #[inline]
+            pub fn created_at(&self) -> Option<SystemTime<'a>> {
+                // Safety:
+                // Created from valid Table for this object
+                // which contains a valid value in this slot
+                unsafe {
+                    self._tab.get::<flatbuffers::ForwardsUOffset<SystemTime>>(
+                        StartedEvent::VT_CREATED_AT,
+                        None,
+                    )
+                }
+            }
+            #[inline]
+            pub fn running_at(&self) -> Option<SystemTime<'a>> {
+                // Safety:
+                // Created from valid Table for this object
+                // which contains a valid value in this slot
+                unsafe {
+                    self._tab.get::<flatbuffers::ForwardsUOffset<SystemTime>>(
+                        StartedEvent::VT_RUNNING_AT,
+                        None,
+                    )
                 }
             }
         }
@@ -1613,23 +1934,33 @@ pub mod tcrm {
             ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
                 use self::flatbuffers::Verifiable;
                 v.visit_table(pos)?
-                    .visit_field::<flatbuffers::ForwardsUOffset<&str>>(
-                        "task_name",
-                        Self::VT_TASK_NAME,
-                        true,
+                    .visit_field::<u32>("process_id", Self::VT_PROCESS_ID, false)?
+                    .visit_field::<flatbuffers::ForwardsUOffset<SystemTime>>(
+                        "created_at",
+                        Self::VT_CREATED_AT,
+                        false,
+                    )?
+                    .visit_field::<flatbuffers::ForwardsUOffset<SystemTime>>(
+                        "running_at",
+                        Self::VT_RUNNING_AT,
+                        false,
                     )?
                     .finish();
                 Ok(())
             }
         }
         pub struct StartedEventArgs<'a> {
-            pub task_name: Option<flatbuffers::WIPOffset<&'a str>>,
+            pub process_id: u32,
+            pub created_at: Option<flatbuffers::WIPOffset<SystemTime<'a>>>,
+            pub running_at: Option<flatbuffers::WIPOffset<SystemTime<'a>>>,
         }
         impl<'a> Default for StartedEventArgs<'a> {
             #[inline]
             fn default() -> Self {
                 StartedEventArgs {
-                    task_name: None, // required field
+                    process_id: 0,
+                    created_at: None,
+                    running_at: None,
                 }
             }
         }
@@ -1640,11 +1971,25 @@ pub mod tcrm {
         }
         impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> StartedEventBuilder<'a, 'b, A> {
             #[inline]
-            pub fn add_task_name(&mut self, task_name: flatbuffers::WIPOffset<&'b str>) {
-                self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
-                    StartedEvent::VT_TASK_NAME,
-                    task_name,
-                );
+            pub fn add_process_id(&mut self, process_id: u32) {
+                self.fbb_
+                    .push_slot::<u32>(StartedEvent::VT_PROCESS_ID, process_id, 0);
+            }
+            #[inline]
+            pub fn add_created_at(&mut self, created_at: flatbuffers::WIPOffset<SystemTime<'b>>) {
+                self.fbb_
+                    .push_slot_always::<flatbuffers::WIPOffset<SystemTime>>(
+                        StartedEvent::VT_CREATED_AT,
+                        created_at,
+                    );
+            }
+            #[inline]
+            pub fn add_running_at(&mut self, running_at: flatbuffers::WIPOffset<SystemTime<'b>>) {
+                self.fbb_
+                    .push_slot_always::<flatbuffers::WIPOffset<SystemTime>>(
+                        StartedEvent::VT_RUNNING_AT,
+                        running_at,
+                    );
             }
             #[inline]
             pub fn new(
@@ -1659,8 +2004,6 @@ pub mod tcrm {
             #[inline]
             pub fn finish(self) -> flatbuffers::WIPOffset<StartedEvent<'a>> {
                 let o = self.fbb_.end_table(self.start_);
-                self.fbb_
-                    .required(o, StartedEvent::VT_TASK_NAME, "task_name");
                 flatbuffers::WIPOffset::new(o.value())
             }
         }
@@ -1668,7 +2011,9 @@ pub mod tcrm {
         impl core::fmt::Debug for StartedEvent<'_> {
             fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 let mut ds = f.debug_struct("StartedEvent");
-                ds.field("task_name", &self.task_name());
+                ds.field("process_id", &self.process_id());
+                ds.field("created_at", &self.created_at());
+                ds.field("running_at", &self.running_at());
                 ds.finish()
             }
         }
@@ -1683,18 +2028,15 @@ pub mod tcrm {
             type Inner = OutputEvent<'a>;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                unsafe {
-                    Self {
-                        _tab: flatbuffers::Table::new(buf, loc),
-                    }
+                Self {
+                    _tab: flatbuffers::Table::new(buf, loc),
                 }
             }
         }
 
         impl<'a> OutputEvent<'a> {
-            pub const VT_TASK_NAME: flatbuffers::VOffsetT = 4;
-            pub const VT_LINE: flatbuffers::VOffsetT = 6;
-            pub const VT_SRC: flatbuffers::VOffsetT = 8;
+            pub const VT_LINE: flatbuffers::VOffsetT = 4;
+            pub const VT_SRC: flatbuffers::VOffsetT = 6;
 
             #[inline]
             pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -1714,24 +2056,10 @@ pub mod tcrm {
                 if let Some(x) = args.line {
                     builder.add_line(x);
                 }
-                if let Some(x) = args.task_name {
-                    builder.add_task_name(x);
-                }
                 builder.add_src(args.src);
                 builder.finish()
             }
 
-            #[inline]
-            pub fn task_name(&self) -> &'a str {
-                // Safety:
-                // Created from valid Table for this object
-                // which contains a valid value in this slot
-                unsafe {
-                    self._tab
-                        .get::<flatbuffers::ForwardsUOffset<&str>>(OutputEvent::VT_TASK_NAME, None)
-                        .unwrap()
-                }
-            }
             #[inline]
             pub fn line(&self) -> &'a str {
                 // Safety:
@@ -1764,11 +2092,6 @@ pub mod tcrm {
             ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
                 use self::flatbuffers::Verifiable;
                 v.visit_table(pos)?
-                    .visit_field::<flatbuffers::ForwardsUOffset<&str>>(
-                        "task_name",
-                        Self::VT_TASK_NAME,
-                        true,
-                    )?
                     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("line", Self::VT_LINE, true)?
                     .visit_field::<StreamSource>("src", Self::VT_SRC, false)?
                     .finish();
@@ -1776,7 +2099,6 @@ pub mod tcrm {
             }
         }
         pub struct OutputEventArgs<'a> {
-            pub task_name: Option<flatbuffers::WIPOffset<&'a str>>,
             pub line: Option<flatbuffers::WIPOffset<&'a str>>,
             pub src: StreamSource,
         }
@@ -1784,8 +2106,7 @@ pub mod tcrm {
             #[inline]
             fn default() -> Self {
                 OutputEventArgs {
-                    task_name: None, // required field
-                    line: None,      // required field
+                    line: None, // required field
                     src: StreamSource::Stdout,
                 }
             }
@@ -1796,13 +2117,6 @@ pub mod tcrm {
             start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
         }
         impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> OutputEventBuilder<'a, 'b, A> {
-            #[inline]
-            pub fn add_task_name(&mut self, task_name: flatbuffers::WIPOffset<&'b str>) {
-                self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
-                    OutputEvent::VT_TASK_NAME,
-                    task_name,
-                );
-            }
             #[inline]
             pub fn add_line(&mut self, line: flatbuffers::WIPOffset<&'b str>) {
                 self.fbb_
@@ -1826,8 +2140,6 @@ pub mod tcrm {
             #[inline]
             pub fn finish(self) -> flatbuffers::WIPOffset<OutputEvent<'a>> {
                 let o = self.fbb_.end_table(self.start_);
-                self.fbb_
-                    .required(o, OutputEvent::VT_TASK_NAME, "task_name");
                 self.fbb_.required(o, OutputEvent::VT_LINE, "line");
                 flatbuffers::WIPOffset::new(o.value())
             }
@@ -1836,7 +2148,6 @@ pub mod tcrm {
         impl core::fmt::Debug for OutputEvent<'_> {
             fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 let mut ds = f.debug_struct("OutputEvent");
-                ds.field("task_name", &self.task_name());
                 ds.field("line", &self.line());
                 ds.field("src", &self.src());
                 ds.finish()
@@ -1853,17 +2164,13 @@ pub mod tcrm {
             type Inner = ReadyEvent<'a>;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                unsafe {
-                    Self {
-                        _tab: flatbuffers::Table::new(buf, loc),
-                    }
+                Self {
+                    _tab: flatbuffers::Table::new(buf, loc),
                 }
             }
         }
 
         impl<'a> ReadyEvent<'a> {
-            pub const VT_TASK_NAME: flatbuffers::VOffsetT = 4;
-
             #[inline]
             pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
                 ReadyEvent { _tab: table }
@@ -1876,25 +2183,10 @@ pub mod tcrm {
                 A: flatbuffers::Allocator + 'bldr,
             >(
                 _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
-                args: &'args ReadyEventArgs<'args>,
+                _args: &'args ReadyEventArgs,
             ) -> flatbuffers::WIPOffset<ReadyEvent<'bldr>> {
                 let mut builder = ReadyEventBuilder::new(_fbb);
-                if let Some(x) = args.task_name {
-                    builder.add_task_name(x);
-                }
                 builder.finish()
-            }
-
-            #[inline]
-            pub fn task_name(&self) -> &'a str {
-                // Safety:
-                // Created from valid Table for this object
-                // which contains a valid value in this slot
-                unsafe {
-                    self._tab
-                        .get::<flatbuffers::ForwardsUOffset<&str>>(ReadyEvent::VT_TASK_NAME, None)
-                        .unwrap()
-                }
             }
         }
 
@@ -1905,25 +2197,15 @@ pub mod tcrm {
                 pos: usize,
             ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
                 use self::flatbuffers::Verifiable;
-                v.visit_table(pos)?
-                    .visit_field::<flatbuffers::ForwardsUOffset<&str>>(
-                        "task_name",
-                        Self::VT_TASK_NAME,
-                        true,
-                    )?
-                    .finish();
+                v.visit_table(pos)?.finish();
                 Ok(())
             }
         }
-        pub struct ReadyEventArgs<'a> {
-            pub task_name: Option<flatbuffers::WIPOffset<&'a str>>,
-        }
-        impl<'a> Default for ReadyEventArgs<'a> {
+        pub struct ReadyEventArgs {}
+        impl<'a> Default for ReadyEventArgs {
             #[inline]
             fn default() -> Self {
-                ReadyEventArgs {
-                    task_name: None, // required field
-                }
+                ReadyEventArgs {}
             }
         }
 
@@ -1932,13 +2214,6 @@ pub mod tcrm {
             start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
         }
         impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> ReadyEventBuilder<'a, 'b, A> {
-            #[inline]
-            pub fn add_task_name(&mut self, task_name: flatbuffers::WIPOffset<&'b str>) {
-                self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
-                    ReadyEvent::VT_TASK_NAME,
-                    task_name,
-                );
-            }
             #[inline]
             pub fn new(
                 _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
@@ -1952,7 +2227,6 @@ pub mod tcrm {
             #[inline]
             pub fn finish(self) -> flatbuffers::WIPOffset<ReadyEvent<'a>> {
                 let o = self.fbb_.end_table(self.start_);
-                self.fbb_.required(o, ReadyEvent::VT_TASK_NAME, "task_name");
                 flatbuffers::WIPOffset::new(o.value())
             }
         }
@@ -1960,7 +2234,6 @@ pub mod tcrm {
         impl core::fmt::Debug for ReadyEvent<'_> {
             fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 let mut ds = f.debug_struct("ReadyEvent");
-                ds.field("task_name", &self.task_name());
                 ds.finish()
             }
         }
@@ -1975,19 +2248,18 @@ pub mod tcrm {
             type Inner = StoppedEvent<'a>;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                unsafe {
-                    Self {
-                        _tab: flatbuffers::Table::new(buf, loc),
-                    }
+                Self {
+                    _tab: flatbuffers::Table::new(buf, loc),
                 }
             }
         }
 
         impl<'a> StoppedEvent<'a> {
-            pub const VT_TASK_NAME: flatbuffers::VOffsetT = 4;
-            pub const VT_EXIT_CODE: flatbuffers::VOffsetT = 6;
-            pub const VT_REASON_TYPE: flatbuffers::VOffsetT = 8;
-            pub const VT_REASON: flatbuffers::VOffsetT = 10;
+            pub const VT_EXIT_CODE: flatbuffers::VOffsetT = 4;
+            pub const VT_REASON_TYPE: flatbuffers::VOffsetT = 6;
+            pub const VT_REASON: flatbuffers::VOffsetT = 8;
+            pub const VT_FINISHED_AT: flatbuffers::VOffsetT = 10;
+            pub const VT_SIGNAL: flatbuffers::VOffsetT = 12;
 
             #[inline]
             pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -2004,28 +2276,18 @@ pub mod tcrm {
                 args: &'args StoppedEventArgs<'args>,
             ) -> flatbuffers::WIPOffset<StoppedEvent<'bldr>> {
                 let mut builder = StoppedEventBuilder::new(_fbb);
+                builder.add_signal(args.signal);
+                if let Some(x) = args.finished_at {
+                    builder.add_finished_at(x);
+                }
                 if let Some(x) = args.reason {
                     builder.add_reason(x);
                 }
                 builder.add_exit_code(args.exit_code);
-                if let Some(x) = args.task_name {
-                    builder.add_task_name(x);
-                }
                 builder.add_reason_type(args.reason_type);
                 builder.finish()
             }
 
-            #[inline]
-            pub fn task_name(&self) -> &'a str {
-                // Safety:
-                // Created from valid Table for this object
-                // which contains a valid value in this slot
-                unsafe {
-                    self._tab
-                        .get::<flatbuffers::ForwardsUOffset<&str>>(StoppedEvent::VT_TASK_NAME, None)
-                        .unwrap()
-                }
-            }
             #[inline]
             pub fn exit_code(&self) -> i32 {
                 // Safety:
@@ -2062,6 +2324,29 @@ pub mod tcrm {
                             StoppedEvent::VT_REASON,
                             None,
                         )
+                        .unwrap()
+                }
+            }
+            #[inline]
+            pub fn finished_at(&self) -> Option<SystemTime<'a>> {
+                // Safety:
+                // Created from valid Table for this object
+                // which contains a valid value in this slot
+                unsafe {
+                    self._tab.get::<flatbuffers::ForwardsUOffset<SystemTime>>(
+                        StoppedEvent::VT_FINISHED_AT,
+                        None,
+                    )
+                }
+            }
+            #[inline]
+            pub fn signal(&self) -> i32 {
+                // Safety:
+                // Created from valid Table for this object
+                // which contains a valid value in this slot
+                unsafe {
+                    self._tab
+                        .get::<i32>(StoppedEvent::VT_SIGNAL, Some(0))
                         .unwrap()
                 }
             }
@@ -2137,6 +2422,20 @@ pub mod tcrm {
 
             #[inline]
             #[allow(non_snake_case)]
+            pub fn reason_as_terminated_internal_error(&self) -> Option<DummyTable<'a>> {
+                if self.reason_type() == TaskEventStopReason::TerminatedInternalError {
+                    let u = self.reason();
+                    // Safety:
+                    // Created from a valid Table for this object
+                    // Which contains a valid union in this slot
+                    Some(unsafe { DummyTable::init_from_table(u) })
+                } else {
+                    None
+                }
+            }
+
+            #[inline]
+            #[allow(non_snake_case)]
             pub fn reason_as_error(&self) -> Option<ErrorStopReason<'a>> {
                 if self.reason_type() == TaskEventStopReason::Error {
                     let u = self.reason();
@@ -2158,7 +2457,6 @@ pub mod tcrm {
             ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
                 use self::flatbuffers::Verifiable;
                 v.visit_table(pos)?
-     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("task_name", Self::VT_TASK_NAME, true)?
      .visit_field::<i32>("exit_code", Self::VT_EXIT_CODE, false)?
      .visit_union::<TaskEventStopReason, _>("reason_type", Self::VT_REASON_TYPE, "reason", Self::VT_REASON, true, |key, v, pos| {
         match key {
@@ -2167,28 +2465,33 @@ pub mod tcrm {
           TaskEventStopReason::TerminatedCleanup => v.verify_union_variant::<flatbuffers::ForwardsUOffset<DummyTable>>("TaskEventStopReason::TerminatedCleanup", pos),
           TaskEventStopReason::TerminatedDependenciesFinished => v.verify_union_variant::<flatbuffers::ForwardsUOffset<DummyTable>>("TaskEventStopReason::TerminatedDependenciesFinished", pos),
           TaskEventStopReason::TerminatedUserRequested => v.verify_union_variant::<flatbuffers::ForwardsUOffset<DummyTable>>("TaskEventStopReason::TerminatedUserRequested", pos),
+          TaskEventStopReason::TerminatedInternalError => v.verify_union_variant::<flatbuffers::ForwardsUOffset<DummyTable>>("TaskEventStopReason::TerminatedInternalError", pos),
           TaskEventStopReason::Error => v.verify_union_variant::<flatbuffers::ForwardsUOffset<ErrorStopReason>>("TaskEventStopReason::Error", pos),
           _ => Ok(()),
         }
      })?
+     .visit_field::<flatbuffers::ForwardsUOffset<SystemTime>>("finished_at", Self::VT_FINISHED_AT, false)?
+     .visit_field::<i32>("signal", Self::VT_SIGNAL, false)?
      .finish();
                 Ok(())
             }
         }
         pub struct StoppedEventArgs<'a> {
-            pub task_name: Option<flatbuffers::WIPOffset<&'a str>>,
             pub exit_code: i32,
             pub reason_type: TaskEventStopReason,
             pub reason: Option<flatbuffers::WIPOffset<flatbuffers::UnionWIPOffset>>,
+            pub finished_at: Option<flatbuffers::WIPOffset<SystemTime<'a>>>,
+            pub signal: i32,
         }
         impl<'a> Default for StoppedEventArgs<'a> {
             #[inline]
             fn default() -> Self {
                 StoppedEventArgs {
-                    task_name: None, // required field
                     exit_code: 0,
                     reason_type: TaskEventStopReason::NONE,
                     reason: None, // required field
+                    finished_at: None,
+                    signal: 0,
                 }
             }
         }
@@ -2198,13 +2501,6 @@ pub mod tcrm {
             start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
         }
         impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> StoppedEventBuilder<'a, 'b, A> {
-            #[inline]
-            pub fn add_task_name(&mut self, task_name: flatbuffers::WIPOffset<&'b str>) {
-                self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
-                    StoppedEvent::VT_TASK_NAME,
-                    task_name,
-                );
-            }
             #[inline]
             pub fn add_exit_code(&mut self, exit_code: i32) {
                 self.fbb_
@@ -2227,6 +2523,19 @@ pub mod tcrm {
                     .push_slot_always::<flatbuffers::WIPOffset<_>>(StoppedEvent::VT_REASON, reason);
             }
             #[inline]
+            pub fn add_finished_at(&mut self, finished_at: flatbuffers::WIPOffset<SystemTime<'b>>) {
+                self.fbb_
+                    .push_slot_always::<flatbuffers::WIPOffset<SystemTime>>(
+                        StoppedEvent::VT_FINISHED_AT,
+                        finished_at,
+                    );
+            }
+            #[inline]
+            pub fn add_signal(&mut self, signal: i32) {
+                self.fbb_
+                    .push_slot::<i32>(StoppedEvent::VT_SIGNAL, signal, 0);
+            }
+            #[inline]
             pub fn new(
                 _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
             ) -> StoppedEventBuilder<'a, 'b, A> {
@@ -2239,8 +2548,6 @@ pub mod tcrm {
             #[inline]
             pub fn finish(self) -> flatbuffers::WIPOffset<StoppedEvent<'a>> {
                 let o = self.fbb_.end_table(self.start_);
-                self.fbb_
-                    .required(o, StoppedEvent::VT_TASK_NAME, "task_name");
                 self.fbb_.required(o, StoppedEvent::VT_REASON, "reason");
                 flatbuffers::WIPOffset::new(o.value())
             }
@@ -2249,7 +2556,6 @@ pub mod tcrm {
         impl core::fmt::Debug for StoppedEvent<'_> {
             fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 let mut ds = f.debug_struct("StoppedEvent");
-                ds.field("task_name", &self.task_name());
                 ds.field("exit_code", &self.exit_code());
                 ds.field("reason_type", &self.reason_type());
                 match self.reason_type() {
@@ -2303,6 +2609,16 @@ pub mod tcrm {
                             )
                         }
                     }
+                    TaskEventStopReason::TerminatedInternalError => {
+                        if let Some(x) = self.reason_as_terminated_internal_error() {
+                            ds.field("reason", &x)
+                        } else {
+                            ds.field(
+                                "reason",
+                                &"InvalidFlatbuffer: Union discriminant does not match value.",
+                            )
+                        }
+                    }
                     TaskEventStopReason::Error => {
                         if let Some(x) = self.reason_as_error() {
                             ds.field("reason", &x)
@@ -2318,6 +2634,8 @@ pub mod tcrm {
                         ds.field("reason", &x)
                     }
                 };
+                ds.field("finished_at", &self.finished_at());
+                ds.field("signal", &self.signal());
                 ds.finish()
             }
         }
@@ -2332,17 +2650,14 @@ pub mod tcrm {
             type Inner = ErrorEvent<'a>;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                unsafe {
-                    Self {
-                        _tab: flatbuffers::Table::new(buf, loc),
-                    }
+                Self {
+                    _tab: flatbuffers::Table::new(buf, loc),
                 }
             }
         }
 
         impl<'a> ErrorEvent<'a> {
-            pub const VT_TASK_NAME: flatbuffers::VOffsetT = 4;
-            pub const VT_ERROR: flatbuffers::VOffsetT = 6;
+            pub const VT_ERROR: flatbuffers::VOffsetT = 4;
 
             #[inline]
             pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -2362,23 +2677,9 @@ pub mod tcrm {
                 if let Some(x) = args.error {
                     builder.add_error(x);
                 }
-                if let Some(x) = args.task_name {
-                    builder.add_task_name(x);
-                }
                 builder.finish()
             }
 
-            #[inline]
-            pub fn task_name(&self) -> &'a str {
-                // Safety:
-                // Created from valid Table for this object
-                // which contains a valid value in this slot
-                unsafe {
-                    self._tab
-                        .get::<flatbuffers::ForwardsUOffset<&str>>(ErrorEvent::VT_TASK_NAME, None)
-                        .unwrap()
-                }
-            }
             #[inline]
             pub fn error(&self) -> TaskError<'a> {
                 // Safety:
@@ -2400,11 +2701,6 @@ pub mod tcrm {
             ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
                 use self::flatbuffers::Verifiable;
                 v.visit_table(pos)?
-                    .visit_field::<flatbuffers::ForwardsUOffset<&str>>(
-                        "task_name",
-                        Self::VT_TASK_NAME,
-                        true,
-                    )?
                     .visit_field::<flatbuffers::ForwardsUOffset<TaskError>>(
                         "error",
                         Self::VT_ERROR,
@@ -2415,15 +2711,13 @@ pub mod tcrm {
             }
         }
         pub struct ErrorEventArgs<'a> {
-            pub task_name: Option<flatbuffers::WIPOffset<&'a str>>,
             pub error: Option<flatbuffers::WIPOffset<TaskError<'a>>>,
         }
         impl<'a> Default for ErrorEventArgs<'a> {
             #[inline]
             fn default() -> Self {
                 ErrorEventArgs {
-                    task_name: None, // required field
-                    error: None,     // required field
+                    error: None, // required field
                 }
             }
         }
@@ -2433,13 +2727,6 @@ pub mod tcrm {
             start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
         }
         impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> ErrorEventBuilder<'a, 'b, A> {
-            #[inline]
-            pub fn add_task_name(&mut self, task_name: flatbuffers::WIPOffset<&'b str>) {
-                self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
-                    ErrorEvent::VT_TASK_NAME,
-                    task_name,
-                );
-            }
             #[inline]
             pub fn add_error(&mut self, error: flatbuffers::WIPOffset<TaskError<'b>>) {
                 self.fbb_
@@ -2461,7 +2748,6 @@ pub mod tcrm {
             #[inline]
             pub fn finish(self) -> flatbuffers::WIPOffset<ErrorEvent<'a>> {
                 let o = self.fbb_.end_table(self.start_);
-                self.fbb_.required(o, ErrorEvent::VT_TASK_NAME, "task_name");
                 self.fbb_.required(o, ErrorEvent::VT_ERROR, "error");
                 flatbuffers::WIPOffset::new(o.value())
             }
@@ -2470,8 +2756,124 @@ pub mod tcrm {
         impl core::fmt::Debug for ErrorEvent<'_> {
             fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 let mut ds = f.debug_struct("ErrorEvent");
-                ds.field("task_name", &self.task_name());
                 ds.field("error", &self.error());
+                ds.finish()
+            }
+        }
+        pub enum ProcessControlEventOffset {}
+        #[derive(Copy, Clone, PartialEq)]
+
+        pub struct ProcessControlEvent<'a> {
+            pub _tab: flatbuffers::Table<'a>,
+        }
+
+        impl<'a> flatbuffers::Follow<'a> for ProcessControlEvent<'a> {
+            type Inner = ProcessControlEvent<'a>;
+            #[inline]
+            unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+                Self {
+                    _tab: flatbuffers::Table::new(buf, loc),
+                }
+            }
+        }
+
+        impl<'a> ProcessControlEvent<'a> {
+            pub const VT_ACTION: flatbuffers::VOffsetT = 4;
+
+            #[inline]
+            pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+                ProcessControlEvent { _tab: table }
+            }
+            #[allow(unused_mut)]
+            pub fn create<
+                'bldr: 'args,
+                'args: 'mut_bldr,
+                'mut_bldr,
+                A: flatbuffers::Allocator + 'bldr,
+            >(
+                _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
+                args: &'args ProcessControlEventArgs,
+            ) -> flatbuffers::WIPOffset<ProcessControlEvent<'bldr>> {
+                let mut builder = ProcessControlEventBuilder::new(_fbb);
+                builder.add_action(args.action);
+                builder.finish()
+            }
+
+            #[inline]
+            pub fn action(&self) -> ProcessControlAction {
+                // Safety:
+                // Created from valid Table for this object
+                // which contains a valid value in this slot
+                unsafe {
+                    self._tab
+                        .get::<ProcessControlAction>(
+                            ProcessControlEvent::VT_ACTION,
+                            Some(ProcessControlAction::Stop),
+                        )
+                        .unwrap()
+                }
+            }
+        }
+
+        impl flatbuffers::Verifiable for ProcessControlEvent<'_> {
+            #[inline]
+            fn run_verifier(
+                v: &mut flatbuffers::Verifier,
+                pos: usize,
+            ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
+                use self::flatbuffers::Verifiable;
+                v.visit_table(pos)?
+                    .visit_field::<ProcessControlAction>("action", Self::VT_ACTION, false)?
+                    .finish();
+                Ok(())
+            }
+        }
+        pub struct ProcessControlEventArgs {
+            pub action: ProcessControlAction,
+        }
+        impl<'a> Default for ProcessControlEventArgs {
+            #[inline]
+            fn default() -> Self {
+                ProcessControlEventArgs {
+                    action: ProcessControlAction::Stop,
+                }
+            }
+        }
+
+        pub struct ProcessControlEventBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
+            fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
+            start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+        }
+        impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> ProcessControlEventBuilder<'a, 'b, A> {
+            #[inline]
+            pub fn add_action(&mut self, action: ProcessControlAction) {
+                self.fbb_.push_slot::<ProcessControlAction>(
+                    ProcessControlEvent::VT_ACTION,
+                    action,
+                    ProcessControlAction::Stop,
+                );
+            }
+            #[inline]
+            pub fn new(
+                _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
+            ) -> ProcessControlEventBuilder<'a, 'b, A> {
+                let start = _fbb.start_table();
+                ProcessControlEventBuilder {
+                    fbb_: _fbb,
+                    start_: start,
+                }
+            }
+            #[inline]
+            pub fn finish(self) -> flatbuffers::WIPOffset<ProcessControlEvent<'a>> {
+                let o = self.fbb_.end_table(self.start_);
+                flatbuffers::WIPOffset::new(o.value())
+            }
+        }
+
+        impl core::fmt::Debug for ProcessControlEvent<'_> {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                let mut ds = f.debug_struct("ProcessControlEvent");
+                ds.field("action", &self.action());
                 ds.finish()
             }
         }
@@ -2486,10 +2888,8 @@ pub mod tcrm {
             type Inner = TaskEvent<'a>;
             #[inline]
             unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-                unsafe {
-                    Self {
-                        _tab: flatbuffers::Table::new(buf, loc),
-                    }
+                Self {
+                    _tab: flatbuffers::Table::new(buf, loc),
                 }
             }
         }
@@ -2532,7 +2932,7 @@ pub mod tcrm {
                 }
             }
             #[inline]
-            pub fn event(&self) -> Option<flatbuffers::Table<'a>> {
+            pub fn event(&self) -> flatbuffers::Table<'a> {
                 // Safety:
                 // Created from valid Table for this object
                 // which contains a valid value in this slot
@@ -2542,18 +2942,18 @@ pub mod tcrm {
                             TaskEvent::VT_EVENT,
                             None,
                         )
+                        .unwrap()
                 }
             }
             #[inline]
             #[allow(non_snake_case)]
             pub fn event_as_started(&self) -> Option<StartedEvent<'a>> {
                 if self.event_type() == TaskEventUnion::Started {
-                    self.event().map(|t| {
-                        // Safety:
-                        // Created from a valid Table for this object
-                        // Which contains a valid union in this slot
-                        unsafe { StartedEvent::init_from_table(t) }
-                    })
+                    let u = self.event();
+                    // Safety:
+                    // Created from a valid Table for this object
+                    // Which contains a valid union in this slot
+                    Some(unsafe { StartedEvent::init_from_table(u) })
                 } else {
                     None
                 }
@@ -2563,12 +2963,11 @@ pub mod tcrm {
             #[allow(non_snake_case)]
             pub fn event_as_output(&self) -> Option<OutputEvent<'a>> {
                 if self.event_type() == TaskEventUnion::Output {
-                    self.event().map(|t| {
-                        // Safety:
-                        // Created from a valid Table for this object
-                        // Which contains a valid union in this slot
-                        unsafe { OutputEvent::init_from_table(t) }
-                    })
+                    let u = self.event();
+                    // Safety:
+                    // Created from a valid Table for this object
+                    // Which contains a valid union in this slot
+                    Some(unsafe { OutputEvent::init_from_table(u) })
                 } else {
                     None
                 }
@@ -2578,12 +2977,11 @@ pub mod tcrm {
             #[allow(non_snake_case)]
             pub fn event_as_ready(&self) -> Option<ReadyEvent<'a>> {
                 if self.event_type() == TaskEventUnion::Ready {
-                    self.event().map(|t| {
-                        // Safety:
-                        // Created from a valid Table for this object
-                        // Which contains a valid union in this slot
-                        unsafe { ReadyEvent::init_from_table(t) }
-                    })
+                    let u = self.event();
+                    // Safety:
+                    // Created from a valid Table for this object
+                    // Which contains a valid union in this slot
+                    Some(unsafe { ReadyEvent::init_from_table(u) })
                 } else {
                     None
                 }
@@ -2593,12 +2991,11 @@ pub mod tcrm {
             #[allow(non_snake_case)]
             pub fn event_as_stopped(&self) -> Option<StoppedEvent<'a>> {
                 if self.event_type() == TaskEventUnion::Stopped {
-                    self.event().map(|t| {
-                        // Safety:
-                        // Created from a valid Table for this object
-                        // Which contains a valid union in this slot
-                        unsafe { StoppedEvent::init_from_table(t) }
-                    })
+                    let u = self.event();
+                    // Safety:
+                    // Created from a valid Table for this object
+                    // Which contains a valid union in this slot
+                    Some(unsafe { StoppedEvent::init_from_table(u) })
                 } else {
                     None
                 }
@@ -2608,12 +3005,25 @@ pub mod tcrm {
             #[allow(non_snake_case)]
             pub fn event_as_error(&self) -> Option<ErrorEvent<'a>> {
                 if self.event_type() == TaskEventUnion::Error {
-                    self.event().map(|t| {
-                        // Safety:
-                        // Created from a valid Table for this object
-                        // Which contains a valid union in this slot
-                        unsafe { ErrorEvent::init_from_table(t) }
-                    })
+                    let u = self.event();
+                    // Safety:
+                    // Created from a valid Table for this object
+                    // Which contains a valid union in this slot
+                    Some(unsafe { ErrorEvent::init_from_table(u) })
+                } else {
+                    None
+                }
+            }
+
+            #[inline]
+            #[allow(non_snake_case)]
+            pub fn event_as_process_control(&self) -> Option<ProcessControlEvent<'a>> {
+                if self.event_type() == TaskEventUnion::ProcessControl {
+                    let u = self.event();
+                    // Safety:
+                    // Created from a valid Table for this object
+                    // Which contains a valid union in this slot
+                    Some(unsafe { ProcessControlEvent::init_from_table(u) })
                 } else {
                     None
                 }
@@ -2628,42 +3038,18 @@ pub mod tcrm {
             ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
                 use self::flatbuffers::Verifiable;
                 v.visit_table(pos)?
-                    .visit_union::<TaskEventUnion, _>(
-                        "event_type",
-                        Self::VT_EVENT_TYPE,
-                        "event",
-                        Self::VT_EVENT,
-                        false,
-                        |key, v, pos| match key {
-                            TaskEventUnion::Started => v
-                                .verify_union_variant::<flatbuffers::ForwardsUOffset<StartedEvent>>(
-                                    "TaskEventUnion::Started",
-                                    pos,
-                                ),
-                            TaskEventUnion::Output => v
-                                .verify_union_variant::<flatbuffers::ForwardsUOffset<OutputEvent>>(
-                                    "TaskEventUnion::Output",
-                                    pos,
-                                ),
-                            TaskEventUnion::Ready => v
-                                .verify_union_variant::<flatbuffers::ForwardsUOffset<ReadyEvent>>(
-                                    "TaskEventUnion::Ready",
-                                    pos,
-                                ),
-                            TaskEventUnion::Stopped => v
-                                .verify_union_variant::<flatbuffers::ForwardsUOffset<StoppedEvent>>(
-                                    "TaskEventUnion::Stopped",
-                                    pos,
-                                ),
-                            TaskEventUnion::Error => v
-                                .verify_union_variant::<flatbuffers::ForwardsUOffset<ErrorEvent>>(
-                                    "TaskEventUnion::Error",
-                                    pos,
-                                ),
-                            _ => Ok(()),
-                        },
-                    )?
-                    .finish();
+     .visit_union::<TaskEventUnion, _>("event_type", Self::VT_EVENT_TYPE, "event", Self::VT_EVENT, true, |key, v, pos| {
+        match key {
+          TaskEventUnion::Started => v.verify_union_variant::<flatbuffers::ForwardsUOffset<StartedEvent>>("TaskEventUnion::Started", pos),
+          TaskEventUnion::Output => v.verify_union_variant::<flatbuffers::ForwardsUOffset<OutputEvent>>("TaskEventUnion::Output", pos),
+          TaskEventUnion::Ready => v.verify_union_variant::<flatbuffers::ForwardsUOffset<ReadyEvent>>("TaskEventUnion::Ready", pos),
+          TaskEventUnion::Stopped => v.verify_union_variant::<flatbuffers::ForwardsUOffset<StoppedEvent>>("TaskEventUnion::Stopped", pos),
+          TaskEventUnion::Error => v.verify_union_variant::<flatbuffers::ForwardsUOffset<ErrorEvent>>("TaskEventUnion::Error", pos),
+          TaskEventUnion::ProcessControl => v.verify_union_variant::<flatbuffers::ForwardsUOffset<ProcessControlEvent>>("TaskEventUnion::ProcessControl", pos),
+          _ => Ok(()),
+        }
+     })?
+     .finish();
                 Ok(())
             }
         }
@@ -2676,7 +3062,7 @@ pub mod tcrm {
             fn default() -> Self {
                 TaskEventArgs {
                     event_type: TaskEventUnion::NONE,
-                    event: None,
+                    event: None, // required field
                 }
             }
         }
@@ -2715,6 +3101,7 @@ pub mod tcrm {
             #[inline]
             pub fn finish(self) -> flatbuffers::WIPOffset<TaskEvent<'a>> {
                 let o = self.fbb_.end_table(self.start_);
+                self.fbb_.required(o, TaskEvent::VT_EVENT, "event");
                 flatbuffers::WIPOffset::new(o.value())
             }
         }
@@ -2774,6 +3161,16 @@ pub mod tcrm {
                             )
                         }
                     }
+                    TaskEventUnion::ProcessControl => {
+                        if let Some(x) = self.event_as_process_control() {
+                            ds.field("event", &x)
+                        } else {
+                            ds.field(
+                                "event",
+                                &"InvalidFlatbuffer: Union discriminant does not match value.",
+                            )
+                        }
+                    }
                     _ => {
                         let x: Option<()> = None;
                         ds.field("event", &x)
@@ -2789,9 +3186,7 @@ pub mod tcrm {
         /// catch every error, or be maximally performant. For the
         /// previous, unchecked, behavior use
         /// `root_as_task_event_unchecked`.
-        pub fn root_as_task_event(
-            buf: &'_ [u8],
-        ) -> Result<TaskEvent<'_>, flatbuffers::InvalidFlatbuffer> {
+        pub fn root_as_task_event(buf: &[u8]) -> Result<TaskEvent, flatbuffers::InvalidFlatbuffer> {
             flatbuffers::root::<TaskEvent>(buf)
         }
         #[inline]
@@ -2802,8 +3197,8 @@ pub mod tcrm {
         /// previous, unchecked, behavior use
         /// `size_prefixed_root_as_task_event_unchecked`.
         pub fn size_prefixed_root_as_task_event(
-            buf: &'_ [u8],
-        ) -> Result<TaskEvent<'_>, flatbuffers::InvalidFlatbuffer> {
+            buf: &[u8],
+        ) -> Result<TaskEvent, flatbuffers::InvalidFlatbuffer> {
             flatbuffers::size_prefixed_root::<TaskEvent>(buf)
         }
         #[inline]
@@ -2836,15 +3231,15 @@ pub mod tcrm {
         /// Assumes, without verification, that a buffer of bytes contains a TaskEvent and returns it.
         /// # Safety
         /// Callers must trust the given bytes do indeed contain a valid `TaskEvent`.
-        pub unsafe fn root_as_task_event_unchecked(buf: &'_ [u8]) -> TaskEvent<'_> {
-            unsafe { flatbuffers::root_unchecked::<TaskEvent>(buf) }
+        pub unsafe fn root_as_task_event_unchecked(buf: &[u8]) -> TaskEvent {
+            flatbuffers::root_unchecked::<TaskEvent>(buf)
         }
         #[inline]
         /// Assumes, without verification, that a buffer of bytes contains a size prefixed TaskEvent and returns it.
         /// # Safety
         /// Callers must trust the given bytes do indeed contain a valid size prefixed `TaskEvent`.
-        pub unsafe fn size_prefixed_root_as_task_event_unchecked(buf: &'_ [u8]) -> TaskEvent<'_> {
-            unsafe { flatbuffers::size_prefixed_root_unchecked::<TaskEvent>(buf) }
+        pub unsafe fn size_prefixed_root_as_task_event_unchecked(buf: &[u8]) -> TaskEvent {
+            flatbuffers::size_prefixed_root_unchecked::<TaskEvent>(buf)
         }
         #[inline]
         pub fn finish_task_event_buffer<'a, 'b, A: flatbuffers::Allocator + 'a>(

@@ -6,13 +6,15 @@ use crate::{
     tasks::error::TaskError,
 };
 
+/// Test TaskError roundtrip conversions for all error variants
 #[test]
-fn roundtrip() {
+fn task_error_roundtrip() {
     let test_cases = vec![
         TaskError::IO("io error message".to_string()),
         TaskError::Handle("handle error message".to_string()),
         TaskError::Channel("channel error message".to_string()),
         TaskError::InvalidConfiguration("invalid config message".to_string()),
+        TaskError::Control("control error message".to_string()),
     ];
 
     for original_error in test_cases {
@@ -37,6 +39,7 @@ fn roundtrip() {
             (TaskError::InvalidConfiguration(orig), TaskError::InvalidConfiguration(conv)) => {
                 assert_eq!(orig, conv)
             }
+            (TaskError::Control(orig), TaskError::Control(conv)) => assert_eq!(orig, conv),
             _ => panic!(
                 "Error type mismatch: {:?} vs {:?}",
                 original_error, converted_error
@@ -57,7 +60,7 @@ fn direct_read() {
         fb.kind(),
         tcrm_task_generated::tcrm::task::TaskErrorType::Channel
     );
-    assert_eq!(fb.message().unwrap(), "direct_channel_error");
+    assert_eq!(fb.message(), "direct_channel_error");
 }
 
 #[test]
@@ -88,7 +91,7 @@ fn direct_read_all_error_types() {
         let bytes = builder.finished_data();
         let fb = flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskError>(bytes).unwrap();
         assert_eq!(fb.kind(), expected_type);
-        assert!(fb.message().unwrap().contains("test"));
+        assert!(fb.message().contains("test"));
     }
 }
 #[test]
@@ -100,7 +103,7 @@ fn unicode_message() {
     let bytes = builder.finished_data();
     let fb = flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskError>(bytes).unwrap();
 
-    assert_eq!(fb.message().unwrap(), "Unicode error: 测试错误 🚀");
+    assert_eq!(fb.message(), "Unicode error: 测试错误 🚀");
 
     let converted = TaskError::from_flatbuffers(fb).unwrap();
     if let TaskError::IO(msg) = converted {
@@ -119,7 +122,7 @@ fn empty_message() {
     let bytes = builder.finished_data();
     let fb = flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskError>(bytes).unwrap();
 
-    assert_eq!(fb.message().unwrap(), "");
+    assert_eq!(fb.message(), "");
 
     let converted = TaskError::from_flatbuffers(fb).unwrap();
     if let TaskError::Channel(msg) = converted {
@@ -139,7 +142,7 @@ fn long_message() {
     let bytes = builder.finished_data();
     let fb = flatbuffers::root::<tcrm_task_generated::tcrm::task::TaskError>(bytes).unwrap();
 
-    assert_eq!(fb.message().unwrap(), long_msg);
+    assert_eq!(fb.message(), long_msg);
 
     let converted = TaskError::from_flatbuffers(fb).unwrap();
     if let TaskError::IO(msg) = converted {
@@ -159,7 +162,7 @@ fn conversion_error_invalid_error_type() {
 fn conversion_error_display() {
     let errors = vec![
         ConversionError::InvalidStreamSource(99),
-        ConversionError::InvalidTaskShell(88),
+        ConversionError::InvalidTaskState(88),
         ConversionError::InvalidTaskState(77),
         ConversionError::InvalidTaskTerminateReasonType(66),
         ConversionError::InvalidTaskEventStopReasonType(55),
